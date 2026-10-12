@@ -1,0 +1,39 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+local.properties
+local-secrets.properties
+*.jks
+*.keystore
+google-services.json
+.local-state/
+
+# Generated local Kotlin configuration; commit templates only.
+android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/main/mega/login/business/BusinessLoginConfig.kt
+android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/demo/RouterConfig.kt
+android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/demo/AwsConfig.kt
+
+# Official SDK binary, build products and caches
+*.aar
+*.apk
+*.aab
+**/build/
+**/.gradle/
+**/.kotlin/
+**/.idea/
+**/.cxx/
+**/node_modules/
+**/Pods/
+**/__pycache__/
+*.pyc
+*.log
+.DS_Store
+.vercel/
+
+# Camera recordings and local experiments
+test_data/
+captures/
+*.mp4
+*.mov
+*.avi

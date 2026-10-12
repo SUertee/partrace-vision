@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：live（直播视频）
+  命名前缀：eslot_live_
+  说明：直播屏按钮、Dialog、播放控制、码率/时长模板
+-->
+<resources>
+</resources>

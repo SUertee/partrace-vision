@@ -1,0 +1,38 @@
+package com.anker.esiotkit.sample.demo
+
+/**
+ * AWS 配置常量（Hackathon Demo 专用）。
+ *
+ * ⚠️ 开源仓库不包含任何真实凭证：请填入你自己的 AWS Key 后再运行 AI Demo，
+ * 切勿将真实凭证提交到仓库。
+ */
+object AwsConfig {
+
+  // ─── 账号1：Bedrock（Nova Pro / Nova Lite）───
+  const val BEDROCK_ACCESS_KEY = ""
+  const val BEDROCK_SECRET_KEY = ""
+  const val NOVA_PRO_MODEL_ID = "amazon.nova-pro-v1:0"
+  const val NOVA_LITE_MODEL_ID = "amazon.nova-lite-v1:0"
+
+  // ─── 账号2：Transcribe + Polly ───
+  const val TRANSCRIBE_ACCESS_KEY = ""
+  const val TRANSCRIBE_SECRET_KEY = ""
+
+  const val REGION = "us-east-1"
+
+  // ─── 端点 ───
+  const val BEDROCK_HOST = "bedrock-runtime.$REGION.amazonaws.com"
+  const val TRANSCRIBE_HOST = "transcribe.$REGION.amazonaws.com"
+  const val POLLY_HOST = "polly.$REGION.amazonaws.com"
+  const val S3_HOST = "s3.$REGION.amazonaws.com"
+
+  /** Transcribe 批量模式的 S3 桶名（留空时批量 ASR 不可用，降级为手动文本输入） */
+  const val TRANSCRIBE_S3_BUCKET = ""
+
+  // ─── 尝试策略 ───
+  const val AI_REQUEST_TIMEOUT_MS = 60_000L
+  const val AI_IMAGE_TIMEOUT_MS = 20_000L
+  const val AI_VIDEO_TIMEOUT_MS = 40_000L
+  const val TRANSCRIBE_POLL_INTERVAL_MS = 1_500L
+  const val TRANSCRIBE_POLL_MAX_MS = 60_000L
+}

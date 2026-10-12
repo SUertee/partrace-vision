@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：settings（设备设置族）
+  命名前缀：eslot_settings_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_settings_title">设备设置</string>
+    <string name="eslot_settings_dashboard_title">仪表盘</string>
+    <string name="eslot_settings_edge_connection_title">边缘连接</string>
+    <string name="eslot_settings_ota_title">OTA 升级</string>
+    <string name="eslot_settings_video_title">视频设置</string>
+    <string name="eslot_settings_video_night_vision_title">夜视</string>
+    <string name="eslot_settings_video_streaming_quality_title">直播画质</string>
+    <string name="eslot_settings_video_recording_quality_title">录像画质</string>
+    <string name="eslot_settings_video_watermark_title">水印</string>
+    <string name="eslot_settings_video_privacy_zones_title">隐私区域</string>
+    <string name="eslot_settings_video_light_title">聚光灯设置</string>
+    <string name="eslot_settings_video_streaming_display_title">投射至智能显示屏</string>
+    <string name="eslot_settings_audio_title">音频设置</string>
+    <string name="eslot_settings_audio_sound_detection_title">声音检测</string>
+    <string name="eslot_settings_power_title">电源管理</string>
+    <string name="eslot_settings_power_customize_recording_title">自定义录像</string>
+    <string name="eslot_settings_notification_title">通知</string>
+    <string name="eslot_settings_notification_response_title">响应设置</string>
+    <string name="eslot_settings_notification_indoor_chime_title">室内门铃</string>
+    <string name="eslot_settings_notification_modes_title">模式通知</string>
+    <string name="eslot_settings_notification_alert_tones_title">应用警报音</string>
+    <string name="eslot_settings_notification_jump_title">通知跳转</string>
+    <string name="eslot_settings_ptz_title">角度设置</string>
+    <string name="eslot_settings_ptz_cruise_mode_title">巡航模式</string>
+    <string name="eslot_settings_ptz_preset_positions_title">预置位</string>
+    <string name="eslot_settings_motion_title">移动侦测</string>
+    <string name="eslot_settings_motion_activity_zone_title">活动区域</string>
+    <string name="eslot_settings_motion_test_mode_title">移动侦测测试</string>
+    <string name="eslot_settings_general_title">通用设置</string>
+    <string name="eslot_settings_general_camera_name_title">摄像头名称</string>
+    <string name="eslot_settings_general_time_title">时间设置</string>
+    <string name="eslot_settings_general_timezone_title">时区</string>
+    <string name="eslot_settings_general_wifi_connection_title">WiFi 连接</string>
+    <string name="eslot_settings_general_wifi_signal_title">WiFi 信号</string>
+    <string name="eslot_settings_general_local_storage_title">本地存储</string>
+    <string name="eslot_settings_general_share_device_title">共享设备</string>
+    <string name="eslot_settings_about_device_title">关于设备</string>
+    <string name="eslot_settings_general_mounting_guide_title">安装指南</string>
+</resources>

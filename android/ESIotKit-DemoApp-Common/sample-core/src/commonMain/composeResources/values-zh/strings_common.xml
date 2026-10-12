@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：common（跨域通用）
+  命名前缀：eslot_common_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_common_confirm">确认</string>
+    <string name="eslot_common_cancel">取消</string>
+    <string name="eslot_common_retry">重试</string>
+    <string name="eslot_common_save">保存</string>
+    <string name="eslot_common_delete">删除</string>
+    <string name="eslot_common_close">关闭</string>
+    <string name="eslot_common_ok">确定</string>
+    <string name="eslot_common_online">在线</string>
+    <string name="eslot_common_offline">离线</string>
+    <string name="eslot_common_loading">加载中...</string>
+    <string name="eslot_common_untitled_title">未命名</string>
+</resources>

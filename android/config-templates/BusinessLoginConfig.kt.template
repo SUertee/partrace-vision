@@ -1,0 +1,38 @@
+package com.anker.esiotkit.sample.main.mega.login.business
+
+/**
+ * Business Login 统一配置 — PR / QA 环境参数集中管理，
+ * ViewModel 和 Cache 均引用于此，不再各自维护。
+ *
+ * 登录所需凭证（USER_ID / TOKEN）由赛务方在比赛现场统一发放，
+ * 领取后填入下方对应常量即可登录体验（参见 docs/PREREQUISITES-Android.md / -iOS.md）。
+ */
+object BusinessLoginConfig {
+
+  const val ENV_PR = "US"
+  const val ENV_QA = "QA"
+
+  object EnvPR {
+    const val REGION = "US"
+    const val APP_NAME = "forqa"
+    const val CLIENT_ID = "openapi_client_forqa"
+    const val CLIENT_SECRET = ""
+    const val USER_ID = ""
+    const val TOKEN = ""
+    const val APP_DOMAIN = "https://openapi-us.eufylife.com/"
+    const val DEVICE_DOMAIN = "https://security-app.eufylife.com"
+  }
+
+  object EnvQA {
+    const val REGION = "US"
+    const val APP_NAME = "forqa"
+    const val CLIENT_ID = "openapi_client_forqa"
+    const val CLIENT_SECRET = ""
+    const val USER_ID = ""
+    const val TOKEN = ""
+    const val APP_DOMAIN = "https://openapi-qa.eufylife.com/"
+    const val DEVICE_DOMAIN = "https://security-app-qa.eufylife.com"
+  }
+
+  const val DEFAULT_ENVIRONMENT = ENV_PR
+}

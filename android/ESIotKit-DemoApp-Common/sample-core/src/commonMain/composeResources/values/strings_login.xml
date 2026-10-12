@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：login（登录）
+  命名前缀：eslot_login_
+  说明：登录流程、登录表单、登录相关 Toast
+-->
+<resources>
+    <!-- 页面标题 -->
+    <string name="eslot_login_title">Business Login</string>
+</resources>

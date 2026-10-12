@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：add_device（添加设备）
+  命名前缀：eslot_add_device_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_add_device_title">添加设备</string>
+    <string name="eslot_add_device_mode_family_title">模式系列</string>
+    <string name="eslot_add_device_device_family_title">设备系列</string>
+    <string name="eslot_add_device_ble_connect_title">设备连接</string>
+    <string name="eslot_add_device_select_home_title">设备系列</string>
+    <string name="eslot_add_device_address_title">地址</string>
+    <string name="eslot_add_device_network_mode_title">配网方式</string>
+    <string name="eslot_add_device_cable_connect_title">有线连接</string>
+    <string name="eslot_add_device_sub_device_connect_title">连接门铃</string>
+    <string name="eslot_add_device_scan_qrcode_title">设备连接</string>
+    <string name="eslot_add_device_scan_title">扫描二维码</string>
+</resources>

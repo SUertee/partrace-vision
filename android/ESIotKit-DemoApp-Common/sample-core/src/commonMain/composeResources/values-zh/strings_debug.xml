@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：debug（调试）
+  命名前缀：eslot_debug_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_debug_mega_title">调试功能</string>
+    <string name="eslot_debug_house_manage_title">房屋管理</string>
+    <string name="eslot_debug_log_management_title">日志管理</string>
+    <string name="eslot_debug_sn_to_pn_title">SN 转 PN</string>
+    <string name="eslot_debug_device_capability_title">设备能力</string>
+    <string name="eslot_debug_thing_manage_title">物模型管理</string>
+    <string name="eslot_debug_things_accessibility_title">物模型可访问性</string>
+    <string name="eslot_debug_boom_crypto_key_title">密钥破坏测试</string>
+    <string name="eslot_debug_function_test_title">功能测试</string>
+    <string name="eslot_debug_crypto_test_title">加密测试</string>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：add_device（添加设备）
+  命名前缀：eslot_add_device_
+  说明：扫码、BLE 连接、配网、配对步骤
+-->
+<resources>
+    <!-- 页面标题 -->
+    <string name="eslot_add_device_title">Add Device</string>
+    <string name="eslot_add_device_mode_family_title">Mode Family</string>
+    <string name="eslot_add_device_device_family_title">Device Family</string>
+    <string name="eslot_add_device_ble_connect_title">Device Connection</string>
+    <string name="eslot_add_device_select_home_title">Device Family</string>
+    <string name="eslot_add_device_address_title">Address</string>
+    <string name="eslot_add_device_network_mode_title">Distribution Network Mode</string>
+    <string name="eslot_add_device_cable_connect_title">Cable Connect</string>
+    <string name="eslot_add_device_sub_device_connect_title">Connect Doorbell</string>
+    <string name="eslot_add_device_scan_qrcode_title">Device Connection</string>
+    <string name="eslot_add_device_scan_title">Scan QRCode</string>
+</resources>

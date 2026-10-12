@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：thing（物模型）
+  命名前缀：eslot_thing_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_thing_device_title">设备</string>
+</resources>

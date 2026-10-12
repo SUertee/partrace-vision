@@ -1,0 +1,58 @@
+{
+  "schema_version": "0.1-draft",
+  "source": "mock",
+  "note": "模拟协议草案；无真实人物、视频、图片或 SDK 输入。D01 待四人确认。",
+  "recording": {
+    "recording_id": "mock-recording-001",
+    "camera_id": "mock-camera-001",
+    "started_at": "2026-10-08T06:00:00Z",
+    "duration_ms": 10000,
+    "source": "mock"
+  },
+  "track_segments": [
+    {
+      "segment_id": "mock-segment-001",
+      "recording_id": "mock-recording-001",
+      "camera_id": "mock-camera-001",
+      "region_id": "E3",
+      "started_at": "2026-10-08T06:00:02Z",
+      "ended_at": "2026-10-08T06:00:05Z",
+      "source": "mock"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "mock-event-001",
+      "recording_id": "mock-recording-001",
+      "segment_ids": ["mock-segment-001"],
+      "region_id": "E3",
+      "started_at": "2026-10-08T06:00:02Z",
+      "ended_at": "2026-10-08T06:00:05Z",
+      "activity_type": "region_activity",
+      "description": "E3 区域活动的模拟占位记录，不判断拿货或订单。",
+      "evidence_ids": ["mock-evidence-001"],
+      "source": "mock"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "mock-evidence-001",
+      "event_id": "mock-event-001",
+      "recording_id": "mock-recording-001",
+      "captured_at": "2026-10-08T06:00:03Z",
+      "offset_ms": 3000,
+      "uri": null,
+      "availability": "unavailable",
+      "source": "mock"
+    }
+  ],
+  "coverage": [
+    {
+      "camera_id": "mock-camera-001",
+      "region_id": "E3",
+      "covered_intervals": [{"started_at": "2026-10-08T06:00:00Z", "ended_at": "2026-10-08T06:00:10Z"}],
+      "unknown_intervals": [],
+      "source": "mock"
+    }
+  ]
+}

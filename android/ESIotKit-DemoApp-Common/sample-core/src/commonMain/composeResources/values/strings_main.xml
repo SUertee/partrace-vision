@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：main（主框架）
+  命名前缀：eslot_main_
+  说明：底部导航 Tab、Toast 提示、版本号显示、主页面级文案
+-->
+<resources>
+    <!-- 页面标题 -->
+    <string name="eslot_main_select_app_title">Select App</string>
+    <string name="eslot_main_mega_event_title">Mega Event</string>
+    <string name="eslot_main_thing_title">Thing</string>
+</resources>

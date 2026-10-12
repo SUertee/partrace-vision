@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：common（跨域通用）
+  命名前缀：eslot_common_
+  说明：跨 2 个及以上文件复用的通用文案
+-->
+<resources>
+    <!-- 通用按钮/动作 -->
+    <string name="eslot_common_confirm">Confirm</string>
+    <string name="eslot_common_cancel">Cancel</string>
+    <string name="eslot_common_retry">Retry</string>
+    <string name="eslot_common_save">Save</string>
+    <string name="eslot_common_delete">Delete</string>
+    <string name="eslot_common_close">Close</string>
+    <string name="eslot_common_ok">OK</string>
+    
+    <!-- 通用状态 -->
+    <string name="eslot_common_online">Online</string>
+    <string name="eslot_common_offline">Offline</string>
+    
+    <!-- 通用提示 -->
+    <string name="eslot_common_loading">Loading...</string>
+    
+    <!-- 标题占位 -->
+    <string name="eslot_common_untitled_title">Untitled</string>
+</resources>

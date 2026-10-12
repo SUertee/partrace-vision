@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：thing（物模型）
+  命名前缀：eslot_thing_
+  说明：Thing Management 页面内容
+-->
+<resources>
+    <!-- 页面标题 -->
+    <string name="eslot_thing_device_title">Device</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：debug（调试）
+  命名前缀：eslot_debug_
+  说明：日志查看、调试开关、SnToPn 等调试工具
+-->
+<resources>
+    <!-- 页面标题 -->
+    <string name="eslot_debug_mega_title">Mega Debug</string>
+    <string name="eslot_debug_house_manage_title">House Management</string>
+    <string name="eslot_debug_log_management_title">Log Management</string>
+    <string name="eslot_debug_sn_to_pn_title">SnToPn</string>
+    <string name="eslot_debug_device_capability_title">Device Capabilities</string>
+    <string name="eslot_debug_thing_manage_title">Thing Manage</string>
+    <string name="eslot_debug_things_accessibility_title">Things Accessibility</string>
+    <string name="eslot_debug_boom_crypto_key_title">Boom Crypto Key</string>
+    <string name="eslot_debug_function_test_title">Function Test</string>
+    <string name="eslot_debug_crypto_test_title">Crypto Test</string>
+</resources>

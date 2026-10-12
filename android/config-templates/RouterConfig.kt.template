@@ -1,0 +1,59 @@
+package com.anker.esiotkit.sample.demo
+
+/**
+ * 黑客松 Router 配置常量（Hackathon Demo 专用）。
+ *
+ * ⚠️ API_KEY 运行前填入黑客松分配的 key（勿提交到仓库）：
+ *    - 测试注入：环境变量 ROUTER_API_KEY（优先）
+ *    - 真机运行：本地填入本常量后构建，提交前必须恢复空串
+ *
+ * 切回 AWS：将 StartScreen.kt 的 Koin 绑定改回 AwsAiServiceImpl()，
+ * 并在 AwsConfig.kt 填入 AWS 凭证（保留的 AWS 实现为静态资产）。
+ */
+object RouterConfig {
+
+  /** 黑客松 Router 网关 */
+  const val BASE_URL = "https://ai-router-cn-pub.anker-in.com"
+
+  /** 黑客松分配的 API Key（运行前填入；勿提交） */
+  const val API_KEY = ""
+
+  // ─── 模型（仅 nova-pro 经 105+ 次实测验证为主力）───
+  const val MODEL_TEXT = "hackathon/v_model/nova-pro"
+  const val MODEL_IMAGE = "hackathon/v_model/nova-pro"
+  const val MODEL_VIDEO = "hackathon/v_model/nova-pro"
+  const val MODEL_TTS = "hackathon/v_model/qwen-audio-3.0-tts-flash"
+  const val MODEL_ASR = "hackathon/v_model/qwen-audio-3.0-asr-flash"
+
+  // ─── TTS 参数 ───
+  const val TTS_VOICE = "longanhuan_v3.6"
+  const val TTS_FORMAT = "mp3"
+  const val TTS_SAMPLE_RATE = 24000
+
+  // ─── 端点 ───
+  const val ENDPOINT_CHAT = "/chat/completions"
+  const val ENDPOINT_TTS = "/openai_passthrough/services/audio/tts/SpeechSynthesizer"
+  const val ENDPOINT_ASR = "/openai_passthrough/services/aigc/multimodal-generation/generation"
+
+  /** 音频 passthrough 必需头（值原文含空格，照抄文档，勿改） */
+  const val HEADER_AUDIO_PROVIDER = "dashscope_ audio"
+
+  // ─── 生成参数（实测规范：≥2000 防推理型模型空响应）───
+  const val MAX_TOKENS = 2000
+  const val TEMP_INTENT = 0.1
+  const val TEMP_IMAGE = 0.2
+  const val TEMP_VIDEO = 0.3
+  const val TEMP_SUMMARY = 0.3
+
+  // ─── 超时（对齐现有 AwsConfig 策略，新增 TTS 下载/ASR）───
+  const val TEXT_TIMEOUT_MS = 60_000L
+  const val IMAGE_TIMEOUT_MS = 20_000L
+  const val VIDEO_TIMEOUT_MS = 40_000L
+  const val AUDIO_TIMEOUT_MS = 30_000L
+  const val TTS_DOWNLOAD_TIMEOUT_MS = 30_000L
+
+  /** 运行时解析 key：测试用环境变量注入优先，其次本地常量 */
+  fun resolveApiKey(): String =
+    com.anker.esiotkit.sample.support.platform.platformGetenv("ROUTER_API_KEY")
+      ?.takeIf { it.isNotBlank() } ?: API_KEY
+}

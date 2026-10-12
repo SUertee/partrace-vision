@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：language（语言切换）
+  命名前缀：eslot_language_
+  说明：语言选项用自身书写——eslot_language_mode_en 和 eslot_language_mode_zh 在两语下同值
+-->
+<resources>
+    <string name="eslot_language_title">语言</string>
+    <string name="eslot_language_mode_system">跟随系统</string>
+    <string name="eslot_language_mode_en">English</string>
+    <string name="eslot_language_mode_zh">简体中文</string>
+</resources>

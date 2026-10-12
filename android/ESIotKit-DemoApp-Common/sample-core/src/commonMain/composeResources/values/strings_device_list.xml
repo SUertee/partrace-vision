@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：device_list（设备列表）
+  命名前缀：eslot_device_list_
+  说明：设备列表状态、搜索栏、空态、添加设备按钮
+-->
+<resources>
+</resources>

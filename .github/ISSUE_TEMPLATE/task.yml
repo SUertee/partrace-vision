@@ -1,0 +1,80 @@
+name: 开发任务
+description: 按 D01—D10 登记首轮交付、依赖和验收凭据
+title: "[Dxx] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ParTrace Vision（驿站追迹）开发任务。按 `docs/DEVELOPMENT_PLAN.md` 选择工作包，接口与 JSON 样例统一放在顶层 `api-spec/`。
+        当前已确认的是 HTML 原型；业务开发和实测能力需要各自的交付与验证凭据。
+  - type: dropdown
+    id: work_package
+    attributes:
+      label: 工作包
+      options:
+        - D01 · 范围与共享协议
+        - D02 · Android 四 Tab 骨架
+        - D03 · 固定素材与人工基准
+        - D04 · 算法事件与真实证据包
+        - D05 · 共用事件与证据服务
+        - D06 · 摄像头 SDK 独立验证
+        - D07 · Agent 计划、只读检索与引用
+        - D08 · Android 查询、证据与 AI 页面
+        - D09 · 人工保存与记录恢复
+        - D10 · 闭环、首页与 Demo 验收
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: 主责
+      options:
+        - 李果钦 · 前端
+        - 徐泽华 · 算法
+        - 韩广宁 · Agent
+        - Harry Xu · 后端 / SDK
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: 当前状态
+      default: 0
+      options:
+        - 待开始
+        - 进行中
+        - 受阻
+        - 待验收
+        - 完成
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 本项交付
+      description: 写清具体产物和协作人；同一工作包可拆成多项 Issue。
+      placeholder: "例如：实现事件区域/时间/镜头筛选接口，提供请求、返回样例与运行步骤。"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 前置与真实连接等待
+      description: 区分开工所需样例与接入真实产物所需依赖；写出 D 编号或 Issue 链接。
+      placeholder: "例如：D01 协议冻结后用样例开工；真实导入等待 D04。D06 SDK 验证不阻塞预录闭环。"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 可验收条件
+      description: 使用可复查的输入、操作和预期结果，涵盖本项相关的空结果、未知或错误状态。
+      placeholder: "例如：同一 Event ID 能打开对应源视频关键帧；服务重启后引用不变；失效证据返回明确状态。"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 交付链接与验证凭据
+      description: 附 PR、运行命令、日志、截图或录屏；注明环境、版本、数据来源及未验证项。未开始可留空，标记完成时补齐。
+      placeholder: "PR：\n验证命令/操作与结果：\n环境与版本：\n数据来源（真实预录 / 人工标注 / 模拟 / SDK）：\n仍待验证："

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：main（主框架）
+  命名前缀：eslot_main_
+  说明：中文翻译由后续迁移批次追加
+-->
+<resources>
+    <string name="eslot_main_select_app_title">选择应用</string>
+    <string name="eslot_main_mega_event_title">事件</string>
+    <string name="eslot_main_thing_title">物模型</string>
+</resources>

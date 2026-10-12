@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  功能域：sidebar（侧边栏）
+  命名前缀：eslot_sidebar_
+  说明：侧边栏抽屉菜单项、toggle 标签、Logout 按钮
+-->
+<resources>
+    <string name="eslot_sidebar_language_title">Language</string>
+</resources>
