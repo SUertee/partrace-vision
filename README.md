@@ -9,6 +9,7 @@
 - [在线工作台：原型、开发模块、开发流程](https://yizhan-trace-workbench.vercel.app/)
 - [最新离线工作台 HTML](docs/workbench/index.html)：下载此文件，双击即可打开，无需启动服务。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
+- [开发协作规范：AGENTS.md](AGENTS.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)
 
 工作台中的数据和 AI 回答是模拟样例。线上最新一次更新因 Vercel 授权未通过而暂未同步，当前内容以仓库内离线 HTML 为准。
