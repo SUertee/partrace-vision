@@ -1,0 +1,10 @@
+{
+  "journey_id": "mock-journey-01",
+  "expected_review_version": 1,
+  "action": "confirm",
+  "target_item_ids": [
+    "mock-item-1",
+    "mock-item-2"
+  ],
+  "reason": "Mock human selection confirmation; does not verify a real person or package."
+}

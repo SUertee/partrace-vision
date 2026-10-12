@@ -1,0 +1,26 @@
+{
+  "api_version": "0.2-draft",
+  "items": [
+    {
+      "journey_id": "mock-journey-01",
+      "created_at": "2026-10-12T07:00:00Z",
+      "updated_at": "2026-10-12T07:00:00Z",
+      "review_version": 1,
+      "query": {
+        "zone_id": "E3",
+        "camera_id": "mock-camera-indoor-01",
+        "start": "2026-10-08T06:00:00Z",
+        "end": "2026-10-08T08:00:00Z",
+        "event_types": [
+          "shelf_interaction"
+        ],
+        "source_modes": [
+          "mock"
+        ]
+      },
+      "note": "Mock saved selection; no image or factual camera evidence exists.",
+      "selected_item_count": 3
+    }
+  ],
+  "next_cursor": null
+}

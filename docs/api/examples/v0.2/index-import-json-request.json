@@ -1,0 +1,111 @@
+{
+  "schema_version": "0.2-draft",
+  "import_id": "mock-import-01",
+  "recording_id": "mock-recording-01",
+  "index_version": 1,
+  "index_status": "complete",
+  "producer_name": "mock-fixture-generator",
+  "producer_version": "0.2",
+  "recording": {
+    "recording_id": "mock-recording-01",
+    "camera_id": "mock-camera-indoor-01",
+    "source_mode": "mock",
+    "media_kind": "video",
+    "clock": {
+      "time_base": "raw_epoch_ms",
+      "raw_start_epoch_ms": 1791439200000,
+      "raw_end_epoch_ms": 1791446400000,
+      "clock_offset_ms": 0,
+      "alignment_status": "aligned",
+      "calibration_note": "Synthetic timestamps for protocol discussion; no real camera calibration.",
+      "time_mapping_version": "mock-clock-v1",
+      "time_base_num": 1,
+      "time_base_den": 1000,
+      "raw_time_origin_pts": 0
+    },
+    "media": {
+      "unavailable_reason": "mock_no_media"
+    },
+    "source_recording_id": "mock-source-recording-01"
+  },
+  "track_segments": [
+    {
+      "track_segment_id": "mock-segment-01",
+      "recording_id": "mock-recording-01",
+      "camera_id": "mock-camera-indoor-01",
+      "local_track_id": "mock-local-1",
+      "raw_start_epoch_ms": 1791439260000,
+      "raw_end_epoch_ms": 1791439265000,
+      "detection_source": "mock",
+      "points": [],
+      "zone_config_ids": [
+        "mock-zone-config-E3-v1"
+      ],
+      "end_reason": "unknown",
+      "trajectory_kind": "discrete",
+      "segment_no": 0,
+      "start_offset_ms": 60000,
+      "end_offset_ms": 65000
+    }
+  ],
+  "events": [
+    {
+      "event_id": "mock-event-01",
+      "recording_id": "mock-recording-01",
+      "camera_id": "mock-camera-indoor-01",
+      "zone_id": "E3",
+      "zone_config_id": "mock-zone-config-E3-v1",
+      "track_segment_id": "mock-segment-01",
+      "event_type": "shelf_interaction",
+      "raw_start_epoch_ms": 1791439260000,
+      "raw_end_epoch_ms": 1791439265000,
+      "detection_source": "mock",
+      "observation_status": "observed",
+      "confidence": null,
+      "evidence_ids": [
+        "mock-evidence-01"
+      ],
+      "metadata": {
+        "raw_sdk_type": null
+      },
+      "source_event_id": "mock-source-event-01",
+      "start_offset_ms": 60000,
+      "end_offset_ms": 65000,
+      "doorway_direction": null,
+      "enhancement_tags": []
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "mock-evidence-01",
+      "recording_id": "mock-recording-01",
+      "media_kind": "keyframe",
+      "raw_captured_epoch_ms": 1791439260000,
+      "offset_ms": 60000,
+      "context_start_offset_ms": null,
+      "context_end_offset_ms": null,
+      "raw_frame_pts": null,
+      "media": {
+        "unavailable_reason": "mock_no_media"
+      }
+    }
+  ],
+  "coverage_intervals": [
+    {
+      "recording_id": "mock-recording-01",
+      "camera_id": "mock-camera-indoor-01",
+      "zone_config_id": "mock-zone-config-E3-v1",
+      "raw_start_epoch_ms": 1791439200000,
+      "raw_end_epoch_ms": 1791446400000,
+      "capture_kind": "continuous",
+      "index_status": "complete",
+      "reason": null,
+      "coverage_id": "mock-coverage-01",
+      "zone_id": "E3"
+    }
+  ],
+  "detection_source": "mock",
+  "detector_version": null,
+  "tracker_version": null,
+  "failure_reason": null
+}

@@ -1,0 +1,9 @@
+{
+  "api_version": "0.2-draft",
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "This mock key was already used with a different canonical payload.",
+    "request_id": "mock-request-01",
+    "details": {}
+  }
+}

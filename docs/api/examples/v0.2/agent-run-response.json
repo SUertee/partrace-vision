@@ -1,0 +1,45 @@
+{
+  "api_version": "0.2-draft",
+  "run": {
+    "run_id": "mock-run-01",
+    "plan_id": "mock-plan-01",
+    "status": "completed",
+    "result_version": 1,
+    "created_at": "2026-10-12T07:00:00Z",
+    "updated_at": "2026-10-12T07:00:00Z",
+    "query": {
+      "zone_id": "E3",
+      "camera_id": "mock-camera-indoor-01",
+      "start": "2026-10-08T06:00:00Z",
+      "end": "2026-10-08T08:00:00Z",
+      "event_types": [
+        "shelf_interaction"
+      ],
+      "source_modes": [
+        "mock"
+      ]
+    },
+    "snapshot": {
+      "index_import_ids": [
+        "mock-import-01"
+      ],
+      "selection_mode": "latest_complete",
+      "selected_at": "2026-10-12T07:00:00Z"
+    },
+    "statements": [
+      {
+        "kind": "unknown",
+        "text": "Mock event references exist, but no real keyframe is available; this is not a factual camera conclusion.",
+        "citations": [
+          {
+            "event_id": "mock-event-01",
+            "evidence_id": "mock-evidence-01",
+            "recording_id": "mock-recording-01",
+            "import_id": "mock-import-01"
+          }
+        ]
+      }
+    ],
+    "tool_error": null
+  }
+}

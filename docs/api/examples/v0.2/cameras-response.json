@@ -1,0 +1,12 @@
+{
+  "api_version": "0.2-draft",
+  "items": [
+    {
+      "camera_id": "mock-camera-indoor-01",
+      "display_name": "Mock indoor camera",
+      "camera_status": "unknown",
+      "config_version": 1
+    }
+  ],
+  "next_cursor": null
+}
