@@ -66,3 +66,5 @@ APK 产物为 `app/build/outputs/apk/debug/app-debug.apk`。`installDebug` 需�
 保留官方登录、设备列表、配网、直播、事件、设备设置、能力查询、AI Demo 与多语言实现，以及 Common 的 `commonTest` / `androidUnitTest`。团队新增功能可以在此基础上迭代；自动采集得到的图片、视频、设备信息和日志应留在本地。
 
 内部官方 README 中指向原材料目录的文档链接属于原包结构。完整 SDK 开发指南和 API 参考位于各参赛者持有的官方材料 `文档/` 目录，本仓库没有复制整套赛题材料。
+
+共享接口与数据格式见 [docs/api](../docs/api/README.md)。

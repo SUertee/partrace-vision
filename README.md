@@ -53,15 +53,18 @@ flowchart LR
 ## 仓库结构
 
 ```text
-android/      官方 Android + Common 源码底座及接入说明
-backend/  后端开发入口（待实现）
-agent/    Agent 开发入口（待实现）
-vision/   算法开发入口（待实现）
-api-spec/         接口与数据格式草案、模拟样例，D01 待四人确认
-docs/workbench/    可离线打开的完整工作台
-docs/              开发计划
-scripts/           本地 Android 配置与 SDK 准备脚本
+android/                 Android 前端
+backend/                 后端
+agent/                   AI Agent
+vision/                  视觉算法
+docs/
+  api/                   接口说明、数据格式与 JSON 样例
+  workbench/             离线 HTML 工作台
+  DEVELOPMENT_PLAN.md    开发计划
+scripts/                 本地配置与 SDK 准备工具
 ```
+
+接口约定见 [docs/api](docs/api/README.md)，由四个模块共同确认；实际接口代码放在各自的开发目录中。
 
 ## Android 开工
 

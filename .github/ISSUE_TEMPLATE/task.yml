@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        ParTrace Vision（驿站追迹）开发任务。按 `docs/DEVELOPMENT_PLAN.md` 选择工作包，接口与 JSON 样例统一放在顶层 `api-spec/`。
+        ParTrace Vision（驿站追迹）开发任务。按 `docs/DEVELOPMENT_PLAN.md` 选择工作包，接口与 JSON 样例统一放在 `docs/api/`。
         当前已确认的是 HTML 原型；业务开发和实测能力需要各自的交付与验证凭据。
   - type: dropdown
     id: work_package
