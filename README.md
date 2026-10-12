@@ -31,6 +31,27 @@
 | 韩广宁 · Agent | 问题转计划、只读工具、引用结果、运行控制 | 可调用服务、计划及工具调用样例 |
 | Harry Xu · 后端 / SDK | 协议、事件/证据/覆盖接口、核查持久化、SDK 与联调 | 统一 JSON 和接口样例；另做真机 SDK 验证 |
 
+## 分支与协作
+
+| 分支 | 用途 |
+| --- | --- |
+| `main` | 稳定基线与阶段交付版本 |
+| `dev` | 四人日常集成与联调 |
+| `feat/*`、`fix/*` 等 | 从最新 `dev` 创建的单项任务分支 |
+
+**任务分支 → PR 合入 `dev` → 联调验收 → `dev` 提交 PR 合入 `main`。**
+
+日常开发 PR 的目标分支选 `dev`。阶段交付使用 merge commit 合入 `main`，保留两条长期分支的共同历史。业务开发不直接推送 `main`；小型文档修改可按用户已有授权直接提交。分支和提交命名见 [AGENTS.md](AGENTS.md)。
+
+```sh
+git fetch origin
+git switch dev
+git pull --ff-only origin dev
+git switch -c feat/d08-evidence-view
+```
+
+上面的任务分支名为示例，按自己的工作包替换。这些规则是协作约定，不代表已启用远端分支保护或 CI。
+
 ## 按这个顺序开发
 
 | 阶段 | 任务 | 交付结果 |

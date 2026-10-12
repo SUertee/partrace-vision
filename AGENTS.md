@@ -37,7 +37,8 @@
 
 ## 分支、提交与 PR
 
-- 当前 `main` 是共享集成分支。功能开发从最新 `main` 创建短期分支，通过 PR 合入；小型文档或配置修改可按用户已有授权直接提交。
+- `main` 保存稳定基线与阶段交付版本，`dev` 用于四人日常集成和联调。功能开发从最新 `dev` 创建短期分支，PR 的目标分支选 `dev`。
+- 联调通过后，由 `dev` 向 `main` 提交阶段交付 PR，使用 merge commit 保留长期分支共同历史；功能 PR 可 squash。业务开发不直接推送 `main`；小型文档修改可按用户已有授权直接提交。
 - 分支格式为 `<type>/<dxx-topic>`，如 `feat/d08-evidence-view`、`fix/d07-stop-run`、`docs/team-guidelines`；常用类型为 `feat`、`fix`、`docs`、`refactor`、`test`、`build`、`ci`、`chore`。
 - 提交和 PR 标题使用 `<type>(<scope>): <subject>`，scope 可省略，可用 `android`、`backend`、`agent`、`vision`、`api`、`docs`。标题简洁说明具体变化，正文交代复杂改动的原因与影响。
 - 例如：`feat(android): 添加关键帧联动`、`fix(agent): 停止后不再追加结果`、`docs(api): 补充无覆盖返回样例`。
