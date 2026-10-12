@@ -38,14 +38,14 @@
 ## 分支、提交与 PR
 
 - `main` 保存稳定基线与阶段交付版本，`dev` 用于四人日常集成和联调。功能开发从最新 `dev` 创建短期分支，PR 的目标分支选 `dev`。
-- 联调通过后，由 `dev` 向 `main` 提交阶段交付 PR，使用 merge commit 保留长期分支共同历史；功能 PR 可 squash。业务开发不直接推送 `main`；小型文档修改可按用户已有授权直接提交。
+- 联调通过后，由 `dev` 向 `main` 提交阶段交付 PR，使用 merge commit 保留长期分支共同历史；功能 PR 可 squash。`main` 的所有变更（含文档）必须通过 PR；小型文档或配置修改可按用户已有授权直接提交到 `dev`。
 - 分支格式为 `<type>/<dxx-topic>`，如 `feat/d08-evidence-view`、`fix/d07-stop-run`、`docs/team-guidelines`；常用类型为 `feat`、`fix`、`docs`、`refactor`、`test`、`build`、`ci`、`chore`。
 - 提交和 PR 标题使用 `<type>(<scope>): <subject>`，scope 可省略，可用 `android`、`backend`、`agent`、`vision`、`api`、`docs`。标题简洁说明具体变化，正文交代复杂改动的原因与影响。
 - 例如：`feat(android): 添加关键帧联动`、`fix(agent): 停止后不再追加结果`、`docs(api): 补充无覆盖返回样例`。
 - 使用真实 Issue 编号关联工作包；仅满足验收条件、确实应关闭任务时使用 `Closes #编号`。不因样例接通就关闭真实业务任务。
 - 按 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md) 写清改动、实际验证、输入来源和交接。页面改动附截图或可用预览；接口改动注明消费方。
 - 不强推、删除共享分支、使用 `reset --hard` 或覆盖他人改动。合并、部署和权限变更按用户授权及实际仓库规则执行。
-- 本文件是协作约定，不代表已配置分支保护、命名检查或 CI；不要把约定描述成自动执行的门禁。
+- `main` 已启用分支保护：必须通过 PR，管理员同样适用，禁止强推和删除，合并前须解决所有讨论。审批数要求为 0，未配置必需 CI 检查；`dev` 保持日常开发使用。命名和本地验证仍是协作约定，不声称已配置自动检查。
 
 ## 验证与完成
 
