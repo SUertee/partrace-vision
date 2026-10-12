@@ -10,6 +10,7 @@
 - [最新离线工作台 HTML](docs/workbench/index.html)：下载此文件，双击即可打开，无需启动服务。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
 - [开发协作规范：AGENTS.md](AGENTS.md)
+- [OpenSpec：安装、规格与开发流程](docs/OPENSPEC.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)
 
 工作台中的数据和 AI 回答是模拟样例。线上最新一次更新因 Vercel 授权未通过而暂未同步，当前内容以仓库内离线 HTML 为准。
@@ -84,6 +85,7 @@ docs/
   workbench/             离线 HTML 工作台
   DEVELOPMENT_PLAN.md    开发计划
 scripts/                 本地配置与 SDK 准备工具
+openspec/                行为规格、变更提案与归档记录
 ```
 
 接口约定见 [docs/api](docs/api/README.md)，由四个模块共同确认；实际接口代码放在各自的开发目录中。

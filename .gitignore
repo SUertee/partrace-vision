@@ -9,6 +9,9 @@ local-secrets.properties
 google-services.json
 .local-state/
 
+# Personal Claude Code settings; shared OpenSpec entries are committed.
+.claude/settings.local.json
+
 # Generated local Kotlin configuration; commit templates only.
 android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/main/mega/login/business/BusinessLoginConfig.kt
 android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/demo/RouterConfig.kt

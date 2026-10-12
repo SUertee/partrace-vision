@@ -1,0 +1,30 @@
+name: OpenSpec
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate specs and archived tasks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENSPEC_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned OpenSpec
+        run: npm install --global @fission-ai/openspec@1.14.1
+      - name: Validate active changes and specs
+        run: openspec validate --all --strict --no-interactive
+      - name: Check archived tasks
+        run: openspec validate --archived --no-interactive

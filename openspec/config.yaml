@@ -1,0 +1,37 @@
+schema: spec-driven
+
+context: |
+  ParTrace Vision · 驿站追迹。不盯屏，也能看清驿站每一天。
+  使用中文编写人工维护的产物，保留 OpenSpec 英文结构标题和 SHALL/MUST 关键字。
+  开始前读取 AGENTS.md、README.md、docs/DEVELOPMENT_PLAN.md 和相关模块 README。
+  Android 主端使用 Kotlin + Compose；backend、agent、vision 按各自 README 落地，不假设已有服务。
+  首轮以固定区域真实预录素材验证事件入库、Android 开帧、Agent 引用、人工保存与重启回读。
+  Web、订单关联、跨镜后置；SDK 实测为 D06 独立支线，不阻塞预录闭环。
+  docs/api/ 是共享字段、接口和 JSON 样例的唯一维护位置；规格引用契约，不复制字段。
+  需求与依赖见 D01-D10，实际进度及验收凭据见 GitHub Issues。归档不证明业务已完成。
+  Event/Evidence ID 稳定；时间使用 ISO 8601 UTC，视频相对时间使用毫秒。
+  明示模拟、人工标注、真实预录或 SDK 来源；未知保持未知，候选不能写成事实。
+  Agent 只读检索并引用有效 ID；核查决定由管理员显式保存，与原始事件分开持久化。
+
+rules:
+  proposal:
+    - 写明关联的真实 Issue、Dxx 工作包、依赖、影响模块和不包含的内容。
+    - 区分已确认约定、待评审草案和实际已实现能力，不提前宣布协议冻结或任务完成。
+  specs:
+    - 用 SHALL/MUST 描述可验证要求，每条至少一个英文结构标题 Scenario，并写明 WHEN/THEN。
+    - 关联 docs/api/ 契约；覆盖与本次变化相关的空结果、无覆盖、错误、取消、证据失效及持久化场景。
+    - 文档交付描述契约应规定的行为，业务交付描述系统行为，避免混淆验收对象。
+  design:
+    - 说明模块边界、受影响调用方、兼容方式、技术取舍和未就绪依赖。
+  tasks:
+    - 每项有可核对交付；包含相关验证、文档及交接，不为未执行任务打勾。
+    - 使用模块 README 中实际存在的命令；构建、模拟样例和真实业务验收分别记录。
+
+operations:
+  apply:
+    guidance:
+      - 先确认任务范围与依赖，保留他人修改，按 AGENTS.md 选择检查，不为纯文档构建 Android。
+  archive:
+    guidance:
+      - 核对 tasks 全部完成并记录本次验证，未完成的业务工作保持活跃。
+      - 归档时只报告本 change 的交付，不自动关闭 Dxx Issue，不将规范校验视为业务验收。
