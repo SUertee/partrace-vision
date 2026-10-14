@@ -16,6 +16,7 @@
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
 - [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 77 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
 - [开发协作规范：AGENTS.md](AGENTS.md)
+- [OpenSpec：安装、规格与开发流程](docs/OPENSPEC.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)
 
 工作台中的数据和 AI 回答是模拟样例。2026-10-14 已同步 Vercel 线上版本，包含用户流程、服务选型、数据库与 API 草案、关系图同比缩放，以及 P1 包裹扫码入出库模块；发布后已核对线上 HTML 与仓库工作台文件一致。静态发布不部署业务 API 或数据库。
@@ -93,6 +94,7 @@ docs/
   workbench/             离线 HTML 工作台
   DEVELOPMENT_PLAN.md    开发计划
 scripts/                 文档生成、同步与本地配置 / SDK 准备工具
+openspec/                行为规格、变更提案与归档记录
 ```
 
 接口约定见 [docs/api](docs/api/README.md)，由四个模块共同确认；实际接口代码放在各自的开发目录中。

@@ -10,6 +10,7 @@
 | API、参数与返回 | [API 设计](api/API_DESIGN.md) · [OpenAPI](api/openapi.json) · [模拟样例](api/examples/v0.3/) |
 | 功能如何对应表和 API | [功能对照](api/FEATURE_DATA_API_MAP.md) |
 | P1 二维码与入出库 | [包裹设计](database/PARCEL_DESIGN.md) |
+| 行为规格与变更流程 | [OpenSpec 说明](OPENSPEC.md) · [活跃 D01 提案](../openspec/changes/d01-shared-contracts/proposal.md) |
 | 图与交互原型 | [在线工作台](https://yizhan-trace-workbench.vercel.app/) · [离线工作台](workbench/index.html) · [数据库图](database/schema-canvas.html) · [API 图](api/api-canvas.html) |
 
 GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示源码；下载后可直接打开，或使用在线工作台。
@@ -31,13 +32,14 @@ GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示
 docs/
   README.md                  文档入口
   DEVELOPMENT_PLAN.md        分工、依赖与验收
+  OPENSPEC.md                行为规格与变更流程
   modules/                   全部业务模块及 DB／API 关联
   database/                  数据库设计、SQL、结构快照与关系图
   api/                       API 设计、OpenAPI、模块映射与样例
   workbench/                 完整离线工作台
 ```
 
-数据库定义以 `database/schema.sql` 为准；结构快照来自真实 PostgreSQL 系统目录。API 字段以 `api/openapi.json` 为准，模块映射与样例保存在同目录。结构快照、HTML 图和内嵌工作台也一并提交，供团队下载查看；生成与同步工具放在 [scripts/](../scripts/)。当前样例为 `api/examples/v0.3/`，`archive/` 和 v0.2 样例仅供历史参考。
+数据库定义以 `database/schema.sql` 为准；结构快照来自真实 PostgreSQL 系统目录。API 字段以 `api/openapi.json` 为准，模块映射与样例保存在同目录。OpenSpec 通过链接引用这些契约，记录行为和验收场景。结构快照、HTML 图和内嵌工作台也一并提交，供团队下载查看；生成与同步工具放在 [scripts/](../scripts/)。当前样例为 `api/examples/v0.3/`，`archive/` 和 v0.2 样例仅供历史参考。
 
 在仓库根目录可检查已保存设计与页面是否同步：
 
@@ -49,6 +51,6 @@ python3 scripts/build-api-canvas.py --check
 python3 scripts/sync-workbench-api.py --check
 ```
 
-SQL 改动后先在隔离空库加载并重新导出结构，再生成页面，步骤见 [数据库说明](database/README.md#建表检索与验证)。上述离线检查不部署数据库，也不执行真实业务 API。
+契约改动在同一 PR 同步模块、SQL／OpenAPI、样例、相关行为规格和 HTML。SQL 改动后先在隔离空库加载并重新导出结构，再生成页面，步骤见 [数据库说明](database/README.md#建表检索与验证)。CI 的 `Validate design documentation` 运行上述五项离线检查，不部署数据库，也不执行真实业务 API。
 
 实际实现放在 `android/`、`backend/`、`agent/` 和 `vision/`；工作台是设计评审材料。开发与提交规则见 [AGENTS.md](../AGENTS.md)。

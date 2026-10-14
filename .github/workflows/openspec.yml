@@ -1,0 +1,67 @@
+name: OpenSpec
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate specs and archived tasks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENSPEC_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned OpenSpec
+        run: npm install --global @fission-ai/openspec@1.14.1
+      - name: Validate active changes and specs
+        run: openspec validate --all --strict --no-interactive
+      - name: Check archived tasks
+        run: openspec validate --archived --no-interactive
+
+  design-docs:
+    name: Validate design documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Offline checks compare committed sources, saved catalog and generated HTML.
+      # They do not start PostgreSQL or validate a running API/business service.
+      - name: Check saved schema catalog
+        run: python3 scripts/export-schema-catalog.py --check
+      - name: Check database canvas
+        run: python3 scripts/build-schema-canvas.py --check
+      - name: Check workbench database content
+        run: python3 scripts/sync-workbench-schema.py --check
+      - name: Check API canvas and examples
+        run: python3 scripts/build-api-canvas.py --check
+      - name: Check workbench API content
+        run: python3 scripts/sync-workbench-api.py --check
+      - name: Check changed whitespace
+        env:
+          TRIGGER_EVENT: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$TRIGGER_EVENT" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
+            git diff --check "$PR_BASE_SHA"...HEAD
+          elif [ "$TRIGGER_EVENT" = "push" ] && [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            git diff --check "$PUSH_BEFORE_SHA" HEAD
+          else
+            git show --format= --check HEAD
+          fi

@@ -1,0 +1,40 @@
+schema: spec-driven
+
+context: |
+  ParTrace Vision · 驿站追迹。不盯屏，也能看清驿站每一天。
+  使用中文编写人工维护的产物，保留 OpenSpec 英文结构标题和 SHALL/MUST 关键字。
+  开始前读取 AGENTS.md、README.md、docs/README.md、docs/DEVELOPMENT_PLAN.md、docs/modules/README.md 和相关代码目录 README。
+  Android 使用 Kotlin + Compose；服务端统一 Python + FastAPI，Backend 与 Agent 分模块共用 API 应用，Vision 独立工作进程交接结果包；当前没有运行服务。
+  PostgreSQL + pgvector 同库分表；模型、向量维度和媒体存储方案仍待确认。
+  首轮以固定区域真实预录素材验证事件入库、Android 开帧、Agent 引用、人工保存与重启回读。
+  P1 包裹二维码与扫码入出库在 D10 后实现：扫码只查询，管理员确认后写流水，Agent 只读历史。Web、订单关联、跨镜后置；SDK 实测为 D06 独立支线。
+  当前 dev 的 0.3-mvp-draft 含 11 张表、27 个 API 操作，首轮 22 个与 P1 包裹 5 个分开；仍待团队确认，不宣布冻结。
+  docs/modules/README.md 维护模块与 DB/API 关联；字段和约束以 docs/database/schema.sql 为准，API 参数与返回以 docs/api/openapi.json 为准，模拟样例在 docs/api/examples/v0.3/；规格通过链接引用，不复制字段。
+  契约变化同一 PR 更新受影响模块、SQL/OpenAPI、样例与行为规格；SQL 改变时加载隔离空库并重新导出结构，相关来源改变后生成 HTML 并同步 docs/workbench/index.html；五项 --check 只校验离线同步。
+  需求与依赖见 D01-D10，实际进度及验收凭据见 GitHub Issues。归档不证明业务已完成。
+  Event/Evidence ID 稳定；时间使用 ISO 8601 UTC，视频相对时间使用毫秒。
+  明示模拟、人工标注、真实预录或 SDK 来源；未知保持未知，候选不能写成事实。
+  Agent 只读检索并引用有效 ID；核查决定由管理员显式保存，与原始事件分开持久化。
+
+rules:
+  proposal:
+    - 写明关联的真实 Issue、Dxx 工作包、依赖、影响模块和不包含的内容。
+    - 区分已确认约定、待评审草案和实际已实现能力，不提前宣布协议冻结或任务完成。
+  specs:
+    - 用 SHALL/MUST 描述可验证要求，每条至少一个英文结构标题 Scenario，并写明 WHEN/THEN。
+    - 链接模块、SQL、OpenAPI 与当前样例；覆盖相关空结果、视频范围外、错误、取消、证据缺失及持久化场景；事件查询与向量未索引分别描述。
+    - 文档交付描述契约应规定的行为，业务交付描述系统行为，避免混淆验收对象。
+  design:
+    - 说明模块边界、受影响调用方、兼容方式、技术取舍和未就绪依赖。
+  tasks:
+    - 每项有可核对交付；包含相关验证、文档及交接，不为未执行任务打勾。
+    - 使用模块 README 中实际存在的命令；构建、模拟样例和真实业务验收分别记录。
+
+operations:
+  apply:
+    guidance:
+      - 先确认任务范围与依赖，保留他人修改，按 AGENTS.md 选择检查，不为纯文档构建 Android。
+  archive:
+    guidance:
+      - 核对 tasks 全部完成并记录本次验证，未完成的业务工作保持活跃。
+      - 归档时只报告本 change 的交付，不自动关闭 Dxx Issue，不将规范校验视为业务验收。
