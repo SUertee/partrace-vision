@@ -1,0 +1,12 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "message": {
+    "message_id": "msg_mock_question_001",
+    "conversation_id": "conv_mock_001",
+    "role": "user",
+    "content": "看看 E3 货架附近有哪些值得核查的事件。",
+    "run_id": null,
+    "created_at": "2026-10-13T03:00:01Z"
+  },
+  "replayed": false
+}

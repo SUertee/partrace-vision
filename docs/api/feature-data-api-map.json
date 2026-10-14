@@ -1,0 +1,445 @@
+{
+  "version": "0.3-review",
+  "scope_note": "功能关联评审；本地0.3加入事件文本向量、AI会话/分析持久化及二维码包裹入出库，当前11表77字段、27草案操作与5建议。current_draft已定义未实现；proposed未定义请求/返回。业务读写/归属映射非SQL执行日志。AI会话不固定录像；会话元数据与user问题仅active owner验证，计划/运行及assistant按本次Query录像当前授权和引用归属验证；消息页含任一无权助手答复则整页403，不返回正文或部分结果，不静默过滤；会话列表不因录像撤权消失；Agent可持久化messages/runs，监控事实工具仍只读，plan保留真正执行query_text；completed才保存完整助手回复。重启旧running标failed/service_restarted，不自动续跑。 已选PostgreSQL+pgvector；业务与向量分表，后端在授权及同模型空间内精确排序，Agent不直连DB；SQL时间为TIMESTAMPTZ、JSON为JSONB、embedding为vector，API形状保持不变，未实现ANN或生产服务。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入待实现。 parcels只存稳定ID、TEXT唯一单号与服务器时间三列；parcel_records七列只追加，按sequence_no派生状态和当前位置。二维码不建表、扫码不写流水；Agent只读GET，管理员显式确认+parcels:write才可写。",
+  "operations": [
+    {
+      "id": "get_user",
+      "method": "GET",
+      "path": "/api/v1/user",
+      "status": "current_draft",
+      "summary": "读取认证主体映射的当前用户；不按客户端user_id读取其他人，不包含SDK凭据。",
+      "read_tables": [
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_configs_config_version",
+      "method": "GET",
+      "path": "/api/v1/configs/{config_version}",
+      "status": "current_draft",
+      "summary": "读取不可变镜头/区域/ROI 配置文件，当前没有 cameras/zones 表。",
+      "read_tables": [],
+      "write_tables": [],
+      "config_only": true
+    },
+    {
+      "id": "get_recordings",
+      "method": "GET",
+      "path": "/api/v1/recordings",
+      "status": "current_draft",
+      "summary": "读取已完整发布视频列表；未导入输入不等于没有采集。",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_recordings",
+      "method": "POST",
+      "path": "/api/v1/recordings",
+      "status": "current_draft",
+      "summary": "原子发布最终视频事件包；读取既有结果校验同 ID 重试，身份授权统一检查。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ]
+    },
+    {
+      "id": "get_recordings_recording_id",
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}",
+      "status": "current_draft",
+      "summary": "读取来源、视频长度、时间基准及媒体状态；当前没有视频字节接口。",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_events",
+      "method": "GET",
+      "path": "/api/v1/events",
+      "status": "current_draft",
+      "summary": "当前强制指定 recording_id；拟扩展同一路径支持镜头/区域/已验证 UTC 检索，未定义新增参数。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_events_event_id",
+      "method": "GET",
+      "path": "/api/v1/events/{event_id}",
+      "status": "current_draft",
+      "summary": "读取一个事件及其关键帧、实际离散位置点，按录制校验归属；当前不聚合整段多事件。",
+      "read_tables": [
+        "events",
+        "evidence",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_evidence_evidence_id",
+      "method": "GET",
+      "path": "/api/v1/evidence/{evidence_id}",
+      "status": "current_draft",
+      "summary": "读取关键帧元数据；通过事件和视频校验授权归属，媒体缺失仍保留引用。",
+      "read_tables": [
+        "evidence",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_evidence_evidence_id_media",
+      "method": "GET",
+      "path": "/api/v1/evidence/{evidence_id}/media",
+      "status": "current_draft",
+      "summary": "通过事件/视频校验归属并读取真实关键帧文件，缺失不返回占位图充当成功。",
+      "read_tables": [
+        "evidence",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_review_records",
+      "method": "GET",
+      "path": "/api/v1/review-records",
+      "status": "current_draft",
+      "summary": "按授权范围列出单事件核查，按事件/录制核对归属；列表不读取或保存整个片段。",
+      "read_tables": [
+        "review_records",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_review_records",
+      "method": "POST",
+      "path": "/api/v1/review-records",
+      "status": "current_draft",
+      "summary": "核对启用管理员、事件命中与视频窗口；自动引用该事件关键帧，读取既存请求校验重试，只追加单事件核查。",
+      "read_tables": [
+        "users",
+        "events",
+        "evidence",
+        "recordings",
+        "review_records"
+      ],
+      "write_tables": [
+        "review_records"
+      ]
+    },
+    {
+      "id": "get_review_records_review_id",
+      "method": "GET",
+      "path": "/api/v1/review-records/{review_id}",
+      "status": "current_draft",
+      "summary": "回读单事件核查、全部固定关键帧及当前媒体状态，校验视频归属。",
+      "read_tables": [
+        "review_records",
+        "events",
+        "evidence",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_agent_plans",
+      "method": "POST",
+      "path": "/api/v1/agent/plans",
+      "status": "current_draft",
+      "summary": "绑定active owner同会话user消息，本次单视频scope生成query/query_text/steps；校验data:read和该次录像授权，计划草案不独立落表。",
+      "read_tables": [
+        "messages",
+        "conversations",
+        "recordings"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及本次scope录像当前授权；每次计划仍单视频，可与同会话其他运行不同。"
+    },
+    {
+      "id": "post_agent_runs",
+      "method": "POST",
+      "path": "/api/v1/agent/runs",
+      "status": "current_draft",
+      "summary": "稳定run_id绑定输入消息与确认plan，active owner/本次Query录像授权和引用归属校验，重试仍先验权；completed终态与唯一完整助手答复同事务。",
+      "read_tables": [
+        "conversations",
+        "messages",
+        "recordings",
+        "runs",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "runs",
+        "messages"
+      ],
+      "note": "active owner+data:read及本次plan.query录像当前授权；同ID重试仍先验权；completed助手答复提交前重验权及引用归属。"
+    },
+    {
+      "id": "get_agent_runs_run_id",
+      "method": "GET",
+      "path": "/api/v1/agent/runs/{run_id}",
+      "status": "current_draft",
+      "summary": "active owner按该run Query当前录像授权回读状态、计划、引用、model_key与错误；completed摘要来自助手message，其他状态摘要null，重启失败历史保留。",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及该run plan.query录像当前授权；引用须属于该次范围，撤权不返回状态/计划/摘要/引用。"
+    },
+    {
+      "id": "post_agent_runs_run_id_stop",
+      "method": "POST",
+      "path": "/api/v1/agent/runs/{run_id}/stop",
+      "status": "current_draft",
+      "summary": "active owner按该run Query当前录像授权原子停止running；终态重放仍验权，禁止晚到更新或完成答复。",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "runs"
+      ],
+      "note": "active owner+data:read及该run plan.query录像当前授权；终态或同ID重试仍校验该次录像，停止后禁止晚到结果。"
+    },
+    {
+      "id": "post_event_embeddings",
+      "method": "POST",
+      "path": "/api/v1/event-embeddings",
+      "status": "current_draft",
+      "summary": "已授权admin+data:ingest写入一条事件描述文本向量；校验同事件帧、模型/维度及全部规范请求重试，hash/time服务器产生；Agent禁止写。",
+      "read_tables": [
+        "users",
+        "recordings",
+        "events",
+        "evidence",
+        "event_embeddings"
+      ],
+      "write_tables": [
+        "event_embeddings"
+      ]
+    },
+    {
+      "id": "post_events_semantic_search",
+      "method": "POST",
+      "path": "/api/v1/events/search",
+      "status": "current_draft",
+      "summary": "data:read只读POST；元数据权限/区域/时间过滤后，同active编码空间取最新描述、余弦排序并按事件去重；返回候选及索引覆盖，缺图或故障不模拟成功。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "event_embeddings",
+        "evidence"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_agent_conversations",
+      "method": "GET",
+      "path": "/api/v1/agent/conversations",
+      "status": "current_draft",
+      "summary": "仅active owner按时间+ID稳定分页读取自己的会话元数据；不固定录像，录像撤权不隐藏会话，cursor绑定owner/排序/limit。",
+      "read_tables": [
+        "conversations"
+      ],
+      "write_tables": [],
+      "note": "仅Bearer+active owner，scope=none；列表不因某次录像撤权而消失，cursor绑定owner/排序/limit。"
+    },
+    {
+      "id": "post_agent_conversations",
+      "method": "POST",
+      "path": "/api/v1/agent/conversations",
+      "status": "current_draft",
+      "summary": "active用户创建自己不固定录像的会话，仅owner验证；服务器填user/time，稳定conversation_id重试比较owner及规范创建请求。",
+      "read_tables": [
+        "users",
+        "conversations"
+      ],
+      "write_tables": [
+        "conversations"
+      ],
+      "note": "仅Bearer+active owner，scope=none；会话不固定录像，重试比较owner及规范化创建请求。"
+    },
+    {
+      "id": "get_agent_conversation_messages",
+      "method": "GET",
+      "path": "/api/v1/agent/conversations/{conversation_id}/messages",
+      "status": "current_draft",
+      "summary": "active owner按消息顺序确定页；user问题仅owner验证，逐assistant按关联run校验data:read/当前录像授权/引用归属；任一无权整页403，无正文或部分结果，不静默过滤。",
+      "read_tables": [
+        "conversations",
+        "messages",
+        "runs",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "基础scope=none；先确定页，逐assistant关联run校验data:read、本次Query录像当前授权与引用归属。任一无权则整页403，无正文/部分结果/next_cursor，不静默过滤。"
+    },
+    {
+      "id": "post_agent_conversation_messages",
+      "method": "POST",
+      "path": "/api/v1/agent/conversations/{conversation_id}/messages",
+      "status": "current_draft",
+      "summary": "仅active owner提交稳定message_id+content，user问题不要求录像权限；role=user/run_id=null，拒绝伪造助手或终态，同ID同规范内容重放。",
+      "read_tables": [
+        "conversations",
+        "messages"
+      ],
+      "write_tables": [
+        "messages"
+      ],
+      "note": "仅Bearer+active owner，scope=none；保存user问题及同ID重试不校验录像。"
+    },
+    {
+      "id": "post_parcels",
+      "method": "POST",
+      "path": "/api/v1/parcels",
+      "summary": "创建包裹并返回二维码单号",
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [
+        "parcels"
+      ],
+      "status": "current_draft"
+    },
+    {
+      "id": "get_parcels",
+      "method": "GET",
+      "path": "/api/v1/parcels",
+      "summary": "按扫码单号精确查询包裹",
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "status": "current_draft"
+    },
+    {
+      "id": "get_parcels_parcel_id",
+      "method": "GET",
+      "path": "/api/v1/parcels/{parcel_id}",
+      "summary": "读取包裹与派生在库状态",
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "status": "current_draft"
+    },
+    {
+      "id": "get_parcels_parcel_id_records",
+      "method": "GET",
+      "path": "/api/v1/parcels/{parcel_id}/records",
+      "summary": "按序号分页读取入出库历史",
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "status": "current_draft"
+    },
+    {
+      "id": "post_parcels_parcel_id_records",
+      "method": "POST",
+      "path": "/api/v1/parcels/{parcel_id}/records",
+      "summary": "管理员确认并追加入库或出库",
+      "read_tables": [
+        "users",
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [
+        "parcel_records"
+      ],
+      "status": "current_draft"
+    },
+    {
+      "id": "get_cameras_proposed",
+      "method": "GET",
+      "path": "/api/v1/cameras",
+      "status": "proposed",
+      "summary": "建议列出固定摄像头配置；仅需要后台管理时再建 cameras 表。",
+      "read_tables": [],
+      "write_tables": [],
+      "config_only": true
+    },
+    {
+      "id": "get_zones_proposed",
+      "method": "GET",
+      "path": "/api/v1/zones",
+      "status": "proposed",
+      "summary": "建议列出固定区域/ROI 配置；仅需要后台管理时再建版本化 zones 表。",
+      "read_tables": [],
+      "write_tables": [],
+      "config_only": true
+    },
+    {
+      "id": "get_overview_proposed",
+      "method": "GET",
+      "path": "/api/v1/overview",
+      "status": "proposed",
+      "summary": "建议派生首页活动、媒体缺口及最新核查状态，供简报引用；无需 summary 表。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence",
+        "review_records"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_recording_track_proposed",
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}/tracks/{track_key}",
+      "status": "proposed",
+      "summary": "建议聚合同视频、同匿名 track_key 的事件/关键帧；展示实际离散点，不自动连成连续路线或跨镜关联。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_recording_media_proposed",
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}/media",
+      "status": "proposed",
+      "summary": "建议按现有存储键读取真实源视频字节；参数、响应和播放范围尚未定义，不新增媒体表。",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": []
+    }
+  ]
+}

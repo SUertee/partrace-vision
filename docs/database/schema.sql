@@ -1,593 +1,435 @@
--- ParTrace Vision · 驿站追迹 · D01 数据库设计草案 0.2-draft
--- 依据：技术方案 r51、PRD r230；生成基准日期：2026-10-12。
--- SQLite 仅用于本地 DDL/约束验证；不是现有数据库迁移，不锁定生产引擎。
--- API 时间为 ISO 8601 UTC，SQL 时间为 epoch 毫秒。未知时间允许 NULL。
--- 媒体文件不入库；storage_key 由服务端分配，临时访问 URL 不持久化。
-PRAGMA foreign_keys = ON;
+-- ParTrace Vision · 驿站追迹 · 最小数据库设计 0.3-mvp-draft
+-- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段。
+-- PostgreSQL 17 / pgvector 0.8.7 新空库 DDL 草案；不是既有库迁移，也不代表数据库或后端已部署。
+-- SQLite 历史验证稿已完整保存在 archive/schema-sqlite-0.3.sql，不再作为当前生产选型。
+-- 首版输入：固定摄像头/区域的一段完整连续预录视频，以及一份完整分析结果包。
+-- camera_id/config_version/zone_id 引用仓库中不可覆盖的配置，不另建配置表。
+-- source_mode=sdk 仅允许已验证取得的连续视频；SDK 原生事件、离散帧包暂不导入。
+-- 录像只发布一次：完整包在单事务写入；失败回滚。重算或重新校时须换 recording_id。
+-- recording_id + manifest_sha256 在服务端处理重试：同 ID 同内容返回原结果，异内容冲突。
+-- 媒体文件不入库；storage_key 为服务端存储键，available 须先核实真实文件。
+-- started_at 只有 UTC 起点得到验证才填写；NULL 不参与真实日期命中。
+-- 绝对时间统一 TIMESTAMPTZ；服务绑定带时区参数，API 输出 ISO 8601 UTC，不以本地时区补全未知时间。
+-- 子对象时间只存 BIGINT 视频偏移毫秒；UTC = 录像已验证起点 + 偏移，不重复存三套时钟。
+-- track_key 只在同一 recording 内有效；失去跟踪后换 key，关键帧点间默认未知。
+-- 一个 review 只针对一个 event，引用该事件全部固定关键帧；不做多事件分组或复核编辑。
+-- review_id 是客户端重试键；服务端比较已有规范化请求内容，不再新增幂等键列。
+-- 首版编码事件/关键帧描述文本；模型/维数未冻结，使用无定长 vector，维数 1..16000 且等于 dimensions。
+-- vector 输入类型自身拒绝 NaN/Infinity，CHECK 拒绝全零；API 数组映射 embedding，而非旧 embedding_json。
+-- 首版先按授权、录像、区域、时间及模型空间过滤，再用 <=> 精确余弦检索；暂不创建跨模型 ANN 索引。
+-- 向量通过 event_id 回到原事件；带 evidence_id 时必须属于同一事件，候选描述不升级事件观测状态。
+-- 只在 model_name/model_version/dimensions 相同的空间比较；版本须标识权重和编码预处理配置。
+-- content_sha256 由服务端对规范化描述及事件/帧定位计算；本 DDL 仅检查摘要格式，不证明摘要正确。
+-- 同源同模型版本重试复用已有向量；新描述/模型采用新 ID，禁止覆盖，媒体缺失仍保留向量和引用。
+-- 一个 AI 会话只归属一个用户；每次运行保存独立的单录像 query，同会话的不同运行可查询不同录像。
+-- 用户消息先保存，运行再关联同会话消息，完成后保存完整助手答复；视频授权按本次运行由服务校验。
+-- running/stopped/failed 临时摘要不存聊天正文；每个 completed 运行至多一条完整助手答复。
+-- Agent 运行保存确认后的 query/query_text/steps、模型配置版本及引用；不保存密钥或自动人工核查结论。
+-- JSON 字段统一 JSONB；references_json 仍是逻辑引用，由服务验证成员形状、同录像归属和当前证据状态。
+-- parcel_no 是唯一文本单号并作为二维码内容，保留前导零；不保存二维码图片或重复的当前状态。
+-- 包裹状态按最后一条 sequence_no 派生；首条入库、状态交替、序号分配和幂等比较由服务事务锁定包裹后验证。
+-- SQL 只保证流水序号为正且同包裹唯一，不保证连续或动作交替；出库 zone_id 由服务保留最近入库位置。
+-- 入出库操作人和 created_at 由服务根据启用管理员身份填写；Agent 仅可读取。
+-- 事务失败整体回滚；建库账户须已具备 vector 扩展安装权限，本文件不创建账户或修改权限。
+BEGIN;
+SET LOCAL TIME ZONE 'UTC';
+CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE cameras (
-    camera_id TEXT PRIMARY KEY NOT NULL,
-    source_namespace TEXT NOT NULL,
-    source_device_id TEXT NOT NULL,
+CREATE TABLE users (
+    user_id TEXT PRIMARY KEY NOT NULL,
     display_name TEXT NOT NULL,
-    camera_status TEXT NOT NULL DEFAULT 'unknown',
-    config_version INTEGER NOT NULL DEFAULT 1,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_camera_source UNIQUE (source_namespace, source_device_id),
-    CONSTRAINT ck_camera_status CHECK (camera_status IN ('unknown', 'online', 'offline')),
-    CONSTRAINT ck_camera_version CHECK (config_version >= 1),
-    CONSTRAINT ck_camera_created CHECK (created_epoch_ms >= 0)
-);
-
-CREATE TABLE zone_configs (
-    zone_config_id TEXT PRIMARY KEY NOT NULL,
-    camera_id TEXT NOT NULL,
-    zone_id TEXT NOT NULL,
-    config_version INTEGER NOT NULL,
-    roi_json TEXT,
-    diagram_position_json TEXT,
-    calibration_status TEXT NOT NULL DEFAULT 'unknown',
-    calibration_version TEXT,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_zone_version UNIQUE (camera_id, zone_id, config_version),
-    CONSTRAINT uq_zone_camera_identity UNIQUE (zone_config_id, camera_id, zone_id),
-    CONSTRAINT fk_zone_camera FOREIGN KEY (camera_id) REFERENCES cameras (camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_zone_version CHECK (config_version >= 1),
-    CONSTRAINT ck_zone_roi CHECK (roi_json IS NULL OR (json_valid(roi_json) AND json_type(roi_json) IN ('array', 'object'))),
-    CONSTRAINT ck_zone_position CHECK (diagram_position_json IS NULL OR (json_valid(diagram_position_json) AND json_type(diagram_position_json) = 'object')),
-    CONSTRAINT ck_zone_calibration CHECK (calibration_status IN ('unknown', 'uncalibrated', 'verified')),
-    CONSTRAINT ck_zone_verified CHECK (calibration_status <> 'verified' OR calibration_version IS NOT NULL),
-    CONSTRAINT ck_zone_created CHECK (created_epoch_ms >= 0)
+    role TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ck_user_name CHECK (length(trim(user_id)) > 0 AND length(trim(display_name)) > 0),
+    CONSTRAINT ck_user_role CHECK (role IN ('admin', 'viewer')),
+    CONSTRAINT ck_user_status CHECK (status IN ('active', 'disabled')),
+    CONSTRAINT ck_user_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
 );
 
 CREATE TABLE recordings (
     recording_id TEXT PRIMARY KEY NOT NULL,
     camera_id TEXT NOT NULL,
+    config_version TEXT NOT NULL,
     source_mode TEXT NOT NULL,
-    source_recording_id TEXT NOT NULL,
-    media_kind TEXT NOT NULL,
-    raw_start_epoch_ms INTEGER,
-    raw_end_epoch_ms INTEGER,
-    clock_offset_ms INTEGER,
-    start_epoch_ms INTEGER,
-    end_epoch_ms INTEGER,
-    time_base_num INTEGER,
-    time_base_den INTEGER,
-    raw_time_origin_pts INTEGER,
-    time_mapping_version TEXT,
-    alignment_status TEXT NOT NULL DEFAULT 'unknown',
-    alignment_reason TEXT DEFAULT 'not_verified',
+    started_at TIMESTAMPTZ,
+    duration_ms BIGINT NOT NULL,
+    manifest_sha256 TEXT NOT NULL,
     storage_key TEXT,
-    content_sha256 TEXT,
-    media_verified_epoch_ms INTEGER,
-    availability TEXT NOT NULL DEFAULT 'unverified',
-    availability_reason TEXT DEFAULT 'not_verified',
-    expires_epoch_ms INTEGER,
-    deleted_epoch_ms INTEGER,
-    retention_policy_version TEXT,
-    schema_version TEXT NOT NULL DEFAULT '0.2-draft',
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_recording_source UNIQUE (camera_id, source_mode, source_recording_id),
-    CONSTRAINT uq_recording_camera UNIQUE (recording_id, camera_id),
-    CONSTRAINT uq_recording_mode UNIQUE (recording_id, source_mode),
-    CONSTRAINT fk_recording_camera FOREIGN KEY (camera_id) REFERENCES cameras (camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    media_status TEXT NOT NULL DEFAULT 'missing',
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ck_recording_config CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0),
     CONSTRAINT ck_recording_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),
-    CONSTRAINT ck_recording_kind CHECK (media_kind IN ('video', 'frame_set', 'event_metadata')),
-    CONSTRAINT ck_recording_metadata_only CHECK (media_kind <> 'event_metadata' OR (source_mode = 'sdk' AND availability <> 'available')),
-    CONSTRAINT ck_recording_raw_interval CHECK (raw_end_epoch_ms IS NULL OR (raw_start_epoch_ms IS NOT NULL AND raw_end_epoch_ms >= raw_start_epoch_ms)),
-    CONSTRAINT ck_recording_interval CHECK (end_epoch_ms IS NULL OR (start_epoch_ms IS NOT NULL AND end_epoch_ms >= start_epoch_ms)),
-    CONSTRAINT ck_recording_epoch CHECK ((raw_start_epoch_ms IS NULL OR raw_start_epoch_ms >= 0) AND (start_epoch_ms IS NULL OR start_epoch_ms >= 0)),
-    CONSTRAINT ck_recording_time_base CHECK ((time_base_num IS NULL AND time_base_den IS NULL) OR (time_base_num IS NOT NULL AND time_base_den IS NOT NULL AND time_base_num > 0 AND time_base_den > 0)),
-    CONSTRAINT ck_recording_aligned_start CHECK (start_epoch_ms IS NULL OR (raw_start_epoch_ms IS NOT NULL AND clock_offset_ms IS NOT NULL AND start_epoch_ms = raw_start_epoch_ms + clock_offset_ms)),
-    CONSTRAINT ck_recording_aligned_end CHECK (end_epoch_ms IS NULL OR (raw_end_epoch_ms IS NOT NULL AND clock_offset_ms IS NOT NULL AND end_epoch_ms = raw_end_epoch_ms + clock_offset_ms)),
-    CONSTRAINT ck_recording_alignment CHECK (alignment_status IN ('aligned', 'unknown')),
-    CONSTRAINT ck_recording_known_time CHECK ((alignment_status = 'unknown' AND start_epoch_ms IS NULL AND end_epoch_ms IS NULL AND length(trim(coalesce(alignment_reason, ''))) > 0) OR (alignment_status = 'aligned' AND start_epoch_ms IS NOT NULL AND time_mapping_version IS NOT NULL AND time_base_num IS NOT NULL)),
-    CONSTRAINT ck_recording_availability CHECK (availability IN ('available', 'missing', 'expired', 'deleted', 'unverified')),
-    CONSTRAINT ck_recording_hash CHECK (content_sha256 IS NULL OR (length(content_sha256) = 64 AND content_sha256 NOT GLOB '*[^0-9a-f]*')),
-    CONSTRAINT ck_recording_available CHECK (availability <> 'available' OR (storage_key IS NOT NULL AND length(storage_key) > 0 AND content_sha256 IS NOT NULL AND media_verified_epoch_ms IS NOT NULL)),
-    CONSTRAINT ck_recording_unavailable_reason CHECK (availability = 'available' OR length(trim(coalesce(availability_reason, ''))) > 0),
-    CONSTRAINT ck_recording_retention CHECK (expires_epoch_ms IS NULL OR (expires_epoch_ms >= 0 AND retention_policy_version IS NOT NULL)),
-    CONSTRAINT ck_recording_deleted CHECK (availability <> 'deleted' OR deleted_epoch_ms IS NOT NULL),
-    CONSTRAINT ck_recording_created CHECK (created_epoch_ms >= 0)
-);
-
-CREATE TABLE index_imports (
-    import_id TEXT PRIMARY KEY NOT NULL,
-    recording_id TEXT NOT NULL,
-    camera_id TEXT NOT NULL,
-    index_version INTEGER NOT NULL,
-    producer_id TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    payload_sha256 TEXT NOT NULL,
-    schema_version TEXT NOT NULL,
-    detection_source TEXT NOT NULL,
-    detector_version TEXT,
-    tracker_version TEXT,
-    time_mapping_version TEXT,
-    time_mapping_snapshot_json TEXT NOT NULL DEFAULT '{"alignment_status":"unknown"}',
-    index_status TEXT NOT NULL DEFAULT 'pending',
-    failure_reason TEXT,
-    created_epoch_ms INTEGER NOT NULL,
-    completed_epoch_ms INTEGER,
-    CONSTRAINT uq_import_version UNIQUE (recording_id, index_version),
-    CONSTRAINT uq_import_idempotency UNIQUE (producer_id, idempotency_key),
-    CONSTRAINT uq_import_recording_camera UNIQUE (import_id, recording_id, camera_id),
-    CONSTRAINT uq_import_detection_source UNIQUE (import_id, detection_source),
-    CONSTRAINT uq_import_time_mapping UNIQUE (import_id, time_mapping_version),
-    CONSTRAINT fk_import_recording FOREIGN KEY (recording_id, camera_id) REFERENCES recordings (recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_import_version CHECK (index_version >= 1),
-    CONSTRAINT ck_import_hash CHECK (length(payload_sha256) = 64 AND payload_sha256 NOT GLOB '*[^0-9a-f]*'),
-    CONSTRAINT ck_import_source CHECK (detection_source IN ('automatic', 'manual', 'sdk_event', 'mock')),
-    CONSTRAINT ck_import_automatic_version CHECK (detection_source <> 'automatic' OR detector_version IS NOT NULL),
-    CONSTRAINT ck_import_time_mapping CHECK (json_valid(time_mapping_snapshot_json) AND json_type(time_mapping_snapshot_json) = 'object' AND json_type(time_mapping_snapshot_json, '$.alignment_status') IS 'text' AND json_extract(time_mapping_snapshot_json, '$.alignment_status') IN ('aligned', 'unknown')),
-    CONSTRAINT ck_import_aligned_mapping CHECK (json_extract(time_mapping_snapshot_json, '$.alignment_status') <> 'aligned' OR time_mapping_version IS NOT NULL),
-    CONSTRAINT ck_import_status CHECK (index_status IN ('pending', 'partial', 'complete', 'failed')),
-    CONSTRAINT ck_import_complete CHECK (index_status <> 'complete' OR (completed_epoch_ms IS NOT NULL AND completed_epoch_ms >= created_epoch_ms)),
-    CONSTRAINT ck_import_failed CHECK (index_status <> 'failed' OR length(trim(coalesce(failure_reason, ''))) > 0),
-    CONSTRAINT ck_import_created CHECK (created_epoch_ms >= 0)
-);
-
-CREATE TABLE track_segments (
-    track_segment_id TEXT PRIMARY KEY NOT NULL,
-    import_id TEXT NOT NULL,
-    recording_id TEXT NOT NULL,
-    camera_id TEXT NOT NULL,
-    local_track_id TEXT NOT NULL,
-    segment_no INTEGER NOT NULL DEFAULT 0,
-    detection_source TEXT NOT NULL,
-    raw_start_epoch_ms INTEGER,
-    raw_end_epoch_ms INTEGER,
-    start_epoch_ms INTEGER,
-    end_epoch_ms INTEGER,
-    start_offset_ms INTEGER,
-    end_offset_ms INTEGER,
-    alignment_status TEXT NOT NULL DEFAULT 'unknown',
-    time_mapping_version TEXT,
-    trajectory_kind TEXT NOT NULL DEFAULT 'discrete',
-    points_json TEXT NOT NULL DEFAULT '[]',
-    zone_sequence_json TEXT NOT NULL DEFAULT '[]',
-    unknown_intervals_json TEXT NOT NULL DEFAULT '[]',
-    end_reason TEXT NOT NULL DEFAULT 'unknown',
-    unknown_reason TEXT,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_segment_local UNIQUE (import_id, local_track_id, segment_no),
-    CONSTRAINT uq_segment_import_identity UNIQUE (track_segment_id, import_id, recording_id, camera_id),
-    CONSTRAINT fk_segment_import FOREIGN KEY (import_id, recording_id, camera_id) REFERENCES index_imports (import_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_segment_source FOREIGN KEY (import_id, detection_source) REFERENCES index_imports (import_id, detection_source) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_segment_time_mapping FOREIGN KEY (import_id, time_mapping_version) REFERENCES index_imports (import_id, time_mapping_version) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_segment_no CHECK (segment_no >= 0),
-    CONSTRAINT ck_segment_raw_time CHECK ((raw_start_epoch_ms IS NULL OR raw_start_epoch_ms >= 0) AND (raw_end_epoch_ms IS NULL OR (raw_start_epoch_ms IS NOT NULL AND raw_end_epoch_ms >= raw_start_epoch_ms))),
-    CONSTRAINT ck_segment_source CHECK (detection_source IN ('automatic', 'manual', 'mock')),
-    CONSTRAINT ck_segment_alignment CHECK (alignment_status IN ('aligned', 'unknown')),
-    CONSTRAINT ck_segment_time CHECK ((alignment_status = 'unknown' AND start_epoch_ms IS NULL AND end_epoch_ms IS NULL AND length(trim(coalesce(unknown_reason, ''))) > 0) OR (alignment_status = 'aligned' AND start_epoch_ms IS NOT NULL AND end_epoch_ms IS NOT NULL AND end_epoch_ms >= start_epoch_ms AND start_epoch_ms >= 0 AND time_mapping_version IS NOT NULL)),
-    CONSTRAINT ck_segment_offsets CHECK ((start_offset_ms IS NULL AND end_offset_ms IS NULL) OR (start_offset_ms IS NOT NULL AND end_offset_ms IS NOT NULL AND start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms)),
-    CONSTRAINT ck_segment_trajectory CHECK (trajectory_kind IN ('continuous', 'discrete')),
-    CONSTRAINT ck_segment_points CHECK (json_valid(points_json) AND json_type(points_json) = 'array'),
-    CONSTRAINT ck_segment_zones CHECK (json_valid(zone_sequence_json) AND json_type(zone_sequence_json) = 'array'),
-    CONSTRAINT ck_segment_unknowns CHECK (json_valid(unknown_intervals_json) AND json_type(unknown_intervals_json) = 'array'),
-    CONSTRAINT ck_segment_end CHECK (end_reason IN ('left_view', 'occluded', 'lost', 'recording_end', 'unknown')),
-    CONSTRAINT ck_segment_created CHECK (created_epoch_ms >= 0)
+    CONSTRAINT ck_recording_time CHECK (started_at IS NULL OR (isfinite(started_at) AND started_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')),
+    CONSTRAINT ck_recording_duration CHECK (duration_ms > 0),
+    CONSTRAINT ck_recording_manifest CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_recording_media CHECK (media_status IN ('available', 'missing')),
+    CONSTRAINT ck_recording_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL)),
+    CONSTRAINT ck_recording_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
 );
 
 CREATE TABLE events (
     event_id TEXT PRIMARY KEY NOT NULL,
-    import_id TEXT NOT NULL,
     recording_id TEXT NOT NULL,
-    camera_id TEXT NOT NULL,
-    zone_config_id TEXT,
-    zone_id TEXT,
-    track_segment_id TEXT,
-    source_event_id TEXT NOT NULL,
+    zone_id TEXT NOT NULL,
+    track_key TEXT,
     event_type TEXT NOT NULL,
-    detection_source TEXT NOT NULL,
     observation_status TEXT NOT NULL DEFAULT 'candidate',
-    raw_start_epoch_ms INTEGER,
-    raw_end_epoch_ms INTEGER,
-    start_epoch_ms INTEGER,
-    end_epoch_ms INTEGER,
-    start_offset_ms INTEGER,
-    end_offset_ms INTEGER,
-    alignment_status TEXT NOT NULL DEFAULT 'unknown',
-    time_mapping_version TEXT,
-    confidence REAL,
-    doorway_direction TEXT,
-    enhancement_tags_json TEXT NOT NULL DEFAULT '[]',
-    metadata_json TEXT NOT NULL DEFAULT '{}',
-    unknown_reason TEXT,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_event_source UNIQUE (import_id, source_event_id),
-    CONSTRAINT uq_event_recording_camera UNIQUE (event_id, recording_id, camera_id),
-    CONSTRAINT fk_event_import FOREIGN KEY (import_id, recording_id, camera_id) REFERENCES index_imports (import_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_event_source FOREIGN KEY (import_id, detection_source) REFERENCES index_imports (import_id, detection_source) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_event_time_mapping FOREIGN KEY (import_id, time_mapping_version) REFERENCES index_imports (import_id, time_mapping_version) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_event_zone FOREIGN KEY (zone_config_id, camera_id, zone_id) REFERENCES zone_configs (zone_config_id, camera_id, zone_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_event_segment FOREIGN KEY (track_segment_id, import_id, recording_id, camera_id) REFERENCES track_segments (track_segment_id, import_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_event_zone_pair CHECK ((zone_config_id IS NULL AND zone_id IS NULL) OR (zone_config_id IS NOT NULL AND zone_id IS NOT NULL)),
-    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'sdk_event', 'mock')),
-    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone', 'doorway_crossing', 'device_detection')),
-    CONSTRAINT ck_event_sdk CHECK ((detection_source = 'sdk_event' AND event_type = 'device_detection' AND track_segment_id IS NULL) OR (detection_source <> 'sdk_event' AND event_type <> 'device_detection' AND zone_config_id IS NOT NULL)),
-    CONSTRAINT ck_event_sdk_raw_type CHECK (detection_source <> 'sdk_event' OR (json_type(metadata_json, '$.raw_sdk_type') IS 'text' AND length(trim(json_extract(metadata_json, '$.raw_sdk_type'))) > 0)),
+    start_offset_ms BIGINT NOT NULL,
+    end_offset_ms BIGINT NOT NULL,
+    detection_source TEXT NOT NULL,
+    summary TEXT,
+    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_event_zone CHECK (length(trim(zone_id)) > 0),
+    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),
+    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),
     CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),
-    CONSTRAINT ck_event_raw_time CHECK ((raw_start_epoch_ms IS NULL OR raw_start_epoch_ms >= 0) AND (raw_end_epoch_ms IS NULL OR (raw_start_epoch_ms IS NOT NULL AND raw_end_epoch_ms >= raw_start_epoch_ms))),
-    CONSTRAINT ck_event_alignment CHECK (alignment_status IN ('aligned', 'unknown')),
-    CONSTRAINT ck_event_time CHECK ((alignment_status = 'unknown' AND start_epoch_ms IS NULL AND end_epoch_ms IS NULL AND length(trim(coalesce(unknown_reason, ''))) > 0) OR (alignment_status = 'aligned' AND start_epoch_ms IS NOT NULL AND end_epoch_ms IS NOT NULL AND end_epoch_ms >= start_epoch_ms AND start_epoch_ms >= 0 AND time_mapping_version IS NOT NULL)),
-    CONSTRAINT ck_event_offsets CHECK ((start_offset_ms IS NULL AND end_offset_ms IS NULL) OR (start_offset_ms IS NOT NULL AND end_offset_ms IS NOT NULL AND start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms)),
-    CONSTRAINT ck_event_confidence CHECK (confidence IS NULL OR (confidence >= 0.0 AND confidence <= 1.0)),
-    CONSTRAINT ck_event_direction CHECK (doorway_direction IS NULL OR doorway_direction IN ('entering', 'leaving', 'unknown')),
-    CONSTRAINT ck_event_doorway CHECK (event_type <> 'doorway_crossing' OR (doorway_direction IS NOT NULL AND doorway_direction IN ('entering', 'leaving'))),
-    CONSTRAINT ck_event_tags CHECK (json_valid(enhancement_tags_json) AND json_type(enhancement_tags_json) = 'array'),
-    CONSTRAINT ck_event_payload CHECK (json_valid(metadata_json) AND json_type(metadata_json) = 'object'),
-    CONSTRAINT ck_event_created CHECK (created_epoch_ms >= 0)
+    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),
+    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))
 );
 
 CREATE TABLE evidence (
     evidence_id TEXT PRIMARY KEY NOT NULL,
-    recording_id TEXT NOT NULL,
-    camera_id TEXT NOT NULL,
-    source_mode TEXT NOT NULL,
-    media_kind TEXT NOT NULL,
-    raw_captured_epoch_ms INTEGER,
-    raw_frame_pts INTEGER,
-    captured_epoch_ms INTEGER,
-    offset_ms INTEGER,
-    context_start_offset_ms INTEGER,
-    context_end_offset_ms INTEGER,
-    alignment_status TEXT NOT NULL DEFAULT 'unknown',
-    alignment_reason TEXT DEFAULT 'not_verified',
-    time_mapping_version TEXT,
-    metadata_json TEXT NOT NULL DEFAULT '{}',
-    storage_key TEXT,
-    content_sha256 TEXT,
-    media_verified_epoch_ms INTEGER,
-    availability TEXT NOT NULL DEFAULT 'unverified',
-    availability_reason TEXT DEFAULT 'not_verified',
-    expires_epoch_ms INTEGER,
-    deleted_epoch_ms INTEGER,
-    retention_policy_version TEXT,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_evidence_recording_camera UNIQUE (evidence_id, recording_id, camera_id),
-    CONSTRAINT fk_evidence_recording FOREIGN KEY (recording_id, camera_id) REFERENCES recordings (recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_evidence_mode FOREIGN KEY (recording_id, source_mode) REFERENCES recordings (recording_id, source_mode) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_evidence_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),
-    CONSTRAINT ck_evidence_kind CHECK (media_kind IN ('keyframe', 'video_clip')),
-    CONSTRAINT ck_evidence_alignment CHECK (alignment_status IN ('aligned', 'unknown')),
-    CONSTRAINT ck_evidence_time CHECK ((alignment_status = 'unknown' AND captured_epoch_ms IS NULL AND length(trim(coalesce(alignment_reason, ''))) > 0) OR (alignment_status = 'aligned' AND captured_epoch_ms IS NOT NULL AND captured_epoch_ms >= 0 AND time_mapping_version IS NOT NULL)),
-    CONSTRAINT ck_evidence_metadata CHECK (json_valid(metadata_json) AND json_type(metadata_json) = 'object'),
-    CONSTRAINT ck_evidence_offset CHECK (offset_ms IS NULL OR offset_ms >= 0),
-    CONSTRAINT ck_evidence_context CHECK ((context_start_offset_ms IS NULL AND context_end_offset_ms IS NULL) OR (context_start_offset_ms IS NOT NULL AND context_end_offset_ms IS NOT NULL AND context_start_offset_ms >= 0 AND context_end_offset_ms >= context_start_offset_ms AND offset_ms IS NOT NULL AND offset_ms >= context_start_offset_ms AND offset_ms <= context_end_offset_ms)),
-    CONSTRAINT ck_evidence_availability CHECK (availability IN ('available', 'missing', 'expired', 'deleted', 'unverified')),
-    CONSTRAINT ck_evidence_hash CHECK (content_sha256 IS NULL OR (length(content_sha256) = 64 AND content_sha256 NOT GLOB '*[^0-9a-f]*')),
-    CONSTRAINT ck_evidence_available CHECK (availability <> 'available' OR (storage_key IS NOT NULL AND length(storage_key) > 0 AND content_sha256 IS NOT NULL AND media_verified_epoch_ms IS NOT NULL)),
-    CONSTRAINT ck_evidence_unavailable_reason CHECK (availability = 'available' OR length(trim(coalesce(availability_reason, ''))) > 0),
-    CONSTRAINT ck_evidence_retention CHECK (expires_epoch_ms IS NULL OR (expires_epoch_ms >= 0 AND retention_policy_version IS NOT NULL)),
-    CONSTRAINT ck_evidence_deleted CHECK (availability <> 'deleted' OR deleted_epoch_ms IS NOT NULL),
-    CONSTRAINT ck_evidence_created CHECK (created_epoch_ms >= 0)
-);
-
-CREATE TABLE event_evidence (
     event_id TEXT NOT NULL,
-    evidence_id TEXT NOT NULL,
-    recording_id TEXT NOT NULL,
-    camera_id TEXT NOT NULL,
-    display_order INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (event_id, evidence_id),
-    CONSTRAINT fk_event_evidence_event FOREIGN KEY (event_id, recording_id, camera_id) REFERENCES events (event_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_event_evidence_asset FOREIGN KEY (evidence_id, recording_id, camera_id) REFERENCES evidence (evidence_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_event_evidence_order CHECK (display_order >= 0)
+    offset_ms BIGINT NOT NULL,
+    bbox_json JSONB,
+    storage_key TEXT,
+    media_status TEXT NOT NULL DEFAULT 'missing',
+    CONSTRAINT uq_evidence_event UNIQUE (evidence_id, event_id),
+    CONSTRAINT fk_evidence_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_evidence_offset CHECK (offset_ms >= 0),
+    CONSTRAINT ck_evidence_bbox CHECK (
+        bbox_json IS NULL OR CASE
+            WHEN jsonb_typeof(bbox_json) = 'array' THEN CASE
+                WHEN jsonb_array_length(bbox_json) = 4
+                    AND jsonb_typeof(bbox_json -> 0) = 'number'
+                    AND jsonb_typeof(bbox_json -> 1) = 'number'
+                    AND jsonb_typeof(bbox_json -> 2) = 'number'
+                    AND jsonb_typeof(bbox_json -> 3) = 'number'
+                THEN (bbox_json ->> 0)::numeric >= 0 AND (bbox_json ->> 1)::numeric >= 0
+                    AND (bbox_json ->> 2)::numeric > 0 AND (bbox_json ->> 3)::numeric > 0
+                    AND (bbox_json ->> 0)::numeric + (bbox_json ->> 2)::numeric <= 1
+                    AND (bbox_json ->> 1)::numeric + (bbox_json ->> 3)::numeric <= 1
+                ELSE FALSE
+            END
+            ELSE FALSE
+        END
+    ),
+    CONSTRAINT ck_evidence_media CHECK (media_status IN ('available', 'missing')),
+    CONSTRAINT ck_evidence_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL))
 );
 
-CREATE TABLE coverage_intervals (
-    coverage_id TEXT PRIMARY KEY NOT NULL,
-    camera_id TEXT NOT NULL,
-    zone_config_id TEXT,
-    zone_id TEXT,
-    recording_id TEXT,
-    import_id TEXT,
-    capture_kind TEXT NOT NULL,
-    raw_start_epoch_ms INTEGER,
-    raw_end_epoch_ms INTEGER,
-    start_epoch_ms INTEGER,
-    end_epoch_ms INTEGER,
-    alignment_status TEXT NOT NULL DEFAULT 'unknown',
-    time_mapping_version TEXT,
-    index_status TEXT NOT NULL DEFAULT 'pending',
-    unknown_reason TEXT,
-    source_mode TEXT NOT NULL,
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT fk_coverage_camera FOREIGN KEY (camera_id) REFERENCES cameras (camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_coverage_zone FOREIGN KEY (zone_config_id, camera_id, zone_id) REFERENCES zone_configs (zone_config_id, camera_id, zone_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_coverage_recording FOREIGN KEY (recording_id, camera_id) REFERENCES recordings (recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_coverage_mode FOREIGN KEY (recording_id, source_mode) REFERENCES recordings (recording_id, source_mode) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_coverage_import FOREIGN KEY (import_id, recording_id, camera_id) REFERENCES index_imports (import_id, recording_id, camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_coverage_time_mapping FOREIGN KEY (import_id, time_mapping_version) REFERENCES index_imports (import_id, time_mapping_version) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_coverage_zone_pair CHECK ((zone_config_id IS NULL AND zone_id IS NULL) OR (zone_config_id IS NOT NULL AND zone_id IS NOT NULL)),
-    CONSTRAINT ck_coverage_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),
-    CONSTRAINT ck_coverage_kind CHECK (capture_kind IN ('continuous', 'frame_sample', 'gap')),
-    CONSTRAINT ck_coverage_input CHECK (capture_kind = 'gap' OR recording_id IS NOT NULL),
-    CONSTRAINT ck_coverage_import CHECK (import_id IS NULL OR recording_id IS NOT NULL),
-    CONSTRAINT ck_coverage_index CHECK (index_status IN ('pending', 'partial', 'complete', 'failed')),
-    CONSTRAINT ck_coverage_complete CHECK (index_status <> 'complete' OR import_id IS NOT NULL),
-    CONSTRAINT ck_coverage_alignment CHECK (alignment_status IN ('aligned', 'unknown')),
-    CONSTRAINT ck_coverage_raw_time CHECK ((raw_start_epoch_ms IS NULL OR raw_start_epoch_ms >= 0) AND (raw_end_epoch_ms IS NULL OR (raw_start_epoch_ms IS NOT NULL AND raw_end_epoch_ms >= raw_start_epoch_ms))),
-    CONSTRAINT ck_coverage_time CHECK ((alignment_status = 'unknown' AND start_epoch_ms IS NULL AND end_epoch_ms IS NULL AND length(trim(coalesce(unknown_reason, ''))) > 0) OR (alignment_status = 'aligned' AND start_epoch_ms IS NOT NULL AND end_epoch_ms IS NOT NULL AND start_epoch_ms >= 0 AND end_epoch_ms >= start_epoch_ms)),
-    CONSTRAINT ck_coverage_shape CHECK (alignment_status = 'unknown' OR (capture_kind = 'frame_sample' AND end_epoch_ms = start_epoch_ms) OR (capture_kind IN ('continuous', 'gap') AND end_epoch_ms > start_epoch_ms)),
-    CONSTRAINT ck_coverage_gap_reason CHECK (capture_kind <> 'gap' OR length(trim(coalesce(unknown_reason, ''))) > 0),
-    CONSTRAINT ck_coverage_created CHECK (created_epoch_ms >= 0)
-);
-
-CREATE TABLE journeys (
-    journey_id TEXT PRIMARY KEY NOT NULL,
-    actor_id TEXT NOT NULL,
-    camera_id TEXT,
-    zone_id TEXT,
-    query_start_epoch_ms INTEGER NOT NULL,
-    query_end_epoch_ms INTEGER NOT NULL,
-    server_snapshot_json TEXT NOT NULL,
-    snapshot_schema_version TEXT NOT NULL DEFAULT '0.2-draft',
-    review_version INTEGER NOT NULL DEFAULT 1,
-    decision_status TEXT NOT NULL DEFAULT 'pending',
-    idempotency_key TEXT NOT NULL,
-    request_sha256 TEXT NOT NULL,
-    created_epoch_ms INTEGER NOT NULL,
-    updated_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_journey_idempotency UNIQUE (actor_id, idempotency_key),
-    CONSTRAINT uq_journey_current_version UNIQUE (journey_id, review_version),
-    CONSTRAINT fk_journey_camera FOREIGN KEY (camera_id) REFERENCES cameras (camera_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_journey_query CHECK (query_start_epoch_ms >= 0 AND query_end_epoch_ms > query_start_epoch_ms),
-    CONSTRAINT ck_journey_snapshot CHECK (json_valid(server_snapshot_json) AND json_type(server_snapshot_json) = 'object' AND json_type(server_snapshot_json, '$.baseline') IS 'object' AND json_type(server_snapshot_json, '$.human_selection') IS 'object'),
-    CONSTRAINT ck_journey_version CHECK (review_version >= 1),
-    CONSTRAINT ck_journey_decision CHECK (decision_status IN ('pending', 'confirmed', 'rejected', 'split')),
-    CONSTRAINT ck_journey_hash CHECK (length(request_sha256) = 64 AND request_sha256 NOT GLOB '*[^0-9a-f]*'),
-    CONSTRAINT ck_journey_time CHECK (created_epoch_ms >= 0 AND updated_epoch_ms >= created_epoch_ms)
-);
-
-CREATE TABLE journey_items (
-    journey_item_id TEXT PRIMARY KEY NOT NULL,
-    journey_id TEXT NOT NULL,
-    journey_version INTEGER NOT NULL,
-    item_kind TEXT NOT NULL,
-    event_id TEXT,
-    track_segment_id TEXT,
+CREATE TABLE event_embeddings (
+    embedding_id TEXT PRIMARY KEY NOT NULL,
+    event_id TEXT NOT NULL,
     evidence_id TEXT,
-    display_order INTEGER NOT NULL DEFAULT 0,
-    CONSTRAINT uq_journey_item_order UNIQUE (journey_id, item_kind, display_order),
-    CONSTRAINT uq_journey_event UNIQUE (journey_id, event_id),
-    CONSTRAINT uq_journey_segment UNIQUE (journey_id, track_segment_id),
-    CONSTRAINT uq_journey_evidence UNIQUE (journey_id, evidence_id),
-    CONSTRAINT fk_journey_item_version FOREIGN KEY (journey_id, journey_version) REFERENCES journeys (journey_id, review_version) ON DELETE RESTRICT ON UPDATE NO ACTION DEFERRABLE INITIALLY DEFERRED,
-    CONSTRAINT fk_journey_item_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_journey_item_segment FOREIGN KEY (track_segment_id) REFERENCES track_segments (track_segment_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_journey_item_evidence FOREIGN KEY (evidence_id) REFERENCES evidence (evidence_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_journey_item_type CHECK ((item_kind = 'event' AND event_id IS NOT NULL AND track_segment_id IS NULL AND evidence_id IS NULL) OR (item_kind = 'segment' AND event_id IS NULL AND track_segment_id IS NOT NULL AND evidence_id IS NULL) OR (item_kind = 'evidence' AND event_id IS NULL AND track_segment_id IS NULL AND evidence_id IS NOT NULL)),
-    CONSTRAINT ck_journey_item_version CHECK (journey_version >= 1),
-    CONSTRAINT ck_journey_item_order CHECK (display_order >= 0)
+    source_text TEXT NOT NULL,
+    embedding VECTOR NOT NULL,
+    model_name TEXT NOT NULL,
+    model_version TEXT NOT NULL,
+    dimensions INTEGER NOT NULL,
+    content_sha256 TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_embedding_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_embedding_evidence_event FOREIGN KEY (evidence_id, event_id) REFERENCES evidence (evidence_id, event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_embedding_identity CHECK (length(trim(embedding_id)) > 0 AND length(trim(event_id)) > 0 AND (evidence_id IS NULL OR length(trim(evidence_id)) > 0)),
+    CONSTRAINT ck_embedding_source CHECK (length(trim(source_text)) > 0),
+    CONSTRAINT ck_embedding_model CHECK (length(trim(model_name)) > 0 AND length(trim(model_version)) > 0),
+    CONSTRAINT ck_embedding_shape CHECK (dimensions BETWEEN 1 AND 16000 AND vector_dims(embedding) = dimensions),
+    CONSTRAINT ck_embedding_nonzero CHECK (vector_norm(embedding) > 0),
+    CONSTRAINT ck_embedding_content CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_embedding_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
 );
 
-CREATE TABLE review_actions (
-    review_action_id TEXT PRIMARY KEY NOT NULL,
-    journey_id TEXT NOT NULL,
-    actor_id TEXT NOT NULL,
+CREATE TABLE review_records (
+    review_id TEXT PRIMARY KEY NOT NULL,
+    event_id TEXT NOT NULL,
+    query_json JSONB NOT NULL,
+    decision TEXT NOT NULL,
+    note TEXT,
+    reviewer_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_review_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_review_user FOREIGN KEY (reviewer_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_review_query CHECK (jsonb_typeof(query_json) = 'object'),
+    CONSTRAINT ck_review_decision CHECK (decision IN ('confirmed', 'dismissed', 'uncertain')),
+    CONSTRAINT ck_review_reviewer CHECK (length(trim(reviewer_id)) > 0),
+    CONSTRAINT ck_review_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
+);
+
+CREATE TABLE conversations (
+    conversation_id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_conversation_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_conversation_id CHECK (length(trim(conversation_id)) > 0),
+    CONSTRAINT ck_conversation_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
+);
+
+-- 先插入 run_id=NULL 的 user 消息，再创建引用它的运行；循环外键无须先插入助手消息。
+CREATE TABLE messages (
+    message_id TEXT PRIMARY KEY NOT NULL,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    run_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_message_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_message_content CHECK (length(trim(message_id)) > 0 AND length(trim(content)) > 0),
+    CONSTRAINT ck_message_role_run CHECK ((role = 'user' AND run_id IS NULL) OR (role = 'assistant' AND run_id IS NOT NULL)),
+    CONSTRAINT ck_message_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
+);
+
+CREATE TABLE runs (
+    run_id TEXT PRIMARY KEY NOT NULL,
+    conversation_id TEXT NOT NULL,
+    input_message_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    plan_json JSONB NOT NULL,
+    references_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    model_key TEXT NOT NULL,
+    error_json JSONB,
+    created_at TIMESTAMPTZ NOT NULL,
+    finished_at TIMESTAMPTZ,
+    CONSTRAINT fk_run_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_run_input_message FOREIGN KEY (input_message_id) REFERENCES messages (message_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_run_identity CHECK (length(trim(run_id)) > 0 AND length(trim(model_key)) > 0),
+    CONSTRAINT ck_run_status CHECK (status IN ('running', 'completed', 'stopped', 'failed')),
+    CONSTRAINT ck_run_plan CHECK (
+        CASE WHEN jsonb_typeof(plan_json) = 'object'
+            AND jsonb_typeof(plan_json -> 'query') = 'object'
+            AND jsonb_typeof(plan_json -> 'query_text') = 'string'
+            AND length(trim(plan_json ->> 'query_text')) > 0
+            AND jsonb_typeof(plan_json -> 'steps') = 'array'
+            AND jsonb_typeof(plan_json #> '{query,recording_id}') = 'string'
+            AND length(trim(plan_json #>> '{query,recording_id}')) > 0
+            AND jsonb_typeof(plan_json #> '{query,camera_id}') = 'string'
+            AND length(trim(plan_json #>> '{query,camera_id}')) > 0
+            AND jsonb_typeof(plan_json #> '{query,zone_id}') = 'string'
+            AND length(trim(plan_json #>> '{query,zone_id}')) > 0
+            AND jsonb_typeof(plan_json #> '{query,start_offset_ms}') = 'number'
+            AND jsonb_typeof(plan_json #> '{query,end_offset_ms}') = 'number'
+        THEN COALESCE(
+            (plan_json #>> '{query,start_offset_ms}') ~ '^[0-9]+$'
+            AND (plan_json #>> '{query,end_offset_ms}') ~ '^[0-9]+$'
+            AND (plan_json #>> '{query,start_offset_ms}')::numeric BETWEEN 0 AND 9223372036854775807
+            AND (plan_json #>> '{query,end_offset_ms}')::numeric <= 9223372036854775807
+            AND (plan_json #>> '{query,end_offset_ms}')::numeric > (plan_json #>> '{query,start_offset_ms}')::numeric,
+            FALSE
+        )
+        ELSE FALSE END
+    ),
+    CONSTRAINT ck_run_references CHECK (jsonb_typeof(references_json) = 'array'),
+    CONSTRAINT ck_run_time CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00' AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at >= created_at))),
+    CONSTRAINT ck_run_terminal CHECK (
+        (status = 'running' AND finished_at IS NULL AND error_json IS NULL)
+        OR (status IN ('completed', 'stopped') AND finished_at IS NOT NULL AND error_json IS NULL)
+        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL)
+    ),
+    CONSTRAINT ck_run_error CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object')
+);
+
+CREATE TABLE parcels (
+    parcel_id TEXT PRIMARY KEY NOT NULL,
+    parcel_no TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uq_parcel_no UNIQUE (parcel_no),
+    CONSTRAINT ck_parcel_identity CHECK (length(trim(parcel_id)) > 0 AND length(trim(parcel_no)) > 0),
+    CONSTRAINT ck_parcel_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
+);
+
+CREATE TABLE parcel_records (
+    record_id TEXT PRIMARY KEY NOT NULL,
+    parcel_id TEXT NOT NULL,
+    sequence_no BIGINT NOT NULL,
     action TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    expected_review_version INTEGER NOT NULL,
-    from_review_version INTEGER NOT NULL,
-    to_review_version INTEGER NOT NULL,
-    before_snapshot_json TEXT NOT NULL,
-    after_snapshot_json TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    request_sha256 TEXT NOT NULL,
-    response_snapshot_json TEXT NOT NULL DEFAULT '{}',
-    created_epoch_ms INTEGER NOT NULL,
-    CONSTRAINT uq_review_idempotency UNIQUE (actor_id, idempotency_key),
-    CONSTRAINT uq_review_version UNIQUE (journey_id, to_review_version),
-    CONSTRAINT fk_review_journey FOREIGN KEY (journey_id) REFERENCES journeys (journey_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_review_action CHECK (action IN ('confirm', 'reject', 'split', 'comment')),
-    CONSTRAINT ck_review_reason CHECK (length(trim(reason)) > 0),
-    CONSTRAINT ck_review_versions CHECK (from_review_version >= 1 AND expected_review_version = from_review_version AND to_review_version = from_review_version + 1),
-    CONSTRAINT ck_review_before CHECK (json_valid(before_snapshot_json) AND json_type(before_snapshot_json) = 'object'),
-    CONSTRAINT ck_review_after CHECK (json_valid(after_snapshot_json) AND json_type(after_snapshot_json) = 'object'),
-    CONSTRAINT ck_review_response CHECK (json_valid(response_snapshot_json) AND json_type(response_snapshot_json) = 'object'),
-    CONSTRAINT ck_review_hash CHECK (length(request_sha256) = 64 AND request_sha256 NOT GLOB '*[^0-9a-f]*'),
-    CONSTRAINT ck_review_created CHECK (created_epoch_ms >= 0)
+    zone_id TEXT,
+    operator_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uq_parcel_record_sequence UNIQUE (parcel_id, sequence_no),
+    CONSTRAINT fk_parcel_record_parcel FOREIGN KEY (parcel_id) REFERENCES parcels (parcel_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_parcel_record_operator FOREIGN KEY (operator_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_parcel_record_identity CHECK (length(trim(record_id)) > 0 AND length(trim(parcel_id)) > 0 AND length(trim(operator_id)) > 0),
+    CONSTRAINT ck_parcel_record_sequence CHECK (sequence_no > 0),
+    CONSTRAINT ck_parcel_record_action CHECK (action IN ('inbound', 'outbound')),
+    CONSTRAINT ck_parcel_record_zone CHECK ((zone_id IS NULL OR length(trim(zone_id)) > 0) AND (action <> 'inbound' OR zone_id IS NOT NULL)),
+    CONSTRAINT ck_parcel_record_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
 );
 
-CREATE TABLE retention_cleanup_logs (
-    cleanup_log_id TEXT PRIMARY KEY NOT NULL,
-    task_id TEXT NOT NULL,
-    attempt_no INTEGER NOT NULL,
-    target_kind TEXT NOT NULL,
-    recording_id TEXT,
-    evidence_id TEXT,
-    storage_key_snapshot TEXT,
-    retention_policy_version TEXT NOT NULL,
-    policy_snapshot_json TEXT NOT NULL,
-    due_epoch_ms INTEGER NOT NULL,
-    started_epoch_ms INTEGER NOT NULL,
-    finished_epoch_ms INTEGER NOT NULL,
-    result TEXT NOT NULL,
-    failure_reason TEXT,
-    CONSTRAINT uq_cleanup_attempt UNIQUE (task_id, attempt_no),
-    CONSTRAINT fk_cleanup_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_cleanup_evidence FOREIGN KEY (evidence_id) REFERENCES evidence (evidence_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_cleanup_target CHECK ((target_kind = 'recording' AND recording_id IS NOT NULL AND evidence_id IS NULL) OR (target_kind = 'evidence' AND recording_id IS NULL AND evidence_id IS NOT NULL)),
-    CONSTRAINT ck_cleanup_attempt CHECK (attempt_no >= 1),
-    CONSTRAINT ck_cleanup_policy CHECK (json_valid(policy_snapshot_json) AND json_type(policy_snapshot_json) = 'object'),
-    CONSTRAINT ck_cleanup_time CHECK (due_epoch_ms >= 0 AND started_epoch_ms >= 0 AND finished_epoch_ms >= started_epoch_ms),
-    CONSTRAINT ck_cleanup_result CHECK (result IN ('deleted', 'already_missing', 'failed', 'skipped')),
-    CONSTRAINT ck_cleanup_failure CHECK (result <> 'failed' OR length(trim(coalesce(failure_reason, ''))) > 0)
-);
+-- messages 与 runs 互相引用；两表创建后补外键，写入仍按 user 消息 → 运行 → completed 答复执行。
+ALTER TABLE messages ADD CONSTRAINT fk_message_run
+    FOREIGN KEY (run_id) REFERENCES runs (run_id) ON DELETE RESTRICT ON UPDATE RESTRICT;
 
--- 结构化查询与两侧 FK 索引；时间相交仍须额外检查 end_epoch_ms。
-CREATE INDEX idx_recordings_camera_time ON recordings (camera_id, start_epoch_ms, recording_id);
-CREATE INDEX idx_recordings_expiry ON recordings (availability, expires_epoch_ms);
-CREATE INDEX idx_import_latest_complete ON index_imports (recording_id, index_status, index_version DESC);
-CREATE INDEX idx_segments_recording_time ON track_segments (recording_id, start_epoch_ms, track_segment_id);
-CREATE INDEX idx_segments_import_source ON track_segments (import_id, detection_source);
-CREATE INDEX idx_events_zone_time ON events (zone_id, start_epoch_ms, event_id);
-CREATE INDEX idx_events_camera_time ON events (camera_id, start_epoch_ms, event_id);
-CREATE INDEX idx_events_import_time ON events (import_id, start_epoch_ms, event_id);
-CREATE INDEX idx_events_import_source ON events (import_id, detection_source);
-CREATE INDEX idx_events_segment_time ON events (track_segment_id, start_epoch_ms);
-CREATE INDEX idx_events_zone_config ON events (zone_config_id, camera_id, zone_id);
-CREATE INDEX idx_evidence_recording_time ON evidence (recording_id, captured_epoch_ms);
-CREATE INDEX idx_evidence_expiry ON evidence (availability, expires_epoch_ms);
-CREATE INDEX idx_event_evidence_asset ON event_evidence (evidence_id, event_id);
-CREATE INDEX idx_coverage_camera_zone_time ON coverage_intervals (camera_id, zone_id, start_epoch_ms);
-CREATE INDEX idx_coverage_zone_config ON coverage_intervals (zone_config_id, camera_id, zone_id);
-CREATE INDEX idx_coverage_recording ON coverage_intervals (recording_id, camera_id);
-CREATE INDEX idx_coverage_import ON coverage_intervals (import_id, recording_id, camera_id);
-CREATE INDEX idx_journeys_actor_updated ON journeys (actor_id, updated_epoch_ms, journey_id);
-CREATE INDEX idx_journeys_camera ON journeys (camera_id);
-CREATE INDEX idx_journey_items_event ON journey_items (event_id);
-CREATE INDEX idx_journey_items_segment ON journey_items (track_segment_id);
-CREATE INDEX idx_journey_items_evidence ON journey_items (evidence_id);
-CREATE INDEX idx_cleanup_recording ON retention_cleanup_logs (recording_id, finished_epoch_ms);
-CREATE INDEX idx_cleanup_evidence ON retention_cleanup_logs (evidence_id, finished_epoch_ms);
+-- 主键已有索引；以下仅覆盖首版按摄像头、区域、局部轨迹和事件读取的查询。
+CREATE INDEX idx_recordings_camera_time ON recordings (camera_id, started_at);
+CREATE INDEX idx_events_recording_zone_time ON events (recording_id, zone_id, start_offset_ms);
+CREATE INDEX idx_events_recording_track_time ON events (recording_id, track_key, start_offset_ms);
+CREATE INDEX idx_evidence_event_offset ON evidence (event_id, offset_ms);
+CREATE INDEX idx_embeddings_event ON event_embeddings (event_id);
+CREATE INDEX idx_embeddings_model_space ON event_embeddings (model_name, model_version, dimensions);
+-- 两条部分唯一索引同时覆盖文字描述和带帧描述，避免 SQL NULL 的重复豁免。
+CREATE UNIQUE INDEX uq_embeddings_event_text_source ON event_embeddings (event_id, model_name, model_version, content_sha256) WHERE evidence_id IS NULL;
+CREATE UNIQUE INDEX uq_embeddings_evidence_source ON event_embeddings (event_id, evidence_id, model_name, model_version, content_sha256) WHERE evidence_id IS NOT NULL;
+CREATE INDEX idx_reviews_event_created ON review_records (event_id, created_at);
+CREATE INDEX idx_reviews_reviewer_created ON review_records (reviewer_id, created_at);
+CREATE INDEX idx_conversations_user_created ON conversations (user_id, created_at);
+CREATE INDEX idx_messages_conversation_created ON messages (conversation_id, created_at);
+CREATE UNIQUE INDEX uq_messages_assistant_run ON messages (run_id) WHERE role = 'assistant';
+CREATE INDEX idx_runs_conversation_created ON runs (conversation_id, created_at);
+CREATE INDEX idx_runs_status_created ON runs (status, created_at);
+-- uq_parcel_no 支持扫码精确查询；uq_parcel_record_sequence 同时支持包裹流水顺序及最新记录查询。
+CREATE INDEX idx_parcel_records_operator_created ON parcel_records (operator_id, created_at);
 
--- 区域配置历史不可覆盖；新增 ROI 或标定需新 config_version。
-CREATE TRIGGER zone_configs_no_update BEFORE UPDATE ON zone_configs
-BEGIN SELECT RAISE(ABORT, 'zone_config_is_immutable'); END;
-CREATE TRIGGER zone_configs_no_delete BEFORE DELETE ON zone_configs
-BEGIN SELECT RAISE(ABORT, 'zone_config_history_is_retained'); END;
-
--- 索引完整批次封存。导入事务先写 pending/partial，再写事实，最后 complete。
-CREATE TRIGGER index_imports_complete_no_update BEFORE UPDATE ON index_imports
-WHEN OLD.index_status = 'complete'
-BEGIN SELECT RAISE(ABORT, 'completed_import_is_immutable'); END;
-CREATE TRIGGER index_imports_no_delete BEFORE DELETE ON index_imports
-BEGIN SELECT RAISE(ABORT, 'index_import_history_is_retained'); END;
-
-CREATE TRIGGER recordings_time_sealed BEFORE UPDATE OF camera_id, source_mode, source_recording_id, media_kind, raw_start_epoch_ms, raw_end_epoch_ms, clock_offset_ms, start_epoch_ms, end_epoch_ms, time_base_num, time_base_den, raw_time_origin_pts, time_mapping_version, alignment_status ON recordings
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE recording_id = OLD.recording_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'recording_time_basis_is_sealed'); END;
-
-CREATE TRIGGER track_segments_complete_no_insert BEFORE INSERT ON track_segments
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = NEW.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_import_is_immutable'); END;
-CREATE TRIGGER track_segments_complete_no_update BEFORE UPDATE ON track_segments
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id IN (OLD.import_id, NEW.import_id) AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_segment_is_immutable'); END;
-CREATE TRIGGER track_segments_complete_no_delete BEFORE DELETE ON track_segments
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = OLD.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_segment_is_immutable'); END;
-
-CREATE TRIGGER events_complete_no_insert BEFORE INSERT ON events
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = NEW.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_import_is_immutable'); END;
-CREATE TRIGGER events_complete_no_update BEFORE UPDATE ON events
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id IN (OLD.import_id, NEW.import_id) AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_event_is_immutable'); END;
-CREATE TRIGGER events_complete_no_delete BEFORE DELETE ON events
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = OLD.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_event_is_immutable'); END;
-
-CREATE TRIGGER event_evidence_complete_no_insert BEFORE INSERT ON event_evidence
-WHEN EXISTS (SELECT 1 FROM events JOIN index_imports USING (import_id) WHERE event_id = NEW.event_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_event_evidence_is_immutable'); END;
-CREATE TRIGGER event_evidence_complete_no_update BEFORE UPDATE ON event_evidence
-WHEN EXISTS (SELECT 1 FROM events JOIN index_imports USING (import_id) WHERE event_id IN (OLD.event_id, NEW.event_id) AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_event_evidence_is_immutable'); END;
-CREATE TRIGGER event_evidence_complete_no_delete BEFORE DELETE ON event_evidence
-WHEN EXISTS (SELECT 1 FROM events JOIN index_imports USING (import_id) WHERE event_id = OLD.event_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_event_evidence_is_immutable'); END;
-
--- 已封存事实引用的证据，定位元数据不可覆盖；可用性/过期/删除状态可更新。
-CREATE TRIGGER evidence_position_sealed BEFORE UPDATE OF evidence_id, recording_id, camera_id, source_mode, media_kind, raw_captured_epoch_ms, raw_frame_pts, captured_epoch_ms, offset_ms, context_start_offset_ms, context_end_offset_ms, alignment_status, time_mapping_version, metadata_json ON evidence
-WHEN EXISTS (SELECT 1 FROM event_evidence JOIN events USING (event_id) JOIN index_imports USING (import_id) WHERE evidence_id = OLD.evidence_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'evidence_position_is_sealed'); END;
-
-CREATE TRIGGER event_evidence_time_mapping_guard BEFORE INSERT ON event_evidence
-WHEN EXISTS (
-    SELECT 1 FROM events JOIN evidence
-    ON events.event_id = NEW.event_id AND evidence.evidence_id = NEW.evidence_id
-    WHERE events.time_mapping_version IS NOT NULL AND evidence.time_mapping_version IS NOT NULL
-      AND events.time_mapping_version <> evidence.time_mapping_version
-)
-BEGIN SELECT RAISE(ABORT, 'evidence_time_mapping_conflict'); END;
-
--- 元数据事件不是已采帧；frame_set 的离散样本不能补成连续覆盖。
-CREATE TRIGGER coverage_media_kind_guard BEFORE INSERT ON coverage_intervals
-WHEN EXISTS (
-    SELECT 1 FROM recordings WHERE recording_id = NEW.recording_id
-    AND ((media_kind = 'event_metadata' AND NEW.capture_kind <> 'gap')
-      OR (media_kind = 'frame_set' AND NEW.capture_kind = 'continuous'))
-)
-BEGIN SELECT RAISE(ABORT, 'capture_kind_has_no_input_evidence'); END;
-
-CREATE TRIGGER coverage_complete_no_insert BEFORE INSERT ON coverage_intervals
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = NEW.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_coverage_is_immutable'); END;
-CREATE TRIGGER coverage_complete_no_update BEFORE UPDATE ON coverage_intervals
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id IN (OLD.import_id, NEW.import_id) AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_coverage_is_immutable'); END;
-CREATE TRIGGER coverage_complete_no_delete BEFORE DELETE ON coverage_intervals
-WHEN EXISTS (SELECT 1 FROM index_imports WHERE import_id = OLD.import_id AND index_status = 'complete')
-BEGIN SELECT RAISE(ABORT, 'completed_coverage_is_immutable'); END;
-
-CREATE TRIGGER evidence_content_no_replace BEFORE UPDATE OF storage_key, content_sha256 ON evidence
-WHEN OLD.content_sha256 IS NOT NULL AND (OLD.content_sha256 IS NOT NEW.content_sha256 OR OLD.storage_key IS NOT NEW.storage_key)
-BEGIN SELECT RAISE(ABORT, 'evidence_content_is_immutable'); END;
-CREATE TRIGGER recordings_content_no_replace BEFORE UPDATE OF storage_key, content_sha256 ON recordings
-WHEN OLD.content_sha256 IS NOT NULL AND (OLD.content_sha256 IS NOT NEW.content_sha256 OR OLD.storage_key IS NOT NEW.storage_key)
-BEGIN SELECT RAISE(ABORT, 'recording_content_is_immutable'); END;
-CREATE TRIGGER coverage_media_kind_update_guard BEFORE UPDATE OF capture_kind, recording_id ON coverage_intervals
-WHEN EXISTS (
-    SELECT 1 FROM recordings WHERE recording_id = NEW.recording_id
-    AND ((media_kind = 'event_metadata' AND NEW.capture_kind <> 'gap')
-      OR (media_kind = 'frame_set' AND NEW.capture_kind = 'continuous'))
-)
-BEGIN SELECT RAISE(ABORT, 'capture_kind_has_no_input_evidence'); END;
-
--- 当前选择由服务层在同一事务替换，历史保存在不可变 ReviewAction 快照。
--- SQLite 演示：先幂等重放检查，INSERT review_actions 触发 CAS 和 Journey 更新，
--- 再替换 journey_items；其版本 FK 延迟到事务提交检查，不允许留下旧版本选择。
-CREATE TRIGGER review_actions_expected_version BEFORE INSERT ON review_actions
+-- PostgreSQL 触发器保留首版边界；真实时间校准、权限、配置与文件存在性仍由服务验证。
+CREATE FUNCTION partrace_run_input_and_scope() RETURNS trigger
+LANGUAGE plpgsql AS $body$
 BEGIN
-    SELECT CASE WHEN NOT EXISTS (
-        SELECT 1 FROM journeys
-        WHERE journey_id = NEW.journey_id
-          AND review_version = NEW.expected_review_version
-          AND server_snapshot_json = NEW.before_snapshot_json
-          AND NEW.created_epoch_ms >= updated_epoch_ms
-    ) THEN RAISE(ABORT, 'review_version_or_snapshot_conflict') END;
+    IF NOT EXISTS (
+        SELECT 1 FROM messages
+        WHERE message_id = NEW.input_message_id AND conversation_id = NEW.conversation_id AND role = 'user'
+    ) THEN
+        RAISE EXCEPTION 'run input must be a user message in the same conversation' USING ERRCODE = '23514';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM recordings
+        WHERE recording_id = NEW.plan_json #>> '{query,recording_id}'
+    ) THEN
+        RAISE EXCEPTION 'run query must refer to an existing recording' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
 END;
+$body$;
+CREATE TRIGGER run_input_and_scope BEFORE INSERT ON runs
+    FOR EACH ROW EXECUTE FUNCTION partrace_run_input_and_scope();
 
-CREATE TRIGGER review_actions_apply AFTER INSERT ON review_actions
+CREATE FUNCTION partrace_assistant_completed_run() RETURNS trigger
+LANGUAGE plpgsql AS $body$
 BEGIN
-    UPDATE journeys
-    SET review_version = NEW.to_review_version,
-        server_snapshot_json = NEW.after_snapshot_json,
-        decision_status = CASE NEW.action
-            WHEN 'confirm' THEN 'confirmed'
-            WHEN 'reject' THEN 'rejected'
-            WHEN 'split' THEN 'split'
-            ELSE decision_status
-        END,
-        updated_epoch_ms = NEW.created_epoch_ms
-    WHERE journey_id = NEW.journey_id AND review_version = NEW.expected_review_version;
+    IF NOT EXISTS (
+        SELECT 1 FROM runs
+        WHERE run_id = NEW.run_id AND conversation_id = NEW.conversation_id AND status = 'completed'
+    ) THEN
+        RAISE EXCEPTION 'assistant reply requires a completed run in the same conversation' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
 END;
+$body$;
+CREATE TRIGGER assistant_message_completed_run BEFORE INSERT ON messages
+    FOR EACH ROW WHEN (NEW.role = 'assistant') EXECUTE FUNCTION partrace_assistant_completed_run();
 
-CREATE TRIGGER journeys_query_no_update BEFORE UPDATE OF journey_id, actor_id, camera_id, zone_id, query_start_epoch_ms, query_end_epoch_ms, idempotency_key, request_sha256, created_epoch_ms ON journeys
-BEGIN SELECT RAISE(ABORT, 'saved_query_is_immutable'); END;
-CREATE TRIGGER journeys_baseline_no_change BEFORE UPDATE OF server_snapshot_json ON journeys
-WHEN json_extract(OLD.server_snapshot_json, '$.baseline') IS NOT json_extract(NEW.server_snapshot_json, '$.baseline')
-BEGIN SELECT RAISE(ABORT, 'journey_baseline_is_immutable'); END;
-CREATE TRIGGER journeys_version_guard BEFORE UPDATE OF review_version, server_snapshot_json, decision_status, updated_epoch_ms ON journeys
-WHEN NOT EXISTS (
-    SELECT 1 FROM review_actions
-    WHERE journey_id = OLD.journey_id
-      AND from_review_version = OLD.review_version
-      AND to_review_version = NEW.review_version
-      AND before_snapshot_json = OLD.server_snapshot_json
-      AND after_snapshot_json = NEW.server_snapshot_json
-      AND created_epoch_ms = NEW.updated_epoch_ms
-)
-BEGIN SELECT RAISE(ABORT, 'journey_update_requires_review_action'); END;
-CREATE TRIGGER review_actions_no_update BEFORE UPDATE ON review_actions
-BEGIN SELECT RAISE(ABORT, 'review_action_is_append_only'); END;
-CREATE TRIGGER review_actions_no_delete BEFORE DELETE ON review_actions
-BEGIN SELECT RAISE(ABORT, 'review_action_is_append_only'); END;
-CREATE TRIGGER cleanup_logs_no_update BEFORE UPDATE ON retention_cleanup_logs
-BEGIN SELECT RAISE(ABORT, 'cleanup_log_is_append_only'); END;
-CREATE TRIGGER cleanup_logs_no_delete BEFORE DELETE ON retention_cleanup_logs
-BEGIN SELECT RAISE(ABORT, 'cleanup_log_is_append_only'); END;
+CREATE FUNCTION partrace_event_offset_in_recording() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    IF NEW.end_offset_ms > (SELECT duration_ms FROM recordings WHERE recording_id = NEW.recording_id) THEN
+        RAISE EXCEPTION 'event offsets exceed recording duration' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$body$;
+CREATE TRIGGER event_offset_in_recording BEFORE INSERT ON events
+    FOR EACH ROW EXECUTE FUNCTION partrace_event_offset_in_recording();
+
+CREATE FUNCTION partrace_evidence_offset_in_recording() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    IF NEW.offset_ms > (
+        SELECT r.duration_ms FROM recordings r JOIN events e ON e.recording_id = r.recording_id
+        WHERE e.event_id = NEW.event_id
+    ) THEN
+        RAISE EXCEPTION 'evidence offset exceeds recording duration' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$body$;
+CREATE TRIGGER evidence_offset_in_recording BEFORE INSERT ON evidence
+    FOR EACH ROW EXECUTE FUNCTION partrace_evidence_offset_in_recording();
+
+-- 只允许更新媒体状态；录制来源/时间/配置与关键帧定位均不可覆盖。
+CREATE FUNCTION partrace_recording_facts_immutable() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,
+        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)
+        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,
+        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN
+        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$body$;
+CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings
+    FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable();
+
+CREATE FUNCTION partrace_evidence_location_immutable() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    IF ROW(NEW.evidence_id, NEW.event_id, NEW.offset_ms, NEW.bbox_json, NEW.storage_key)
+        IS DISTINCT FROM ROW(OLD.evidence_id, OLD.event_id, OLD.offset_ms, OLD.bbox_json, OLD.storage_key) THEN
+        RAISE EXCEPTION 'evidence location is immutable' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$body$;
+CREATE TRIGGER evidence_location_immutable BEFORE UPDATE ON evidence
+    FOR EACH ROW EXECUTE FUNCTION partrace_evidence_location_immutable();
+
+CREATE FUNCTION partrace_run_facts_immutable() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    IF ROW(NEW.run_id, NEW.conversation_id, NEW.input_message_id, NEW.plan_json, NEW.model_key, NEW.created_at)
+        IS DISTINCT FROM ROW(OLD.run_id, OLD.conversation_id, OLD.input_message_id, OLD.plan_json, OLD.model_key, OLD.created_at) THEN
+        RAISE EXCEPTION 'run input, confirmed plan and model configuration are immutable' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END;
+$body$;
+CREATE TRIGGER run_facts_immutable BEFORE UPDATE ON runs
+    FOR EACH ROW EXECUTE FUNCTION partrace_run_facts_immutable();
+
+-- 此通用函数总是拒绝变更；消息、向量、核查、包裹流水和已完成运行不做静默改写或删除。
+CREATE FUNCTION partrace_reject_change() RETURNS trigger
+LANGUAGE plpgsql AS $body$
+BEGIN
+    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';
+END;
+$body$;
+CREATE TRIGGER event_facts_immutable BEFORE UPDATE ON events
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('event facts are immutable');
+CREATE TRIGGER review_append_only BEFORE UPDATE ON review_records
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('review records are append-only');
+CREATE TRIGGER embedding_facts_immutable BEFORE UPDATE ON event_embeddings
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('embeddings are immutable; reuse an existing row or create a new embedding');
+CREATE TRIGGER conversation_ownership_immutable BEFORE UPDATE ON conversations
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('conversation identity, ownership and creation time are immutable');
+CREATE TRIGGER message_append_only BEFORE UPDATE ON messages
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('messages are append-only');
+CREATE TRIGGER run_terminal_immutable BEFORE UPDATE ON runs
+    FOR EACH ROW WHEN (OLD.status <> 'running') EXECUTE FUNCTION partrace_reject_change('terminal runs are immutable');
+CREATE TRIGGER parcel_facts_immutable BEFORE UPDATE ON parcels
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel identity and creation time are immutable');
+CREATE TRIGGER parcel_record_append_only BEFORE UPDATE ON parcel_records
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel records are append-only');
+
+-- 媒体丢失仍保留全部索引、聊天和人工记录；首版没有删除历史的接口。
+CREATE TRIGGER recording_keep_history BEFORE DELETE ON recordings
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep recording history');
+CREATE TRIGGER event_keep_history BEFORE DELETE ON events
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep event history');
+CREATE TRIGGER evidence_keep_history BEFORE DELETE ON evidence
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep evidence history');
+CREATE TRIGGER review_keep_history BEFORE DELETE ON review_records
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep review history');
+CREATE TRIGGER embedding_keep_history BEFORE DELETE ON event_embeddings
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep embedding history');
+CREATE TRIGGER conversation_keep_history BEFORE DELETE ON conversations
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep conversation history');
+CREATE TRIGGER message_keep_history BEFORE DELETE ON messages
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep message history');
+CREATE TRIGGER run_keep_history BEFORE DELETE ON runs
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep run history');
+CREATE TRIGGER parcel_keep_history BEFORE DELETE ON parcels
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel history');
+CREATE TRIGGER parcel_record_keep_history BEFORE DELETE ON parcel_records
+    FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel record history');
+
+COMMIT;

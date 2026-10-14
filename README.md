@@ -2,18 +2,23 @@
 
 **不盯屏，也能看清驿站每一天。** 面向驿站管理员的 AI 事件溯源助手。
 
+**首版存储采用 PostgreSQL + pgvector，业务数据与事件向量同库分表。** 图片和视频保存在文件或对象存储中。
+
 **主端采用 Android：Kotlin + Compose，复用官方 KMP/Compose 示例。** 官方 App SDK 提供事件查询、缩略图、回放、下载及设备控制，适合首轮取证与核查；Web 桌面查阅放到后续。
+
+**服务端统一 Python：Backend 使用 FastAPI，Agent 首版接入同一 API 应用，Vision 使用独立工作进程。** 模块按职责分工，当前尚无运行实现；模型与媒体存储方案待确认。
 
 ## 工作台与资料
 
-- [在线工作台：原型、开发模块、开发流程](https://yizhan-trace-workbench.vercel.app/)
-- [最新离线工作台 HTML](docs/workbench/index.html)：下载此文件，双击即可打开，无需启动服务。
+- [设计文档总入口](docs/README.md)：数据库、API、功能对照、P1 包裹方案与开发计划。
+- [在线工作台：原型、模块、API 与数据库](https://yizhan-trace-workbench.vercel.app/)
+- [最新离线工作台 HTML](docs/workbench/index.html)：原型、开发模块、流程和数据库设计，下载此文件双击即可打开。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
-- [API 设计草案](docs/api/API_DESIGN.md) · [数据库设计](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
+- [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 77 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
 - [开发协作规范：AGENTS.md](AGENTS.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)
 
-工作台中的数据和 AI 回答是模拟样例。线上最新一次更新因 Vercel 授权未通过而暂未同步，当前内容以仓库内离线 HTML 为准。
+工作台中的数据和 AI 回答是模拟样例。2026-10-14 已同步 Vercel 线上版本，包含用户流程、服务选型、数据库与 API 草案、关系图同比缩放，以及 P1 包裹扫码入出库模块；发布后已核对线上 HTML 与仓库工作台文件一致。静态发布不部署业务 API 或数据库。
 
 ## 首轮做到什么
 
@@ -81,10 +86,12 @@ backend/                 后端
 agent/                   AI Agent
 vision/                  视觉算法
 docs/
+  README.md               设计文档总入口
   api/                   接口说明、数据格式与 JSON 样例
+  database/              数据库草案与离线关系图
   workbench/             离线 HTML 工作台
   DEVELOPMENT_PLAN.md    开发计划
-scripts/                 本地配置与 SDK 准备工具
+scripts/                 文档生成、同步与本地配置 / SDK 准备工具
 ```
 
 接口约定见 [docs/api](docs/api/README.md)，由四个模块共同确认；实际接口代码放在各自的开发目录中。

@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "embedding_store_unavailable",
+    "message": "模拟向量存储不可用，未返回匹配结论。",
+    "request_id": "req_mock_vector_error"
+  }
+}
