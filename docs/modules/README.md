@@ -105,6 +105,8 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 - **开发内容：** 本人会话与消息，问题转可修改计划，按确认计划运行／停止，返回引用并回读聊天与分析状态；模型与配置来源可追溯。
 - **数据：** Agent 与 Backend 协作写 `conversations / messages / runs`。会话不固定录像，每次运行仍限定一份录像；读取事实经后端只读工具，历史权限与引用归属依当前授权校验。
 
+[Backend／Agent 联动说明](BACKEND_AGENT.md) 具体定义内部服务、router 注入、运行／停止／重启和两位主责的下一步交付；公开 API 和表保持当前草案。
+
 | 当前 API 草案 | 提供方 → 调用方 | 数据关联 |
 | --- | --- | --- |
 | `GET /api/v1/agent/conversations` | Agent → Android | 读本人 `conversations` |
