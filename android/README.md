@@ -10,6 +10,8 @@
 
 分工、依赖和验收见 [开发计划](../docs/DEVELOPMENT_PLAN.md)，模块连接见 [工作台](https://yizhan-trace-workbench.vercel.app/#modules)。下面说明本地工程准备与官方底座能力。
 
+业务功能及 DB／API 关联统一记录在 [模块设计](../docs/modules/README.md)，App 骨架见 [M01](../docs/modules/README.md#m01)，查询／AI／人工核查与 P1 扫码按对应模块接入。
+
 ```text
 android/
 ├── ESIotKit-DemoApp-Android/  # 独立 Gradle 工程

@@ -2,6 +2,8 @@
 
 **设计草案，未实现、未冻结。** Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，27 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
 
+需要开发的业务模块、主责、表读写与 API 交接见 [模块设计](../modules/README.md)。本页维护字段语义、范围与返回约定。
+
 已选 **PostgreSQL + pgvector**，业务表与 `event_embeddings` 在同一个 PostgreSQL 中分表保存。SQL 时间字段用 `TIMESTAMPTZ`，JSON 字段用 `JSONB`（保留 `*_json` 名称），向量列为 `embedding vector`；API 仍是 UTC 字符串、JSON 对象/数组和 `embedding` 数组。首版在后端授权、元数据范围和同一模型空间内做精确余弦排序，之后再评估 ANN；Agent 通过后端工具访问，不直连数据库。
 
 ## 首版交接

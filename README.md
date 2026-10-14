@@ -10,7 +10,7 @@
 
 ## 工作台与资料
 
-- [设计文档总入口](docs/README.md)：数据库、API、功能对照、P1 包裹方案与开发计划。
+- [设计文档总入口](docs/README.md)：[全部业务模块与 DB／API 关联](docs/modules/README.md)、数据库、API、P1 包裹方案与开发计划。
 - [在线工作台：原型、模块、API 与数据库](https://yizhan-trace-workbench.vercel.app/)
 - [最新离线工作台 HTML](docs/workbench/index.html)：原型、开发模块、流程和数据库设计，下载此文件双击即可打开。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
@@ -87,6 +87,7 @@ agent/                   AI Agent
 vision/                  视觉算法
 docs/
   README.md               设计文档总入口
+  modules/                业务模块、数据与接口关联
   api/                   接口说明、数据格式与 JSON 样例
   database/              数据库草案与离线关系图
   workbench/             离线 HTML 工作台

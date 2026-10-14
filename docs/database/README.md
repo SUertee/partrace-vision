@@ -4,19 +4,21 @@
 
 关系图按五个数据模块分组：**视频素材**（`recordings`）、**事件与检索**（`events / evidence / event_embeddings`）、**AI 会话与运行**（`conversations / messages / runs`）、**账号与核查**（`users / review_records`）、**包裹与入出库**（`parcels / parcel_records`）。这是业务数据的分组；接口可跨模块读写，团队分工见开发计划。
 
-| 表 | 字段数 | 保存什么 |
-| --- | ---: | --- |
-| `users` | 5 | App 用户名称、角色、启用状态和创建时间 |
-| `recordings` | 10 | 视频来源、摄像头配置、时间起点、时长与文件状态 |
-| `events` | 10 | 区域事件、视频内匿名片段、发生时间与候选说明 |
-| `evidence` | 6 | 事件的关键帧、视频偏移、可选检测框与文件状态 |
-| `event_embeddings` | 10 | 事件描述文本向量、模型版本和关联关键帧 |
-| `review_records` | 7 | 原查询、所查事件、人工结论、说明、操作人与保存时间 |
-| `conversations` | 3 | 用户的 AI 会话，不固定视频 |
-| `messages` | 6 | 会话中的用户问题与完整助手答复 |
-| `runs` | 10 | 一次分析的执行计划、状态、模型配置版本、证据引用与错误 |
-| `parcels` | 3 | 内部包裹 ID、二维码使用的唯一文本单号与建档时间 |
-| `parcel_records` | 7 | 包裹内序号、入出库动作、区域、操作人与实际登记时间 |
+| 表 | 字段数 | 保存什么 | 主要开发模块 |
+| --- | ---: | --- | --- |
+| `users` | 5 | App 用户名称、角色、启用状态和创建时间 | [M02 账号](../modules/README.md#m02)；AI／核查／入出库身份归属 |
+| `recordings` | 10 | 视频来源、摄像头配置、时间起点、时长与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
+| `events` | 10 | 区域事件、视频内匿名片段、发生时间与候选说明 | [M03 产出／入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
+| `evidence` | 6 | 事件的关键帧、视频偏移、可选检测框与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 证据回看](../modules/README.md#m04) |
+| `event_embeddings` | 10 | 事件描述文本向量、模型版本和关联关键帧 | [M05 语义检索](../modules/README.md#m05) |
+| `review_records` | 7 | 原查询、所查事件、人工结论、说明、操作人与保存时间 | [M07 人工核查](../modules/README.md#m07)、[M08 首页](../modules/README.md#m08) |
+| `conversations` | 3 | 用户的 AI 会话，不固定视频 | [M06 AI 会话](../modules/README.md#m06) |
+| `messages` | 6 | 会话中的用户问题与完整助手答复 | [M06 聊天历史](../modules/README.md#m06) |
+| `runs` | 10 | 一次分析的执行计划、状态、模型配置版本、证据引用与错误 | [M06 分析运行](../modules/README.md#m06) |
+| `parcels` | 3 | 内部包裹 ID、二维码使用的唯一文本单号与建档时间 | [M10 P1 包裹](../modules/README.md#m10) |
+| `parcel_records` | 7 | 包裹内序号、入出库动作、区域、操作人与实际登记时间 | [M10 P1 入出库](../modules/README.md#m10) |
+
+模块列标出主要开发归属；事实表还被语义检索、AI、人工核查和首页联读。全部开发内容、接口及依赖见 [模块设计](../modules/README.md)，逐 API 的完整读写表见 [API 映射](../api/api-module-map.json)。
 
 一段视频有多个事件，一个事件有多张关键帧，也可有多条独立核查记录。关键帧属于一个事件，暂不做多对多共享。一个用户可保存多条核查记录，`review_records.reviewer_id` 外键引用 `users.user_id`。一个包裹有多条入出库记录，`parcel_records.parcel_id` 引用 `parcels.parcel_id`，`operator_id` 引用 `users.user_id`。
 

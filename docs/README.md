@@ -4,6 +4,7 @@
 
 | 要查看的内容 | 入口 |
 | --- | --- |
+| 全部业务模块及 DB／API 关联 | [模块设计](modules/README.md) |
 | 模块分工、开发顺序与验收 | [开发计划](DEVELOPMENT_PLAN.md) |
 | 数据库表、字段与关系 | [数据库说明](database/README.md) · [建表 SQL](database/schema.sql) · [检索 SQL 示例](database/semantic-search.sql) |
 | API、参数与返回 | [API 设计](api/API_DESIGN.md) · [OpenAPI](api/openapi.json) · [模拟样例](api/examples/v0.3/) |
@@ -22,7 +23,7 @@ GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示
 | [Agent](../agent/README.md) | 韩广宁 | Python、计划、只读工具、引用与聊天／分析历史 |
 | [Vision](../vision/README.md) | 徐泽华 | Python、检测跟踪、区域事件、关键帧与描述／向量交接 |
 
-各模块 README 维护本模块的职责、技术和开工说明；跨模块接口在 `api/`，任务依赖与验收在 [开发计划](DEVELOPMENT_PLAN.md)。模块关系图和 P1 扩展说明可在 [在线工作台](https://yizhan-trace-workbench.vercel.app/#modules) 查看。
+`modules/` 记录全部业务模块及其表、API、依赖和交付；四个代码目录的 README 维护本地工程与开工说明。跨模块接口在 `api/`，任务依赖与验收在 [开发计划](DEVELOPMENT_PLAN.md)。模块关系图和 P1 扩展说明可在 [在线工作台](https://yizhan-trace-workbench.vercel.app/#modules) 查看。
 
 ## 目录与维护
 
@@ -30,6 +31,7 @@ GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示
 docs/
   README.md                  文档入口
   DEVELOPMENT_PLAN.md        分工、依赖与验收
+  modules/                   全部业务模块及 DB／API 关联
   database/                  数据库设计、SQL、结构快照与关系图
   api/                       API 设计、OpenAPI、模块映射与样例
   workbench/                 完整离线工作台

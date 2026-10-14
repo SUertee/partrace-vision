@@ -4,6 +4,7 @@
 
 | 资料 | 用途 |
 |---|---|
+| [全部业务模块与 DB／API 关联](../modules/README.md) | 从需要开发的功能查看实现主责、表读写、接口与工作包 |
 | [按模块查看 API](api-canvas.html) · [工作台 API 页面](../workbench/index.html#api) | 四模块交接、提供方/调用方、开发顺序及请求/返回样例 |
 | [API 说明](API_DESIGN.md) | 0.3 最小范围、查询、导入、人工保存、包裹入出库和顺序 |
 | [功能 → 表 → API 对照](FEATURE_DATA_API_MAP.md) | 现有功能覆盖、待补接口与新增表的条件 |
