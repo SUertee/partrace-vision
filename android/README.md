@@ -2,6 +2,14 @@
 
 本目录取自 Anker 安防赛题官方 ESIotKit 2.2.7 示例工程，保留 Android 应用和 Common 公共模块，供本次比赛团队开发使用。来源与授权说明见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
 
+## 项目模块职责
+
+主责：李果钦。技术采用 Kotlin + Compose，对应 D02、D08，并配合 D09、D10。首轮完成四 Tab 骨架、查询与候选列表、路线／时间线／关键帧联动、AI 计划与运行状态、人工核查保存和记录回读。先接共享样例，再连接后端与 Agent 的 `/api/v1` 接口；Android 不直接访问数据库。
+
+摄像头 SDK 能力验证由 Harry Xu 独立负责。D10 闭环验收后，Android 再实现 P1 包裹二维码生成、扫码查询与入出库确认页面；扫码本身只查询，管理员确认后提交流水。当前保留的是官方示例底座，上述 ParTrace 业务链路仍待开发。
+
+分工、依赖和验收见 [开发计划](../docs/DEVELOPMENT_PLAN.md)，模块连接见 [工作台](https://yizhan-trace-workbench.vercel.app/#modules)。下面说明本地工程准备与官方底座能力。
+
 ```text
 android/
 ├── ESIotKit-DemoApp-Android/  # 独立 Gradle 工程

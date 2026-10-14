@@ -13,6 +13,17 @@
 
 GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示源码；下载后可直接打开，或使用在线工作台。
 
+## 四个开发模块
+
+| 模块说明 | 主责 | 核心工作 |
+| --- | --- | --- |
+| [Android](../android/README.md) | 李果钦 | 页面、查询与证据联动、人工核查；P1 二维码与扫码确认 |
+| [Backend](../backend/README.md) | Harry Xu | Python + FastAPI、数据与向量存储、查询和流水；另做 SDK 验证 |
+| [Agent](../agent/README.md) | 韩广宁 | Python、计划、只读工具、引用与聊天／分析历史 |
+| [Vision](../vision/README.md) | 徐泽华 | Python、检测跟踪、区域事件、关键帧与描述／向量交接 |
+
+各模块 README 维护本模块的职责、技术和开工说明；跨模块接口在 `api/`，任务依赖与验收在 [开发计划](DEVELOPMENT_PLAN.md)。模块关系图和 P1 扩展说明可在 [在线工作台](https://yizhan-trace-workbench.vercel.app/#modules) 查看。
+
 ## 目录与维护
 
 ```text
