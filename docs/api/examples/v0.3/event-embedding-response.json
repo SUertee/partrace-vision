@@ -1,0 +1,20 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "event_embedding": {
+    "embedding_id": "emb_mock_001",
+    "event_id": "evt_mock_001",
+    "evidence_id": "evd_mock_001",
+    "source_text": "模拟描述：人物靠近 E3 货架，发生候选货架交互；动作需人工核查。",
+    "embedding": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "model_name": "mock-text-encoder",
+    "model_version": "mock-v1-preprocess-demo",
+    "dimensions": 3,
+    "content_sha256": "377b0ae95af0d741112e21618d0e802e289c9974440d9977e5179b19a4de9784",
+    "created_at": "2026-10-13T02:00:00Z"
+  },
+  "replayed": false
+}

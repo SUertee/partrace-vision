@@ -1,22 +1,38 @@
-# 接口与数据格式草案
+# 最小接口与数据约定
 
-这里约定 Android、后端、Agent 和算法之间传递的数据格式与接口。比如算法交付事件和关键帧，后端保存，App 展示，Agent 引用时，四方都使用同一组事件 ID、时间和证据 ID。
+当前草案覆盖 **单视频 → 事件与关键帧 → 描述文本检索 → AI会话 / 分析回读 → 人工核查**，并已纳入 **包裹建档 → 二维码生成 / 扫码查询 → 管理员确认入出库 → 流水回读**；实际实现放在 Android、后端、Agent 和视觉四个目录。
 
-本目录只放接口说明、数据格式和请求/返回样例；后端路由、Agent 工具、算法输出和 Android 调用代码分别放在对应开发目录中。
+| 资料 | 用途 |
+|---|---|
+| [全部业务模块与 DB／API 关联](../modules/README.md) | 从需要开发的功能查看实现主责、表读写、接口与工作包 |
+| [按模块查看 API](api-canvas.html) · [工作台 API 页面](../workbench/index.html#api) | 四模块交接、提供方/调用方、开发顺序及请求/返回样例 |
+| [API 说明](API_DESIGN.md) | 0.3 最小范围、查询、导入、人工保存、包裹入出库和顺序 |
+| [功能 → 表 → API 对照](FEATURE_DATA_API_MAP.md) | 现有功能覆盖、待补接口与新增表的条件 |
+| [OpenAPI](openapi.json) | `0.3-mvp-draft`：19 个后端操作 + 8 个独立 Agent 操作，共 27 个 |
+| [v0.3 模拟样例](examples/v0.3/) | 完整/范围外/缺失媒体/重试/错误交接；包裹样例内联于 OpenAPI；无真实业务执行 |
+| [数据库](../database/README.md) · [离线关系图](../database/schema-canvas.html) | 11 表、77 字段；HTML 双击可打开 |
 
-这里是 D01 的讨论起点，尚未冻结接口，也没有对应服务实现。四人先用同一份模拟样例开发页面、工具和导入，再替换为真实事件。
+## 按开发模块交接
 
-| 对象 | 最少要约定的内容 |
-| --- | --- |
-| Recording | 视频 ID、镜头、UTC 起点、相对视频时间、来源 |
-| TrackSegment | 匿名片段 ID、镜头、起止时间、区域；遮挡后能否连续保持未知 |
-| Event | 事件 ID、时间、区域、关联片段、检测/活动类型、证据引用、来源 |
-| Evidence | 证据 ID、事件 ID、视频相对时间、文件路径/访问地址、可用状态 |
-| Coverage | 镜头与区域、时间范围、已覆盖区间与未知区间 |
-| ReviewAction | 查询条件、事件选择、证据引用、管理员说明与决定、保存时间 |
+| 模块 | 主责 | API 工作 |
+|---|---|---|
+| Android | 李果钦 | 调用后端与 Agent，接查询、证据、会话、人工保存、二维码及入出库确认页面 |
+| 视觉算法 | 徐泽华 | 产出事件包、真实关键帧和描述/向量，交给授权导入作业 |
+| 后端 | Harry Xu | 提供 19 个数据接口，校验权限并持久化业务、向量、媒体引用与包裹流水 |
+| Agent | 韩广宁 | 提供 8 个 AI 接口，转计划、调用只读事件 / 包裹检索、保存会话与运行状态 |
 
-**所有时间统一使用 ISO 8601 UTC；视频相对时间使用毫秒。** 官方 SDK 时间及素材时间的换算方式在 D01/D06 中验证后定稿。
+先用共享样例并行开工；监控真实交接按 **事件与证据 → 人工留档 → 语义检索 → AI 会话运行 → 首页补齐** 验收。语义检索依赖事件/证据，可与留档并行；AI 服务入口和 App 骨架也可先准备。包裹业务另按 **建档 / 查询 → Android 二维码生成 / 扫码 → 管理员确认 / 流水 → Agent 只读历史** 推进。当前 27 个接口已定义草案，尚未实现；首页等 5 个建议接口另列，不算已有契约。官方摄像头 SDK 仍由 Harry Xu 独立验证。
 
-样例见 [demo-bundle.json](examples/demo-bundle.json)，其中 `mock` 明示模拟来源，证据状态为 `unavailable`，没有真实图片文件；它只用于协议讨论和页面占位，不能作为算法或 SDK 验收。
+Android 不直接访问数据库；视觉算法可用批处理与导入客户端，不要求单独部署 HTTP 服务。Agent 的 AI 历史存储由 Agent 与后端协作，具体内部接入方式待实现；图中的表关联表示数据归属，不表示调用方直连表。
 
-需要共同补齐：查询成功、覆盖内零事件、无采集覆盖、接口错误四种返回样例；分页与去重；证据失效；人工决定枚举与幂等保存；Agent 的计划、run_id、停止与引用格式。App 和 Agent 使用同一套 Event/Evidence ID，Agent 只读，保存由管理员显式确认。
+[模块映射](api-module-map.json) 记录分工和阶段，字段与样例继续以 OpenAPI 为准。修改后运行 `python3 scripts/build-api-canvas.py` 和 `python3 scripts/sync-workbench-api.py` 更新离线页面；两者都支持 `--check`，不启动或调用真实服务。
+
+全部 API 使用 `/api/v1`，当前用户为 `GET /api/v1/user`，Agent 接口为 `/api/v1/agent/...`。`v1` 是路由主版本，`0.3-mvp-draft` 是本次草案/样例版本；统一公开地址为 `https://api.example.invalid`，Android 只配置一个 base URL；模块仍分别实现，内部接入待实现，当前没有真实服务或统一网关部署。
+
+**设计草案，待确认；没有运行服务或生产数据库。** 按 2026-10-12 最小版本收敛，并按 2026-10-13 用户要求加入事件关联文本向量、AI聊天/分析持久化及二维码包裹入出库，依据仍为[技术方案 r51](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) 与 [PRD r230](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc)，主端按已确认的 Android。
+
+`users` 只保存用户资料、角色和状态；认证主体由服务端映射，不保存摄像头 SDK 凭据。摄像头/ROI 放版本配置文件；视频偏移为定位基准，只有验证过的起始时间才支持 UTC 查询。事实发布后不覆盖，管理员显式保存；`event_embeddings` 绑定事件及可选关键帧，Agent 只读语义检索后回看证据。`conversations/messages/runs` 保存本人会话、问题、已完成答复和运行状态；会话不固定录像，元数据和用户问题仅 Bearer + active owner。每次分析仍使用单视频 Query，计划/运行及助手答复按本次录像的当前授权与引用归属校验；历史消息先确定页，再逐助手消息经 run 验权，任一无权则整页 403，无正文或部分结果，不静默过滤；会话列表不因录像撤权消失。Agent 保存自己的 AI 历史，监控事实工具仍只读。已选 PostgreSQL + pgvector；SQL 时间为 TIMESTAMPTZ、JSON 为 JSONB、向量为 `embedding vector`，API 同名时间保持 UTC 字符串、向量保持数组。后端在授权范围和同模型空间内精确检索，Agent 不直连数据库；模型/维度未定，尚无服务或 ANN 索引。电商订单关联、跨镜、原生 SDK 检测事件、离散帧集和复核分组后置。
+
+包裹的五个接口并入现有 API 页面：`POST /parcels`、`GET /parcels?parcel_no=...`、`GET /parcels/{parcel_id}`、`GET/POST /parcels/{parcel_id}/records`。`parcels` 保存 3 列，`parcel_records` 保存 7 列；单号可由后端生成，用 TEXT 保留前导零，二维码不另建表，重复扫码不写流水。状态按 `sequence_no` 派生为 `pending / in_stock / outbound`；入库必须有效 `zone_id`，出库保留最近入库货架但当前位置为空。两项写入要求管理员显式确认与 `parcels:write`，操作人 / 时间 / 序号由后端设置；Agent 只调用三个 GET。完整的幂等、状态冲突、分页与模拟样例见 [API 说明](API_DESIGN.md#二维码包裹与入出库) 和 OpenAPI。
+
+[0.2 完整设计](archive/0.2.md) 与 [0.1 demo-bundle](examples/demo-bundle.json) 保留为历史资料，不能作为当前导入请求。表名使用复数 `snake_case`；`evidence` 是不可数名词，保持原名。示例通过不代表真实闭环验收或 D01 已冻结。

@@ -1,0 +1,76 @@
+{
+  "api_version": "0.2-draft",
+  "query": {
+    "zone_id": "E3",
+    "camera_id": "mock-camera-indoor-01",
+    "start": "2026-10-08T06:00:00Z",
+    "end": "2026-10-08T08:00:00Z",
+    "event_types": [
+      "shelf_interaction"
+    ],
+    "source_modes": [
+      "mock"
+    ]
+  },
+  "items": [
+    {
+      "event_id": "mock-event-01",
+      "recording_id": "mock-recording-01",
+      "camera_id": "mock-camera-indoor-01",
+      "zone_id": "E3",
+      "zone_config_id": "mock-zone-config-E3-v1",
+      "track_segment_id": "mock-segment-01",
+      "event_type": "shelf_interaction",
+      "raw_start_epoch_ms": 1791439260000,
+      "raw_end_epoch_ms": 1791439265000,
+      "detection_source": "mock",
+      "observation_status": "observed",
+      "confidence": null,
+      "evidence_ids": [
+        "mock-evidence-01"
+      ],
+      "import_id": "mock-import-01",
+      "index_version": 1,
+      "source_mode": "mock",
+      "start": "2026-10-08T06:01:00Z",
+      "end": "2026-10-08T06:01:05Z",
+      "alignment_status": "aligned",
+      "metadata": {
+        "raw_sdk_type": null
+      },
+      "source_event_id": "mock-source-event-01",
+      "start_offset_ms": 60000,
+      "end_offset_ms": 65000,
+      "doorway_direction": null,
+      "enhancement_tags": [],
+      "time_mapping_version": "mock-clock-v1"
+    }
+  ],
+  "next_cursor": null,
+  "snapshot": {
+    "index_import_ids": [
+      "mock-import-01"
+    ],
+    "selection_mode": "latest_complete",
+    "selected_at": "2026-10-12T07:00:00Z"
+  },
+  "query_status": "matched",
+  "coverage_summary": {
+    "capture_status": "covered",
+    "index_status": "complete",
+    "captured_intervals": [
+      {
+        "start": "2026-10-08T06:00:00Z",
+        "end": "2026-10-08T08:00:00Z"
+      }
+    ],
+    "unknown_intervals": [],
+    "media_availability_counts": {
+      "available": 0,
+      "missing": 1,
+      "expired": 0,
+      "deleted": 0,
+      "unverified": 0
+    }
+  }
+}

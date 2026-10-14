@@ -1,0 +1,17 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "query": {
+    "recording_id": "rec_mock_001",
+    "camera_id": "cam_demo_01",
+    "zone_id": "E3",
+    "start_offset_ms": 110000,
+    "end_offset_ms": 150000
+  },
+  "query_status": "no_detections",
+  "recording_range": {
+    "relation": "partial",
+    "covered_start_offset_ms": 110000,
+    "covered_end_offset_ms": 120000
+  },
+  "events": []
+}

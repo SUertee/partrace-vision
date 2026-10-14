@@ -1,0 +1,3692 @@
+{
+  "metadata": {
+    "schema_sha256": "02ad7c01dde414caa8d6024b6b862d5674f7303ce5c6a7921f67bab205f24264",
+    "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
+    "postgres_version_num": 170011,
+    "pgvector_version": "0.8.7",
+    "verification": {
+      "method": "live_postgresql_system_catalog",
+      "transport": "docker_exec_psql",
+      "schema": "public",
+      "verified_at": "2026-10-13T14:42:32.933346Z",
+      "schema_sha256": "02ad7c01dde414caa8d6024b6b862d5674f7303ce5c6a7921f67bab205f24264",
+      "catalog_query_sha256": "7521a508d6962a8c941bc80788c3f943f3ef71d2976e2a84403299916a34863d",
+      "structure_sha256": "017e2654cfaf524ac225de97927d344a9fcc47a2ef4f793dd5ee85a297e1c855",
+      "includes_records": false,
+      "source_alignment": "Source table/column order and declared types checked against loaded catalog; DDL loading is a separate operation."
+    },
+    "title": "ParTrace Vision · 最小数据库设计",
+    "schema_version": "0.3-mvp-draft",
+    "status": "draft",
+    "generated_date": "2026-10-13",
+    "engine": "PostgreSQL+pgvector",
+    "production_engine": "PostgreSQL+pgvector",
+    "source_files": [
+      "docs/database/schema.sql",
+      "scripts/export-schema-catalog.py",
+      "scripts/postgres-catalog.sql"
+    ],
+    "sources": [
+      {
+        "title": "技术方案与开发规划",
+        "revision": "r51"
+      },
+      {
+        "title": "产品 PRD",
+        "revision": "r230"
+      },
+      {
+        "title": "用户要求最小聊天及 Agent 分析历史",
+        "revision": "2026-10-13 · 9 表、68 字段"
+      },
+      {
+        "title": "用户确认包裹单号与入出库两表",
+        "revision": "2026-10-13 · 11 表、78 字段"
+      },
+      {
+        "title": "用户取消会话固定录像",
+        "revision": "2026-10-13 · 11 表、77 字段；每次运行仍查单段录像"
+      },
+      {
+        "title": "用户选择 PostgreSQL+pgvector",
+        "revision": "2026-10-13"
+      }
+    ],
+    "parity": "Loaded public schema read from PostgreSQL pg_catalog in a read-only transaction; constraint/index/trigger/function definitions use pg_get_*; source CREATE TABLE statements attached separately.",
+    "disclaimer": "设计草案；真实 PostgreSQL+pgvector 本地结构验证，不代表已部署业务服务或完成数据/检索验收。目录不含业务记录。",
+    "annotations_sha256": "0b410bbf9bbe8552621698b5f9be352d884f572d6c9d1f27076b8da391cbdf2b"
+  },
+  "tables": [
+    {
+      "id": "users",
+      "name": "users",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "users_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "display_name",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "role",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'active'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (user_id)",
+          "name": "users_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "user_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "user_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_user_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_user_name",
+          "expression": "((length(TRIM(BOTH FROM user_id)) > 0) AND (length(TRIM(BOTH FROM display_name)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM user_id)) > 0 AND length(TRIM(BOTH FROM display_name)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_user_role",
+          "expression": "(role = ANY (ARRAY['admin'::text, 'viewer'::text]))",
+          "sql": "CHECK (role = ANY (ARRAY['admin'::text, 'viewer'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_user_status",
+          "expression": "(status = ANY (ARRAY['active'::text, 'disabled'::text]))",
+          "sql": "CHECK (status = ANY (ARRAY['active'::text, 'disabled'::text]))",
+          "validated": true
+        }
+      ],
+      "triggers": [],
+      "row_count": null,
+      "create_sql": "CREATE TABLE users (\n    user_id TEXT PRIMARY KEY NOT NULL,\n    display_name TEXT NOT NULL,\n    role TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'active',\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT ck_user_name CHECK (length(trim(user_id)) > 0 AND length(trim(display_name)) > 0),\n    CONSTRAINT ck_user_role CHECK (role IN ('admin', 'viewer')),\n    CONSTRAINT ck_user_status CHECK (status IN ('active', 'disabled')),\n    CONSTRAINT ck_user_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "用户",
+      "domain": "review",
+      "description": "App 用户的显示名称、角色与启用状态；核查操作人用真实外键关联，不表示监控中的人物。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "recordings",
+      "name": "recordings",
+      "columns": [
+        {
+          "name": "recording_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "recordings_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "camera_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "config_version",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "source_mode",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "duration_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "manifest_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "storage_key",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "media_status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'missing'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_recordings_camera_time ON public.recordings USING btree (camera_id, started_at)",
+          "name": "idx_recordings_camera_time",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "camera_id",
+            "started_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "camera_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "started_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX recordings_pkey ON public.recordings USING btree (recording_id)",
+          "name": "recordings_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "recording_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "recording_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_recording_config",
+          "expression": "((length(TRIM(BOTH FROM camera_id)) > 0) AND (length(TRIM(BOTH FROM config_version)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM camera_id)) > 0 AND length(TRIM(BOTH FROM config_version)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_duration",
+          "expression": "(duration_ms > 0)",
+          "sql": "CHECK (duration_ms > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_manifest",
+          "expression": "(manifest_sha256 ~ '^[0-9a-f]{64}$'::text)",
+          "sql": "CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'::text)",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_media",
+          "expression": "(media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
+          "sql": "CHECK (media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_source",
+          "expression": "(source_mode = ANY (ARRAY['prerecorded'::text, 'sdk'::text, 'mock'::text]))",
+          "sql": "CHECK (source_mode = ANY (ARRAY['prerecorded'::text, 'sdk'::text, 'mock'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_storage",
+          "expression": "(((storage_key IS NULL) OR (length(TRIM(BOTH FROM storage_key)) > 0)) AND ((media_status <> 'available'::text) OR (storage_key IS NOT NULL)))",
+          "sql": "CHECK ((storage_key IS NULL OR length(TRIM(BOTH FROM storage_key)) > 0) AND (media_status <> 'available'::text OR storage_key IS NOT NULL))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_time",
+          "expression": "((started_at IS NULL) OR (isfinite(started_at) AND (started_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)))",
+          "sql": "CHECK (started_at IS NULL OR isfinite(started_at) AND started_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable();\n\nCREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "recording_facts_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_recording_facts_immutable()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable()"
+        },
+        {
+          "sql": "CREATE TRIGGER recording_keep_history BEFORE DELETE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep recording history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "recording_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER recording_keep_history BEFORE DELETE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep recording history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE recordings (\n    recording_id TEXT PRIMARY KEY NOT NULL,\n    camera_id TEXT NOT NULL,\n    config_version TEXT NOT NULL,\n    source_mode TEXT NOT NULL,\n    started_at TIMESTAMPTZ,\n    duration_ms BIGINT NOT NULL,\n    manifest_sha256 TEXT NOT NULL,\n    storage_key TEXT,\n    media_status TEXT NOT NULL DEFAULT 'missing',\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT ck_recording_config CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0),\n    CONSTRAINT ck_recording_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),\n    CONSTRAINT ck_recording_time CHECK (started_at IS NULL OR (isfinite(started_at) AND started_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')),\n    CONSTRAINT ck_recording_duration CHECK (duration_ms > 0),\n    CONSTRAINT ck_recording_manifest CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'),\n    CONSTRAINT ck_recording_media CHECK (media_status IN ('available', 'missing')),\n    CONSTRAINT ck_recording_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL)),\n    CONSTRAINT ck_recording_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "视频",
+      "domain": "media",
+      "description": "一段固定摄像头连续视频与一份完整分析；保留来源、时间起点、配置版本及媒体状态。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "events",
+      "name": "events",
+      "columns": [
+        {
+          "name": "event_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "events_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "recording_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_event_recording",
+              "table": "recordings",
+              "column": "recording_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "zone_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "track_key",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_type",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "observation_status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'candidate'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "start_offset_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "end_offset_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "detection_source",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "summary",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_event_recording",
+          "constraint_name": "fk_event_recording",
+          "from_table": "events",
+          "from_columns": [
+            "recording_id"
+          ],
+          "to_table": "recordings",
+          "to_columns": [
+            "recording_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (recording_id) REFERENCES recordings(recording_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX events_pkey ON public.events USING btree (event_id)",
+          "name": "events_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "event_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_events_recording_track_time ON public.events USING btree (recording_id, track_key, start_offset_ms)",
+          "name": "idx_events_recording_track_time",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "recording_id",
+            "track_key",
+            "start_offset_ms"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "recording_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "track_key",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "start_offset_ms",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_events_recording_zone_time ON public.events USING btree (recording_id, zone_id, start_offset_ms)",
+          "name": "idx_events_recording_zone_time",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "recording_id",
+            "zone_id",
+            "start_offset_ms"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "recording_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "zone_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "start_offset_ms",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_event_observation",
+          "expression": "(observation_status = ANY (ARRAY['observed'::text, 'candidate'::text]))",
+          "sql": "CHECK (observation_status = ANY (ARRAY['observed'::text, 'candidate'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_event_offsets",
+          "expression": "((start_offset_ms >= 0) AND (end_offset_ms >= start_offset_ms))",
+          "sql": "CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms)",
+          "validated": true
+        },
+        {
+          "name": "ck_event_source",
+          "expression": "(detection_source = ANY (ARRAY['automatic'::text, 'manual'::text, 'mock'::text]))",
+          "sql": "CHECK (detection_source = ANY (ARRAY['automatic'::text, 'manual'::text, 'mock'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_event_track",
+          "expression": "((track_key IS NULL) OR (length(TRIM(BOTH FROM track_key)) > 0))",
+          "sql": "CHECK (track_key IS NULL OR length(TRIM(BOTH FROM track_key)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_event_type",
+          "expression": "(event_type = ANY (ARRAY['enter_zone'::text, 'dwell'::text, 'shelf_interaction'::text, 'leave_zone'::text]))",
+          "sql": "CHECK (event_type = ANY (ARRAY['enter_zone'::text, 'dwell'::text, 'shelf_interaction'::text, 'leave_zone'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_event_zone",
+          "expression": "(length(TRIM(BOTH FROM zone_id)) > 0)",
+          "sql": "CHECK (length(TRIM(BOTH FROM zone_id)) > 0)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER event_facts_immutable BEFORE UPDATE ON events FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('event facts are immutable');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "event_facts_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER event_facts_immutable BEFORE UPDATE ON events FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('event facts are immutable')"
+        },
+        {
+          "sql": "CREATE TRIGGER event_keep_history BEFORE DELETE ON events FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep event history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "event_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER event_keep_history BEFORE DELETE ON events FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep event history')"
+        },
+        {
+          "sql": "CREATE TRIGGER event_offset_in_recording BEFORE INSERT ON events FOR EACH ROW EXECUTE FUNCTION partrace_event_offset_in_recording();\n\nCREATE OR REPLACE FUNCTION public.partrace_event_offset_in_recording()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NEW.end_offset_ms > (SELECT duration_ms FROM recordings WHERE recording_id = NEW.recording_id) THEN\n        RAISE EXCEPTION 'event offsets exceed recording duration' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "event_offset_in_recording",
+          "event": "BEFORE INSERT",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_event_offset_in_recording()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_event_offset_in_recording()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NEW.end_offset_ms > (SELECT duration_ms FROM recordings WHERE recording_id = NEW.recording_id) THEN\n        RAISE EXCEPTION 'event offsets exceed recording duration' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER event_offset_in_recording BEFORE INSERT ON events FOR EACH ROW EXECUTE FUNCTION partrace_event_offset_in_recording()"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE events (\n    event_id TEXT PRIMARY KEY NOT NULL,\n    recording_id TEXT NOT NULL,\n    zone_id TEXT NOT NULL,\n    track_key TEXT,\n    event_type TEXT NOT NULL,\n    observation_status TEXT NOT NULL DEFAULT 'candidate',\n    start_offset_ms BIGINT NOT NULL,\n    end_offset_ms BIGINT NOT NULL,\n    detection_source TEXT NOT NULL,\n    summary TEXT,\n    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_event_zone CHECK (length(trim(zone_id)) > 0),\n    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),\n    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),\n    CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),\n    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),\n    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))\n);",
+      "label": "事件",
+      "domain": "retrieval",
+      "description": "视频里的区域事件和匿名局部 track_key；保留实际观测或候选，未知不推断。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "evidence",
+      "name": "evidence",
+      "columns": [
+        {
+          "name": "evidence_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "evidence_pkey",
+            "uq_evidence_event"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [
+            "uq_evidence_event"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_evidence_event",
+              "table": "events",
+              "column": "event_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "offset_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "bbox_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "storage_key",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "media_status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'missing'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_evidence_event",
+          "constraint_name": "fk_evidence_event",
+          "from_table": "evidence",
+          "from_columns": [
+            "event_id"
+          ],
+          "to_table": "events",
+          "to_columns": [
+            "event_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX evidence_pkey ON public.evidence USING btree (evidence_id)",
+          "name": "evidence_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "evidence_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "evidence_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_evidence_event_offset ON public.evidence USING btree (event_id, offset_ms)",
+          "name": "idx_evidence_event_offset",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "event_id",
+            "offset_ms"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "offset_ms",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_evidence_event ON public.evidence USING btree (evidence_id, event_id)",
+          "name": "uq_evidence_event",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "u",
+          "unique": true,
+          "columns": [
+            "evidence_id",
+            "event_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "evidence_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_evidence_bbox",
+          "expression": "((bbox_json IS NULL) OR\nCASE\n    WHEN (jsonb_typeof(bbox_json) = 'array'::text) THEN\n    CASE\n        WHEN ((jsonb_array_length(bbox_json) = 4) AND (jsonb_typeof((bbox_json -> 0)) = 'number'::text) AND (jsonb_typeof((bbox_json -> 1)) = 'number'::text) AND (jsonb_typeof((bbox_json -> 2)) = 'number'::text) AND (jsonb_typeof((bbox_json -> 3)) = 'number'::text)) THEN ((((bbox_json ->> 0))::numeric >= (0)::numeric) AND (((bbox_json ->> 1))::numeric >= (0)::numeric) AND (((bbox_json ->> 2))::numeric > (0)::numeric) AND (((bbox_json ->> 3))::numeric > (0)::numeric) AND ((((bbox_json ->> 0))::numeric + ((bbox_json ->> 2))::numeric) <= (1)::numeric) AND ((((bbox_json ->> 1))::numeric + ((bbox_json ->> 3))::numeric) <= (1)::numeric))\n        ELSE false\n    END\n    ELSE false\nEND)",
+          "sql": "CHECK (bbox_json IS NULL OR\nCASE\n    WHEN jsonb_typeof(bbox_json) = 'array'::text THEN\n    CASE\n        WHEN jsonb_array_length(bbox_json) = 4 AND jsonb_typeof(bbox_json -> 0) = 'number'::text AND jsonb_typeof(bbox_json -> 1) = 'number'::text AND jsonb_typeof(bbox_json -> 2) = 'number'::text AND jsonb_typeof(bbox_json -> 3) = 'number'::text THEN ((bbox_json ->> 0)::numeric) >= 0::numeric AND ((bbox_json ->> 1)::numeric) >= 0::numeric AND ((bbox_json ->> 2)::numeric) > 0::numeric AND ((bbox_json ->> 3)::numeric) > 0::numeric AND (((bbox_json ->> 0)::numeric) + ((bbox_json ->> 2)::numeric)) <= 1::numeric AND (((bbox_json ->> 1)::numeric) + ((bbox_json ->> 3)::numeric)) <= 1::numeric\n        ELSE false\n    END\n    ELSE false\nEND)",
+          "validated": true
+        },
+        {
+          "name": "ck_evidence_media",
+          "expression": "(media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
+          "sql": "CHECK (media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_evidence_offset",
+          "expression": "(offset_ms >= 0)",
+          "sql": "CHECK (offset_ms >= 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_evidence_storage",
+          "expression": "(((storage_key IS NULL) OR (length(TRIM(BOTH FROM storage_key)) > 0)) AND ((media_status <> 'available'::text) OR (storage_key IS NOT NULL)))",
+          "sql": "CHECK ((storage_key IS NULL OR length(TRIM(BOTH FROM storage_key)) > 0) AND (media_status <> 'available'::text OR storage_key IS NOT NULL))",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER evidence_keep_history BEFORE DELETE ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep evidence history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "evidence_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER evidence_keep_history BEFORE DELETE ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep evidence history')"
+        },
+        {
+          "sql": "CREATE TRIGGER evidence_location_immutable BEFORE UPDATE ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_evidence_location_immutable();\n\nCREATE OR REPLACE FUNCTION public.partrace_evidence_location_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.evidence_id, NEW.event_id, NEW.offset_ms, NEW.bbox_json, NEW.storage_key)\n        IS DISTINCT FROM ROW(OLD.evidence_id, OLD.event_id, OLD.offset_ms, OLD.bbox_json, OLD.storage_key) THEN\n        RAISE EXCEPTION 'evidence location is immutable' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "evidence_location_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_evidence_location_immutable()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_evidence_location_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.evidence_id, NEW.event_id, NEW.offset_ms, NEW.bbox_json, NEW.storage_key)\n        IS DISTINCT FROM ROW(OLD.evidence_id, OLD.event_id, OLD.offset_ms, OLD.bbox_json, OLD.storage_key) THEN\n        RAISE EXCEPTION 'evidence location is immutable' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER evidence_location_immutable BEFORE UPDATE ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_evidence_location_immutable()"
+        },
+        {
+          "sql": "CREATE TRIGGER evidence_offset_in_recording BEFORE INSERT ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_evidence_offset_in_recording();\n\nCREATE OR REPLACE FUNCTION public.partrace_evidence_offset_in_recording()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NEW.offset_ms > (\n        SELECT r.duration_ms FROM recordings r JOIN events e ON e.recording_id = r.recording_id\n        WHERE e.event_id = NEW.event_id\n    ) THEN\n        RAISE EXCEPTION 'evidence offset exceeds recording duration' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "evidence_offset_in_recording",
+          "event": "BEFORE INSERT",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_evidence_offset_in_recording()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_evidence_offset_in_recording()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NEW.offset_ms > (\n        SELECT r.duration_ms FROM recordings r JOIN events e ON e.recording_id = r.recording_id\n        WHERE e.event_id = NEW.event_id\n    ) THEN\n        RAISE EXCEPTION 'evidence offset exceeds recording duration' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER evidence_offset_in_recording BEFORE INSERT ON evidence FOR EACH ROW EXECUTE FUNCTION partrace_evidence_offset_in_recording()"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE evidence (\n    evidence_id TEXT PRIMARY KEY NOT NULL,\n    event_id TEXT NOT NULL,\n    offset_ms BIGINT NOT NULL,\n    bbox_json JSONB,\n    storage_key TEXT,\n    media_status TEXT NOT NULL DEFAULT 'missing',\n    CONSTRAINT uq_evidence_event UNIQUE (evidence_id, event_id),\n    CONSTRAINT fk_evidence_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_evidence_offset CHECK (offset_ms >= 0),\n    CONSTRAINT ck_evidence_bbox CHECK (\n        bbox_json IS NULL OR CASE\n            WHEN jsonb_typeof(bbox_json) = 'array' THEN CASE\n                WHEN jsonb_array_length(bbox_json) = 4\n                    AND jsonb_typeof(bbox_json -> 0) = 'number'\n                    AND jsonb_typeof(bbox_json -> 1) = 'number'\n                    AND jsonb_typeof(bbox_json -> 2) = 'number'\n                    AND jsonb_typeof(bbox_json -> 3) = 'number'\n                THEN (bbox_json ->> 0)::numeric >= 0 AND (bbox_json ->> 1)::numeric >= 0\n                    AND (bbox_json ->> 2)::numeric > 0 AND (bbox_json ->> 3)::numeric > 0\n                    AND (bbox_json ->> 0)::numeric + (bbox_json ->> 2)::numeric <= 1\n                    AND (bbox_json ->> 1)::numeric + (bbox_json ->> 3)::numeric <= 1\n                ELSE FALSE\n            END\n            ELSE FALSE\n        END\n    ),\n    CONSTRAINT ck_evidence_media CHECK (media_status IN ('available', 'missing')),\n    CONSTRAINT ck_evidence_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL))\n);",
+      "label": "关键帧",
+      "domain": "retrieval",
+      "description": "一个事件的真实关键帧、视频偏移和可选检测框；画面缺失仍保留引用。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "event_embeddings",
+      "name": "event_embeddings",
+      "columns": [
+        {
+          "name": "embedding_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "event_embeddings_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [
+            "uq_embeddings_event_text_source",
+            "uq_embeddings_evidence_source"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_embedding_event",
+              "table": "events",
+              "column": "event_id",
+              "composite": false
+            },
+            {
+              "relationship_id": "fk_embedding_evidence_event",
+              "table": "evidence",
+              "column": "event_id",
+              "composite": true
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "evidence_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [
+            "uq_embeddings_evidence_source"
+          ],
+          "nullable": true,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_embedding_evidence_event",
+              "table": "evidence",
+              "column": "evidence_id",
+              "composite": true
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "source_text",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "embedding",
+          "type": "VECTOR",
+          "database_type": "vector",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "model_name",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_embeddings_event_text_source",
+            "uq_embeddings_evidence_source"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "model_version",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_embeddings_event_text_source",
+            "uq_embeddings_evidence_source"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "dimensions",
+          "type": "INTEGER",
+          "database_type": "integer",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "content_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_embeddings_event_text_source",
+            "uq_embeddings_evidence_source"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_embedding_event",
+          "constraint_name": "fk_embedding_event",
+          "from_table": "event_embeddings",
+          "from_columns": [
+            "event_id"
+          ],
+          "to_table": "events",
+          "to_columns": [
+            "event_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "fk_embedding_evidence_event",
+          "constraint_name": "fk_embedding_evidence_event",
+          "from_table": "event_embeddings",
+          "from_columns": [
+            "evidence_id",
+            "event_id"
+          ],
+          "to_table": "evidence",
+          "to_columns": [
+            "evidence_id",
+            "event_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (evidence_id, event_id) REFERENCES evidence(evidence_id, event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX event_embeddings_pkey ON public.event_embeddings USING btree (embedding_id)",
+          "name": "event_embeddings_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "embedding_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "embedding_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_embeddings_event ON public.event_embeddings USING btree (event_id)",
+          "name": "idx_embeddings_event",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "event_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_embeddings_model_space ON public.event_embeddings USING btree (model_name, model_version, dimensions)",
+          "name": "idx_embeddings_model_space",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "model_name",
+            "model_version",
+            "dimensions"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "model_name",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "model_version",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "dimensions",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_embeddings_event_text_source ON public.event_embeddings USING btree (event_id, model_name, model_version, content_sha256) WHERE (evidence_id IS NULL)",
+          "name": "uq_embeddings_event_text_source",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": true,
+          "columns": [
+            "event_id",
+            "model_name",
+            "model_version",
+            "content_sha256"
+          ],
+          "partial": true,
+          "predicate": "(evidence_id IS NULL)",
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "model_name",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "model_version",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "content_sha256",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_embeddings_evidence_source ON public.event_embeddings USING btree (event_id, evidence_id, model_name, model_version, content_sha256) WHERE (evidence_id IS NOT NULL)",
+          "name": "uq_embeddings_evidence_source",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": true,
+          "columns": [
+            "event_id",
+            "evidence_id",
+            "model_name",
+            "model_version",
+            "content_sha256"
+          ],
+          "partial": true,
+          "predicate": "(evidence_id IS NOT NULL)",
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "evidence_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "model_name",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "model_version",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "content_sha256",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_embedding_content",
+          "expression": "(content_sha256 ~ '^[0-9a-f]{64}$'::text)",
+          "sql": "CHECK (content_sha256 ~ '^[0-9a-f]{64}$'::text)",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_identity",
+          "expression": "((length(TRIM(BOTH FROM embedding_id)) > 0) AND (length(TRIM(BOTH FROM event_id)) > 0) AND ((evidence_id IS NULL) OR (length(TRIM(BOTH FROM evidence_id)) > 0)))",
+          "sql": "CHECK (length(TRIM(BOTH FROM embedding_id)) > 0 AND length(TRIM(BOTH FROM event_id)) > 0 AND (evidence_id IS NULL OR length(TRIM(BOTH FROM evidence_id)) > 0))",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_model",
+          "expression": "((length(TRIM(BOTH FROM model_name)) > 0) AND (length(TRIM(BOTH FROM model_version)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM model_name)) > 0 AND length(TRIM(BOTH FROM model_version)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_nonzero",
+          "expression": "(vector_norm(embedding) > (0)::double precision)",
+          "sql": "CHECK (vector_norm(embedding) > 0::double precision)",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_shape",
+          "expression": "(((dimensions >= 1) AND (dimensions <= 16000)) AND (vector_dims(embedding) = dimensions))",
+          "sql": "CHECK (dimensions >= 1 AND dimensions <= 16000 AND vector_dims(embedding) = dimensions)",
+          "validated": true
+        },
+        {
+          "name": "ck_embedding_source",
+          "expression": "(length(TRIM(BOTH FROM source_text)) > 0)",
+          "sql": "CHECK (length(TRIM(BOTH FROM source_text)) > 0)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER embedding_facts_immutable BEFORE UPDATE ON event_embeddings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('embeddings are immutable; reuse an existing row or create a new embedding');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "embedding_facts_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER embedding_facts_immutable BEFORE UPDATE ON event_embeddings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('embeddings are immutable; reuse an existing row or create a new embedding')"
+        },
+        {
+          "sql": "CREATE TRIGGER embedding_keep_history BEFORE DELETE ON event_embeddings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep embedding history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "embedding_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER embedding_keep_history BEFORE DELETE ON event_embeddings FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep embedding history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE event_embeddings (\n    embedding_id TEXT PRIMARY KEY NOT NULL,\n    event_id TEXT NOT NULL,\n    evidence_id TEXT,\n    source_text TEXT NOT NULL,\n    embedding VECTOR NOT NULL,\n    model_name TEXT NOT NULL,\n    model_version TEXT NOT NULL,\n    dimensions INTEGER NOT NULL,\n    content_sha256 TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_embedding_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_embedding_evidence_event FOREIGN KEY (evidence_id, event_id) REFERENCES evidence (evidence_id, event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_embedding_identity CHECK (length(trim(embedding_id)) > 0 AND length(trim(event_id)) > 0 AND (evidence_id IS NULL OR length(trim(evidence_id)) > 0)),\n    CONSTRAINT ck_embedding_source CHECK (length(trim(source_text)) > 0),\n    CONSTRAINT ck_embedding_model CHECK (length(trim(model_name)) > 0 AND length(trim(model_version)) > 0),\n    CONSTRAINT ck_embedding_shape CHECK (dimensions BETWEEN 1 AND 16000 AND vector_dims(embedding) = dimensions),\n    CONSTRAINT ck_embedding_nonzero CHECK (vector_norm(embedding) > 0),\n    CONSTRAINT ck_embedding_content CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),\n    CONSTRAINT ck_embedding_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "事件向量",
+      "domain": "retrieval",
+      "description": "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务待实现。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "review_records",
+      "name": "review_records",
+      "columns": [
+        {
+          "name": "review_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "review_records_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_review_event",
+              "table": "events",
+              "column": "event_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "query_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "decision",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "note",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "reviewer_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_review_user",
+              "table": "users",
+              "column": "user_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_review_event",
+          "constraint_name": "fk_review_event",
+          "from_table": "review_records",
+          "from_columns": [
+            "event_id"
+          ],
+          "to_table": "events",
+          "to_columns": [
+            "event_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "fk_review_user",
+          "constraint_name": "fk_review_user",
+          "from_table": "review_records",
+          "from_columns": [
+            "reviewer_id"
+          ],
+          "to_table": "users",
+          "to_columns": [
+            "user_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (reviewer_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_reviews_event_created ON public.review_records USING btree (event_id, created_at)",
+          "name": "idx_reviews_event_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "event_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_reviews_reviewer_created ON public.review_records USING btree (reviewer_id, created_at)",
+          "name": "idx_reviews_reviewer_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "reviewer_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "reviewer_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX review_records_pkey ON public.review_records USING btree (review_id)",
+          "name": "review_records_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "review_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "review_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_review_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_review_decision",
+          "expression": "(decision = ANY (ARRAY['confirmed'::text, 'dismissed'::text, 'uncertain'::text]))",
+          "sql": "CHECK (decision = ANY (ARRAY['confirmed'::text, 'dismissed'::text, 'uncertain'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_review_query",
+          "expression": "(jsonb_typeof(query_json) = 'object'::text)",
+          "sql": "CHECK (jsonb_typeof(query_json) = 'object'::text)",
+          "validated": true
+        },
+        {
+          "name": "ck_review_reviewer",
+          "expression": "(length(TRIM(BOTH FROM reviewer_id)) > 0)",
+          "sql": "CHECK (length(TRIM(BOTH FROM reviewer_id)) > 0)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER review_append_only BEFORE UPDATE ON review_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('review records are append-only');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "review_append_only",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER review_append_only BEFORE UPDATE ON review_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('review records are append-only')"
+        },
+        {
+          "sql": "CREATE TRIGGER review_keep_history BEFORE DELETE ON review_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep review history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "review_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER review_keep_history BEFORE DELETE ON review_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep review history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE review_records (\n    review_id TEXT PRIMARY KEY NOT NULL,\n    event_id TEXT NOT NULL,\n    query_json JSONB NOT NULL,\n    decision TEXT NOT NULL,\n    note TEXT,\n    reviewer_id TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_review_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_review_user FOREIGN KEY (reviewer_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_review_query CHECK (jsonb_typeof(query_json) = 'object'),\n    CONSTRAINT ck_review_decision CHECK (decision IN ('confirmed', 'dismissed', 'uncertain')),\n    CONSTRAINT ck_review_reviewer CHECK (length(trim(reviewer_id)) > 0),\n    CONSTRAINT ck_review_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "核查记录",
+      "domain": "review",
+      "description": "一次人工保存针对一个事件，包含查询条件、结论和说明；记录只追加。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "conversations",
+      "name": "conversations",
+      "columns": [
+        {
+          "name": "conversation_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "conversations_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_conversation_user",
+              "table": "users",
+              "column": "user_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_conversation_user",
+          "constraint_name": "fk_conversation_user",
+          "from_table": "conversations",
+          "from_columns": [
+            "user_id"
+          ],
+          "to_table": "users",
+          "to_columns": [
+            "user_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (user_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX conversations_pkey ON public.conversations USING btree (conversation_id)",
+          "name": "conversations_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "conversation_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "conversation_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_conversations_user_created ON public.conversations USING btree (user_id, created_at)",
+          "name": "idx_conversations_user_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "user_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "user_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_conversation_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_conversation_id",
+          "expression": "(length(TRIM(BOTH FROM conversation_id)) > 0)",
+          "sql": "CHECK (length(TRIM(BOTH FROM conversation_id)) > 0)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER conversation_keep_history BEFORE DELETE ON conversations FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep conversation history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "conversation_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER conversation_keep_history BEFORE DELETE ON conversations FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep conversation history')"
+        },
+        {
+          "sql": "CREATE TRIGGER conversation_ownership_immutable BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('conversation identity, ownership and creation time are immutable');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "conversation_ownership_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER conversation_ownership_immutable BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('conversation identity, ownership and creation time are immutable')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE conversations (\n    conversation_id TEXT PRIMARY KEY NOT NULL,\n    user_id TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_conversation_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_conversation_id CHECK (length(trim(conversation_id)) > 0),\n    CONSTRAINT ck_conversation_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "AI 会话",
+      "domain": "agent",
+      "description": "一个用户的聊天会话，不固定录像；历史消息与分析通过外键关联，每次运行单独保存查询范围。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "messages",
+      "name": "messages",
+      "columns": [
+        {
+          "name": "message_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "messages_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "conversation_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_message_conversation",
+              "table": "conversations",
+              "column": "conversation_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "role",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [
+            "uq_messages_assistant_run"
+          ],
+          "nullable": true,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_message_run",
+              "table": "runs",
+              "column": "run_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_message_conversation",
+          "constraint_name": "fk_message_conversation",
+          "from_table": "messages",
+          "from_columns": [
+            "conversation_id"
+          ],
+          "to_table": "conversations",
+          "to_columns": [
+            "conversation_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "fk_message_run",
+          "constraint_name": "fk_message_run",
+          "from_table": "messages",
+          "from_columns": [
+            "run_id"
+          ],
+          "to_table": "runs",
+          "to_columns": [
+            "run_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (run_id) REFERENCES runs(run_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_messages_conversation_created ON public.messages USING btree (conversation_id, created_at)",
+          "name": "idx_messages_conversation_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "conversation_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "conversation_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX messages_pkey ON public.messages USING btree (message_id)",
+          "name": "messages_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "message_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "message_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_messages_assistant_run ON public.messages USING btree (run_id) WHERE (role = 'assistant'::text)",
+          "name": "uq_messages_assistant_run",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": true,
+          "columns": [
+            "run_id"
+          ],
+          "partial": true,
+          "predicate": "(role = 'assistant'::text)",
+          "column_details": [
+            {
+              "name": "run_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_message_content",
+          "expression": "((length(TRIM(BOTH FROM message_id)) > 0) AND (length(TRIM(BOTH FROM content)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM message_id)) > 0 AND length(TRIM(BOTH FROM content)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_message_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_message_role_run",
+          "expression": "(((role = 'user'::text) AND (run_id IS NULL)) OR ((role = 'assistant'::text) AND (run_id IS NOT NULL)))",
+          "sql": "CHECK (role = 'user'::text AND run_id IS NULL OR role = 'assistant'::text AND run_id IS NOT NULL)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER assistant_message_completed_run BEFORE INSERT ON messages FOR EACH ROW WHEN (new.role = 'assistant'::text) EXECUTE FUNCTION partrace_assistant_completed_run();\n\nCREATE OR REPLACE FUNCTION public.partrace_assistant_completed_run()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM runs\n        WHERE run_id = NEW.run_id AND conversation_id = NEW.conversation_id AND status = 'completed'\n    ) THEN\n        RAISE EXCEPTION 'assistant reply requires a completed run in the same conversation' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "assistant_message_completed_run",
+          "event": "BEFORE INSERT",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_assistant_completed_run()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_assistant_completed_run()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM runs\n        WHERE run_id = NEW.run_id AND conversation_id = NEW.conversation_id AND status = 'completed'\n    ) THEN\n        RAISE EXCEPTION 'assistant reply requires a completed run in the same conversation' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER assistant_message_completed_run BEFORE INSERT ON messages FOR EACH ROW WHEN (new.role = 'assistant'::text) EXECUTE FUNCTION partrace_assistant_completed_run()"
+        },
+        {
+          "sql": "CREATE TRIGGER message_append_only BEFORE UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('messages are append-only');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "message_append_only",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER message_append_only BEFORE UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('messages are append-only')"
+        },
+        {
+          "sql": "CREATE TRIGGER message_keep_history BEFORE DELETE ON messages FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep message history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "message_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER message_keep_history BEFORE DELETE ON messages FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep message history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE messages (\n    message_id TEXT PRIMARY KEY NOT NULL,\n    conversation_id TEXT NOT NULL,\n    role TEXT NOT NULL,\n    content TEXT NOT NULL,\n    run_id TEXT,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_message_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_message_content CHECK (length(trim(message_id)) > 0 AND length(trim(content)) > 0),\n    CONSTRAINT ck_message_role_run CHECK ((role = 'user' AND run_id IS NULL) OR (role = 'assistant' AND run_id IS NOT NULL)),\n    CONSTRAINT ck_message_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "聊天消息",
+      "domain": "agent",
+      "description": "不可覆盖的用户问题或完整助手答复；助手答复只关联同会话的 completed 运行，每次运行至多一条。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "runs",
+      "name": "runs",
+      "columns": [
+        {
+          "name": "run_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "runs_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "conversation_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_run_conversation",
+              "table": "conversations",
+              "column": "conversation_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "input_message_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_run_input_message",
+              "table": "messages",
+              "column": "message_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'running'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "plan_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "references_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "model_key",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "error_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "finished_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_run_conversation",
+          "constraint_name": "fk_run_conversation",
+          "from_table": "runs",
+          "from_columns": [
+            "conversation_id"
+          ],
+          "to_table": "conversations",
+          "to_columns": [
+            "conversation_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "fk_run_input_message",
+          "constraint_name": "fk_run_input_message",
+          "from_table": "runs",
+          "from_columns": [
+            "input_message_id"
+          ],
+          "to_table": "messages",
+          "to_columns": [
+            "message_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (input_message_id) REFERENCES messages(message_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_runs_conversation_created ON public.runs USING btree (conversation_id, created_at)",
+          "name": "idx_runs_conversation_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "conversation_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "conversation_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_runs_status_created ON public.runs USING btree (status, created_at)",
+          "name": "idx_runs_status_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "status",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "status",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX runs_pkey ON public.runs USING btree (run_id)",
+          "name": "runs_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "run_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "run_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_run_error",
+          "expression": "((error_json IS NULL) OR (jsonb_typeof(error_json) = 'object'::text))",
+          "sql": "CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object'::text)",
+          "validated": true
+        },
+        {
+          "name": "ck_run_identity",
+          "expression": "((length(TRIM(BOTH FROM run_id)) > 0) AND (length(TRIM(BOTH FROM model_key)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM run_id)) > 0 AND length(TRIM(BOTH FROM model_key)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_run_plan",
+          "expression": "\nCASE\n    WHEN ((jsonb_typeof(plan_json) = 'object'::text) AND (jsonb_typeof((plan_json -> 'query'::text)) = 'object'::text) AND (jsonb_typeof((plan_json -> 'query_text'::text)) = 'string'::text) AND (length(TRIM(BOTH FROM (plan_json ->> 'query_text'::text))) > 0) AND (jsonb_typeof((plan_json -> 'steps'::text)) = 'array'::text) AND (jsonb_typeof((plan_json #> '{query,recording_id}'::text[])) = 'string'::text) AND (length(TRIM(BOTH FROM (plan_json #>> '{query,recording_id}'::text[]))) > 0) AND (jsonb_typeof((plan_json #> '{query,camera_id}'::text[])) = 'string'::text) AND (length(TRIM(BOTH FROM (plan_json #>> '{query,camera_id}'::text[]))) > 0) AND (jsonb_typeof((plan_json #> '{query,zone_id}'::text[])) = 'string'::text) AND (length(TRIM(BOTH FROM (plan_json #>> '{query,zone_id}'::text[]))) > 0) AND (jsonb_typeof((plan_json #> '{query,start_offset_ms}'::text[])) = 'number'::text) AND (jsonb_typeof((plan_json #> '{query,end_offset_ms}'::text[])) = 'number'::text)) THEN COALESCE((((plan_json #>> '{query,start_offset_ms}'::text[]) ~ '^[0-9]+$'::text) AND ((plan_json #>> '{query,end_offset_ms}'::text[]) ~ '^[0-9]+$'::text) AND ((((plan_json #>> '{query,start_offset_ms}'::text[]))::numeric >= (0)::numeric) AND (((plan_json #>> '{query,start_offset_ms}'::text[]))::numeric <= ('9223372036854775807'::bigint)::numeric)) AND (((plan_json #>> '{query,end_offset_ms}'::text[]))::numeric <= ('9223372036854775807'::bigint)::numeric) AND (((plan_json #>> '{query,end_offset_ms}'::text[]))::numeric > ((plan_json #>> '{query,start_offset_ms}'::text[]))::numeric)), false)\n    ELSE false\nEND",
+          "sql": "CHECK (\nCASE\n    WHEN jsonb_typeof(plan_json) = 'object'::text AND jsonb_typeof(plan_json -> 'query'::text) = 'object'::text AND jsonb_typeof(plan_json -> 'query_text'::text) = 'string'::text AND length(TRIM(BOTH FROM plan_json ->> 'query_text'::text)) > 0 AND jsonb_typeof(plan_json -> 'steps'::text) = 'array'::text AND jsonb_typeof(plan_json #> '{query,recording_id}'::text[]) = 'string'::text AND length(TRIM(BOTH FROM plan_json #>> '{query,recording_id}'::text[])) > 0 AND jsonb_typeof(plan_json #> '{query,camera_id}'::text[]) = 'string'::text AND length(TRIM(BOTH FROM plan_json #>> '{query,camera_id}'::text[])) > 0 AND jsonb_typeof(plan_json #> '{query,zone_id}'::text[]) = 'string'::text AND length(TRIM(BOTH FROM plan_json #>> '{query,zone_id}'::text[])) > 0 AND jsonb_typeof(plan_json #> '{query,start_offset_ms}'::text[]) = 'number'::text AND jsonb_typeof(plan_json #> '{query,end_offset_ms}'::text[]) = 'number'::text THEN COALESCE((plan_json #>> '{query,start_offset_ms}'::text[]) ~ '^[0-9]+$'::text AND (plan_json #>> '{query,end_offset_ms}'::text[]) ~ '^[0-9]+$'::text AND ((plan_json #>> '{query,start_offset_ms}'::text[])::numeric) >= 0::numeric AND ((plan_json #>> '{query,start_offset_ms}'::text[])::numeric) <= '9223372036854775807'::bigint::numeric AND ((plan_json #>> '{query,end_offset_ms}'::text[])::numeric) <= '9223372036854775807'::bigint::numeric AND ((plan_json #>> '{query,end_offset_ms}'::text[])::numeric) > ((plan_json #>> '{query,start_offset_ms}'::text[])::numeric), false)\n    ELSE false\nEND)",
+          "validated": true
+        },
+        {
+          "name": "ck_run_references",
+          "expression": "(jsonb_typeof(references_json) = 'array'::text)",
+          "sql": "CHECK (jsonb_typeof(references_json) = 'array'::text)",
+          "validated": true
+        },
+        {
+          "name": "ck_run_status",
+          "expression": "(status = ANY (ARRAY['running'::text, 'completed'::text, 'stopped'::text, 'failed'::text]))",
+          "sql": "CHECK (status = ANY (ARRAY['running'::text, 'completed'::text, 'stopped'::text, 'failed'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_run_terminal",
+          "expression": "(((status = 'running'::text) AND (finished_at IS NULL) AND (error_json IS NULL)) OR ((status = ANY (ARRAY['completed'::text, 'stopped'::text])) AND (finished_at IS NOT NULL) AND (error_json IS NULL)) OR ((status = 'failed'::text) AND (finished_at IS NOT NULL) AND (error_json IS NOT NULL)))",
+          "sql": "CHECK (status = 'running'::text AND finished_at IS NULL AND error_json IS NULL OR (status = ANY (ARRAY['completed'::text, 'stopped'::text])) AND finished_at IS NOT NULL AND error_json IS NULL OR status = 'failed'::text AND finished_at IS NOT NULL AND error_json IS NOT NULL)",
+          "validated": true
+        },
+        {
+          "name": "ck_run_time",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone) AND ((finished_at IS NULL) OR (isfinite(finished_at) AND (finished_at >= created_at))))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone AND (finished_at IS NULL OR isfinite(finished_at) AND finished_at >= created_at))",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER run_facts_immutable BEFORE UPDATE ON runs FOR EACH ROW EXECUTE FUNCTION partrace_run_facts_immutable();\n\nCREATE OR REPLACE FUNCTION public.partrace_run_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.run_id, NEW.conversation_id, NEW.input_message_id, NEW.plan_json, NEW.model_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.run_id, OLD.conversation_id, OLD.input_message_id, OLD.plan_json, OLD.model_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'run input, confirmed plan and model configuration are immutable' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "run_facts_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_run_facts_immutable()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_run_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.run_id, NEW.conversation_id, NEW.input_message_id, NEW.plan_json, NEW.model_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.run_id, OLD.conversation_id, OLD.input_message_id, OLD.plan_json, OLD.model_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'run input, confirmed plan and model configuration are immutable' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER run_facts_immutable BEFORE UPDATE ON runs FOR EACH ROW EXECUTE FUNCTION partrace_run_facts_immutable()"
+        },
+        {
+          "sql": "CREATE TRIGGER run_input_and_scope BEFORE INSERT ON runs FOR EACH ROW EXECUTE FUNCTION partrace_run_input_and_scope();\n\nCREATE OR REPLACE FUNCTION public.partrace_run_input_and_scope()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM messages\n        WHERE message_id = NEW.input_message_id AND conversation_id = NEW.conversation_id AND role = 'user'\n    ) THEN\n        RAISE EXCEPTION 'run input must be a user message in the same conversation' USING ERRCODE = '23514';\n    END IF;\n    IF NOT EXISTS (\n        SELECT 1 FROM recordings\n        WHERE recording_id = NEW.plan_json #>> '{query,recording_id}'\n    ) THEN\n        RAISE EXCEPTION 'run query must refer to an existing recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "name": "run_input_and_scope",
+          "event": "BEFORE INSERT",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_run_input_and_scope()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_run_input_and_scope()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF NOT EXISTS (\n        SELECT 1 FROM messages\n        WHERE message_id = NEW.input_message_id AND conversation_id = NEW.conversation_id AND role = 'user'\n    ) THEN\n        RAISE EXCEPTION 'run input must be a user message in the same conversation' USING ERRCODE = '23514';\n    END IF;\n    IF NOT EXISTS (\n        SELECT 1 FROM recordings\n        WHERE recording_id = NEW.plan_json #>> '{query,recording_id}'\n    ) THEN\n        RAISE EXCEPTION 'run query must refer to an existing recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER run_input_and_scope BEFORE INSERT ON runs FOR EACH ROW EXECUTE FUNCTION partrace_run_input_and_scope()"
+        },
+        {
+          "sql": "CREATE TRIGGER run_keep_history BEFORE DELETE ON runs FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep run history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "run_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER run_keep_history BEFORE DELETE ON runs FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep run history')"
+        },
+        {
+          "sql": "CREATE TRIGGER run_terminal_immutable BEFORE UPDATE ON runs FOR EACH ROW WHEN (old.status <> 'running'::text) EXECUTE FUNCTION partrace_reject_change('terminal runs are immutable');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "run_terminal_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER run_terminal_immutable BEFORE UPDATE ON runs FOR EACH ROW WHEN (old.status <> 'running'::text) EXECUTE FUNCTION partrace_reject_change('terminal runs are immutable')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE runs (\n    run_id TEXT PRIMARY KEY NOT NULL,\n    conversation_id TEXT NOT NULL,\n    input_message_id TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'running',\n    plan_json JSONB NOT NULL,\n    references_json JSONB NOT NULL DEFAULT '[]'::jsonb,\n    model_key TEXT NOT NULL,\n    error_json JSONB,\n    created_at TIMESTAMPTZ NOT NULL,\n    finished_at TIMESTAMPTZ,\n    CONSTRAINT fk_run_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_run_input_message FOREIGN KEY (input_message_id) REFERENCES messages (message_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_run_identity CHECK (length(trim(run_id)) > 0 AND length(trim(model_key)) > 0),\n    CONSTRAINT ck_run_status CHECK (status IN ('running', 'completed', 'stopped', 'failed')),\n    CONSTRAINT ck_run_plan CHECK (\n        CASE WHEN jsonb_typeof(plan_json) = 'object'\n            AND jsonb_typeof(plan_json -> 'query') = 'object'\n            AND jsonb_typeof(plan_json -> 'query_text') = 'string'\n            AND length(trim(plan_json ->> 'query_text')) > 0\n            AND jsonb_typeof(plan_json -> 'steps') = 'array'\n            AND jsonb_typeof(plan_json #> '{query,recording_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,recording_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,camera_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,camera_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,zone_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,zone_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,start_offset_ms}') = 'number'\n            AND jsonb_typeof(plan_json #> '{query,end_offset_ms}') = 'number'\n        THEN COALESCE(\n            (plan_json #>> '{query,start_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,end_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,start_offset_ms}')::numeric BETWEEN 0 AND 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric <= 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric > (plan_json #>> '{query,start_offset_ms}')::numeric,\n            FALSE\n        )\n        ELSE FALSE END\n    ),\n    CONSTRAINT ck_run_references CHECK (jsonb_typeof(references_json) = 'array'),\n    CONSTRAINT ck_run_time CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00' AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at >= created_at))),\n    CONSTRAINT ck_run_terminal CHECK (\n        (status = 'running' AND finished_at IS NULL AND error_json IS NULL)\n        OR (status IN ('completed', 'stopped') AND finished_at IS NOT NULL AND error_json IS NULL)\n        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL)\n    ),\n    CONSTRAINT ck_run_error CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object')\n);",
+      "label": "Agent 分析",
+      "domain": "agent",
+      "description": "确认后的计划、模型配置版本、运行状态及事件/关键帧引用；引用 JSON 由服务验证，终态不可覆盖，不能替代人工核查。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "parcels",
+      "name": "parcels",
+      "columns": [
+        {
+          "name": "parcel_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "parcels_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "parcel_no",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "uq_parcel_no"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [],
+      "indices": [
+        {
+          "sql": "CREATE UNIQUE INDEX parcels_pkey ON public.parcels USING btree (parcel_id)",
+          "name": "parcels_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "parcel_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "parcel_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_parcel_no ON public.parcels USING btree (parcel_no)",
+          "name": "uq_parcel_no",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "u",
+          "unique": true,
+          "columns": [
+            "parcel_no"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "parcel_no",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_parcel_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_parcel_identity",
+          "expression": "((length(TRIM(BOTH FROM parcel_id)) > 0) AND (length(TRIM(BOTH FROM parcel_no)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM parcel_id)) > 0 AND length(TRIM(BOTH FROM parcel_no)) > 0)",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER parcel_facts_immutable BEFORE UPDATE ON parcels FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel identity and creation time are immutable');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "parcel_facts_immutable",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER parcel_facts_immutable BEFORE UPDATE ON parcels FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel identity and creation time are immutable')"
+        },
+        {
+          "sql": "CREATE TRIGGER parcel_keep_history BEFORE DELETE ON parcels FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "parcel_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER parcel_keep_history BEFORE DELETE ON parcels FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE parcels (\n    parcel_id TEXT PRIMARY KEY NOT NULL,\n    parcel_no TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT uq_parcel_no UNIQUE (parcel_no),\n    CONSTRAINT ck_parcel_identity CHECK (length(trim(parcel_id)) > 0 AND length(trim(parcel_no)) > 0),\n    CONSTRAINT ck_parcel_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "包裹",
+      "domain": "parcel",
+      "description": "包裹内部 ID、唯一文本单号与建档时间；二维码由单号生成，保留前导零。状态和当前位置由最后一条入出库记录派生，身份与建档时间不可覆盖。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "parcel_records",
+      "name": "parcel_records",
+      "columns": [
+        {
+          "name": "record_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "parcel_records_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "parcel_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [
+            "uq_parcel_record_sequence"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_parcel_record_parcel",
+              "table": "parcels",
+              "column": "parcel_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "sequence_no",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_parcel_record_sequence"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "action",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "zone_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "operator_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "fk_parcel_record_operator",
+              "table": "users",
+              "column": "user_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "fk_parcel_record_operator",
+          "constraint_name": "fk_parcel_record_operator",
+          "from_table": "parcel_records",
+          "from_columns": [
+            "operator_id"
+          ],
+          "to_table": "users",
+          "to_columns": [
+            "user_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (operator_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "fk_parcel_record_parcel",
+          "constraint_name": "fk_parcel_record_parcel",
+          "from_table": "parcel_records",
+          "from_columns": [
+            "parcel_id"
+          ],
+          "to_table": "parcels",
+          "to_columns": [
+            "parcel_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (parcel_id) REFERENCES parcels(parcel_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_parcel_records_operator_created ON public.parcel_records USING btree (operator_id, created_at)",
+          "name": "idx_parcel_records_operator_created",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "operator_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "operator_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX parcel_records_pkey ON public.parcel_records USING btree (record_id)",
+          "name": "parcel_records_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "record_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "record_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_parcel_record_sequence ON public.parcel_records USING btree (parcel_id, sequence_no)",
+          "name": "uq_parcel_record_sequence",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "u",
+          "unique": true,
+          "columns": [
+            "parcel_id",
+            "sequence_no"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "parcel_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "sequence_no",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_parcel_record_action",
+          "expression": "(action = ANY (ARRAY['inbound'::text, 'outbound'::text]))",
+          "sql": "CHECK (action = ANY (ARRAY['inbound'::text, 'outbound'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_parcel_record_created",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone)",
+          "validated": true
+        },
+        {
+          "name": "ck_parcel_record_identity",
+          "expression": "((length(TRIM(BOTH FROM record_id)) > 0) AND (length(TRIM(BOTH FROM parcel_id)) > 0) AND (length(TRIM(BOTH FROM operator_id)) > 0))",
+          "sql": "CHECK (length(TRIM(BOTH FROM record_id)) > 0 AND length(TRIM(BOTH FROM parcel_id)) > 0 AND length(TRIM(BOTH FROM operator_id)) > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_parcel_record_sequence",
+          "expression": "(sequence_no > 0)",
+          "sql": "CHECK (sequence_no > 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_parcel_record_zone",
+          "expression": "(((zone_id IS NULL) OR (length(TRIM(BOTH FROM zone_id)) > 0)) AND ((action <> 'inbound'::text) OR (zone_id IS NOT NULL)))",
+          "sql": "CHECK ((zone_id IS NULL OR length(TRIM(BOTH FROM zone_id)) > 0) AND (action <> 'inbound'::text OR zone_id IS NOT NULL))",
+          "validated": true
+        }
+      ],
+      "triggers": [
+        {
+          "sql": "CREATE TRIGGER parcel_record_append_only BEFORE UPDATE ON parcel_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel records are append-only');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "parcel_record_append_only",
+          "event": "BEFORE UPDATE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER parcel_record_append_only BEFORE UPDATE ON parcel_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('parcel records are append-only')"
+        },
+        {
+          "sql": "CREATE TRIGGER parcel_record_keep_history BEFORE DELETE ON parcel_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel record history');\n\nCREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n;",
+          "name": "parcel_record_keep_history",
+          "event": "BEFORE DELETE",
+          "enabled": "O",
+          "constraint": false,
+          "deferrable": false,
+          "function_name": "partrace_reject_change()",
+          "initially_deferred": false,
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_reject_change()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    RAISE EXCEPTION '%', TG_ARGV[0] USING ERRCODE = '23514';\nEND;\n$function$\n",
+          "trigger_definition": "CREATE TRIGGER parcel_record_keep_history BEFORE DELETE ON parcel_records FOR EACH ROW EXECUTE FUNCTION partrace_reject_change('keep parcel record history')"
+        }
+      ],
+      "row_count": null,
+      "create_sql": "CREATE TABLE parcel_records (\n    record_id TEXT PRIMARY KEY NOT NULL,\n    parcel_id TEXT NOT NULL,\n    sequence_no BIGINT NOT NULL,\n    action TEXT NOT NULL,\n    zone_id TEXT,\n    operator_id TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT uq_parcel_record_sequence UNIQUE (parcel_id, sequence_no),\n    CONSTRAINT fk_parcel_record_parcel FOREIGN KEY (parcel_id) REFERENCES parcels (parcel_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_parcel_record_operator FOREIGN KEY (operator_id) REFERENCES users (user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_parcel_record_identity CHECK (length(trim(record_id)) > 0 AND length(trim(parcel_id)) > 0 AND length(trim(operator_id)) > 0),\n    CONSTRAINT ck_parcel_record_sequence CHECK (sequence_no > 0),\n    CONSTRAINT ck_parcel_record_action CHECK (action IN ('inbound', 'outbound')),\n    CONSTRAINT ck_parcel_record_zone CHECK ((zone_id IS NULL OR length(trim(zone_id)) > 0) AND (action <> 'inbound' OR zone_id IS NOT NULL)),\n    CONSTRAINT ck_parcel_record_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "label": "入出库记录",
+      "domain": "parcel",
+      "description": "管理员确认的一次入库或出库，关联包裹与 App 操作人；入库须有区域，记录只追加。SQL 保证正序号及同包裹序号唯一；首次入库、交替顺序、序号分配、出库位置和幂等比较由服务锁定包裹后的事务验证。",
+      "source_file": "docs/database/schema.sql"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "fk_event_recording",
+      "constraint_name": "fk_event_recording",
+      "from_table": "events",
+      "from_columns": [
+        "recording_id"
+      ],
+      "to_table": "recordings",
+      "to_columns": [
+        "recording_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (recording_id) REFERENCES recordings(recording_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_evidence_event",
+      "constraint_name": "fk_evidence_event",
+      "from_table": "evidence",
+      "from_columns": [
+        "event_id"
+      ],
+      "to_table": "events",
+      "to_columns": [
+        "event_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_embedding_event",
+      "constraint_name": "fk_embedding_event",
+      "from_table": "event_embeddings",
+      "from_columns": [
+        "event_id"
+      ],
+      "to_table": "events",
+      "to_columns": [
+        "event_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_embedding_evidence_event",
+      "constraint_name": "fk_embedding_evidence_event",
+      "from_table": "event_embeddings",
+      "from_columns": [
+        "evidence_id",
+        "event_id"
+      ],
+      "to_table": "evidence",
+      "to_columns": [
+        "evidence_id",
+        "event_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (evidence_id, event_id) REFERENCES evidence(evidence_id, event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_review_event",
+      "constraint_name": "fk_review_event",
+      "from_table": "review_records",
+      "from_columns": [
+        "event_id"
+      ],
+      "to_table": "events",
+      "to_columns": [
+        "event_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (event_id) REFERENCES events(event_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_review_user",
+      "constraint_name": "fk_review_user",
+      "from_table": "review_records",
+      "from_columns": [
+        "reviewer_id"
+      ],
+      "to_table": "users",
+      "to_columns": [
+        "user_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (reviewer_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_conversation_user",
+      "constraint_name": "fk_conversation_user",
+      "from_table": "conversations",
+      "from_columns": [
+        "user_id"
+      ],
+      "to_table": "users",
+      "to_columns": [
+        "user_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (user_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_message_conversation",
+      "constraint_name": "fk_message_conversation",
+      "from_table": "messages",
+      "from_columns": [
+        "conversation_id"
+      ],
+      "to_table": "conversations",
+      "to_columns": [
+        "conversation_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_message_run",
+      "constraint_name": "fk_message_run",
+      "from_table": "messages",
+      "from_columns": [
+        "run_id"
+      ],
+      "to_table": "runs",
+      "to_columns": [
+        "run_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (run_id) REFERENCES runs(run_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_run_conversation",
+      "constraint_name": "fk_run_conversation",
+      "from_table": "runs",
+      "from_columns": [
+        "conversation_id"
+      ],
+      "to_table": "conversations",
+      "to_columns": [
+        "conversation_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_run_input_message",
+      "constraint_name": "fk_run_input_message",
+      "from_table": "runs",
+      "from_columns": [
+        "input_message_id"
+      ],
+      "to_table": "messages",
+      "to_columns": [
+        "message_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (input_message_id) REFERENCES messages(message_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_parcel_record_operator",
+      "constraint_name": "fk_parcel_record_operator",
+      "from_table": "parcel_records",
+      "from_columns": [
+        "operator_id"
+      ],
+      "to_table": "users",
+      "to_columns": [
+        "user_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (operator_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "fk_parcel_record_parcel",
+      "constraint_name": "fk_parcel_record_parcel",
+      "from_table": "parcel_records",
+      "from_columns": [
+        "parcel_id"
+      ],
+      "to_table": "parcels",
+      "to_columns": [
+        "parcel_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (parcel_id) REFERENCES parcels(parcel_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    }
+  ],
+  "logical_relationships": [
+    {
+      "id": "logical_run_event_reference",
+      "from_table": "runs",
+      "from_columns": [
+        "references_json"
+      ],
+      "to_table": "events",
+      "to_columns": [
+        "event_id"
+      ],
+      "kind": "logical_snapshot",
+      "description": "references_json[*].event_id 是分析引用；服务验证事件存在、属于本次运行查询的录像以及引用完整形状，SQL 不检查 JSONB 外键。"
+    },
+    {
+      "id": "logical_run_evidence_reference",
+      "from_table": "runs",
+      "from_columns": [
+        "references_json"
+      ],
+      "to_table": "evidence",
+      "to_columns": [
+        "evidence_id"
+      ],
+      "kind": "logical_snapshot",
+      "description": "references_json[*].evidence_id 是分析引用；服务验证关键帧属于所引用事件及其当前媒体状态，SQL 不检查 JSONB 外键。"
+    }
+  ],
+  "domains": [
+    {
+      "id": "media",
+      "label": "视频素材",
+      "description": "视频来源、时间与文件状态"
+    },
+    {
+      "id": "retrieval",
+      "label": "事件与检索",
+      "description": "区域事件、关键帧与语义向量"
+    },
+    {
+      "id": "agent",
+      "label": "AI 会话与运行",
+      "description": "对话、执行计划与证据引用"
+    },
+    {
+      "id": "review",
+      "label": "账号与核查",
+      "description": "App 账号与人工复核记录"
+    },
+    {
+      "id": "parcel",
+      "label": "包裹与入出库",
+      "description": "唯一单号、扫码查询与管理员确认流水"
+    }
+  ],
+  "totals": {
+    "tables": 11,
+    "columns": 77,
+    "foreign_keys": 13,
+    "logical_relationships": 2,
+    "indices": 30,
+    "checks": 52,
+    "triggers": 25
+  }
+}

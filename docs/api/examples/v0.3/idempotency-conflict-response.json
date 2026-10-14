@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "相同记录 ID 的内容与已保存请求不同。",
+    "request_id": "req_mock_001"
+  }
+}

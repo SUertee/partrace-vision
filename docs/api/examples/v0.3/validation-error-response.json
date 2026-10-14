@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "validation_error",
+    "message": "输入字段或跨对象引用校验失败，未发布结果。",
+    "request_id": "req_mock_001"
+  }
+}

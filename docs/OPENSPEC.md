@@ -9,17 +9,19 @@ ParTrace Vision 使用 OpenSpec **1.14.1**、默认 `spec-driven` schema 和 `co
 | [AGENTS.md](../AGENTS.md) | 团队与 AI 助手共用开发规则 |
 | [开发计划](DEVELOPMENT_PLAN.md) | 范围、工作包、依赖、交付和验收 |
 | [GitHub Issues](https://github.com/SUertee/partrace-vision/issues) | 实际进度、阻塞和凭据 |
-| [docs/api](api/README.md) | 共享字段、接口及 JSON 样例 |
+| [模块设计](modules/README.md) | 全部业务模块、职责及 DB／API 关联 |
+| [数据库 SQL](database/schema.sql) | 表、字段与约束；说明见 [数据库设计](database/README.md) |
+| [OpenAPI](api/openapi.json) | 参数与返回契约；说明和 [v0.3 模拟样例](api/examples/v0.3/) 同目录维护 |
 | [openspec/config.yaml](../openspec/config.yaml) | 项目背景、产物规则及执行指导 |
 | `openspec/changes/<name>/` | 当前提案、行为增量、设计与任务 |
 | `openspec/specs/` | 已接受的规格基线 |
 | `openspec/changes/archive/` | 已完成变更的历史记录 |
 
-规格说明应满足什么约定，不能独立证明代码存在或验收通过。文档契约基线与业务实现分别交付；接口字段只在 docs/api 维护，规格引用它。CLI 的格式校验不会自动验证 config 中每条自然语言规则。
+规格说明应满足什么约定，不能独立证明代码存在或验收通过。字段以 SQL／OpenAPI 为准，规格通过链接引用，不复制维护。当前技术方案为 Android Kotlin + Compose、Python + FastAPI；Backend 与 Agent 分模块共用 API 应用，Vision 独立工作进程，业务与向量同库使用 PostgreSQL + pgvector。模型、维度和媒体存储仍待确认，服务尚未实现。CLI 格式校验不会自动验证 config 中每条自然语言规则。
 
 ## 成员安装
 
-要求 Node.js >=20.19.0；本次使用 Node.js 24.18.0。OpenSpec 是开发工具，不改变 Android 的 JDK、SDK 和 Gradle 要求。
+要求 Node.js >=20.19.0；原接入记录使用 Node.js 24.18.0，本次整合环境见 [验证记录](../openspec/changes/d01-shared-contracts/verification.md)。OpenSpec 是开发工具，不改变 Android 的 JDK、SDK 和 Gradle 要求。
 
 在已拉取本接入改动的仓库根目录，Windows PowerShell 逐条执行：
 
@@ -66,10 +68,10 @@ git diff --check
 
 ## 日常开发
 
-1. 从最新 dev 建单项任务分支，读取工作包、Issue、模块 README、接口契约和相关规格。
+1. 从最新 dev 建单项任务分支，读取工作包、Issue、模块设计、代码目录 README、SQL／OpenAPI 和相关规格。
 2. 新功能、接口或业务语义变化先提出 change，说明范围、依赖与影响；提案命名如 `d07-stop-run`。文档纠错等小修复可直接 PR，并说明无需 change。
 3. 在 AI 对话中发起提案。默认产物为 `proposal.md`、`specs/<capability>/spec.md`、`design.md` 和 `tasks.md`；共享边界明确后按任务实现。纯工具/文档 change 可在 `.openspec.yaml` 声明 `skip_specs: true`，不为通过校验编造业务要求。
-4. 涉及契约时，同一 PR 更新 docs/api、样例与受影响规格；说明调用方和兼容方式。任务完成一项再勾选一项。
+4. 涉及契约时，同一 PR 更新受影响的模块说明、SQL／OpenAPI、样例与规格；SQL 改变时重新加载隔离空库并导出结构，相关来源改变后生成 HTML 图、同步离线工作台。说明调用方和兼容方式，任务完成一项再勾选一项。
 5. 执行规格检查及模块实际验证，记录环境、输入来源、结果、失败与未验证项；PR 关联 Issue 和 change。
 6. 完成本 change 自身的交付后，在任务分支归档，将归档与最终代码一起提交评审；归档操作不表示 PR 已合并。团队尚未确认的契约保持活跃，禁止提前勾选或归档。
 
@@ -89,13 +91,13 @@ git diff --check
 
 ## 首个 D01 提案
 
-当前 [d01-shared-contracts](../openspec/changes/d01-shared-contracts/proposal.md) 关联 [Issue #1](https://github.com/SUertee/partrace-vision/issues/1)，并衔接 [PR #12 的接口与数据库草案](https://github.com/SUertee/partrace-vision/pull/12)。它是待评审的契约规格，不代表接口冻结、服务运行或 D01 完成。该 change 归档后，可通过 `openspec list --specs` 和 archive 目录查找最新位置。
+当前 [d01-shared-contracts](../openspec/changes/d01-shared-contracts/proposal.md) 关联 [Issue #1](https://github.com/SUertee/partrace-vision/issues/1)，来源为已进入 `dev` 的 **0.3-mvp-draft：11 张表、27 个 API 操作**。按当前 [模块设计](modules/README.md)、[SQL](database/schema.sql)、[OpenAPI](api/openapi.json) 和 [模拟样例](api/examples/v0.3/) 评审，PR #12 仅作历史来源。契约仍未冻结，不代表服务运行或 D01 完成。该 change 归档后，可通过 `openspec list --specs` 和 archive 目录查找最新位置。
 
-先确认 PR #12 的版本和差异，再让四方确认 ID、时间、来源、覆盖与索引状态、证据失效、幂等、引用与停止约定；不在 OpenSpec 重抄字段表或 JSON schemas。契约确认后的实现分别落在 D04、D05、D07、D08、D09，D10 继续使用同一真实事件验收。
+四方仍需确认 ID、时间、来源、覆盖、证据失效、幂等和引用约定；区分事件查询与语义检索的“未索引”，并评审 AI 会话／消息／运行历史、停止和服务重启后的失败状态。首轮 22 个 API 实现分别落在 D04、D05、D07、D08、D09，D10 用同一真实事件验收。包裹五个接口保持 P1，在 D10 后按建档 → 扫码查询 → 人工确认流水 → Agent 只读历史推进。
 
 ## CI 与升级
 
-[OpenSpec 工作流](../.github/workflows/openspec.yml) 对目标为 dev/main 的 PR、dev/main push 及手动运行执行固定版本的规格与归档任务检查。它不构建 Android、不验证真实数据，也不修改分支保护或把自己设为必需检查。远端是否通过以该 PR 的 Actions 记录为准。
+[CI 工作流](../.github/workflows/openspec.yml) 对目标为 dev/main 的 PR、dev/main push 及手动运行执行两个独立检查：OpenSpec 固定版本的格式／归档任务检查，以及 `Validate design documentation` 的五项 Python 离线同步检查（命令见 [文档入口](README.md#目录与维护)）。后者核对已保存结构快照、HTML 图和内嵌工作台，不启动 PostgreSQL 或真实业务 API。两者均不构建 Android、不代替业务验收，也不修改分支保护。远端是否通过以该 PR 的 Actions 记录为准。
 
 升级应单独开 PR：选定具体版本，更新此文档、AGENTS 和 CI 中的版本，安装该版本，再用 `init --tools codex,claude --profile core` 重新生成本项目入口并核对差异、重跑验证。此处不传 `--language`，保留现有 config。普通 `update` 会采用当前用户的 profile/delivery 设置，不能假设每个成员都一致；不要顺手改全局 profile。
 

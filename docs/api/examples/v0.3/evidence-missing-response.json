@@ -1,0 +1,16 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "evidence": {
+    "evidence_id": "evd_mock_001",
+    "event_id": "evt_mock_001",
+    "offset_ms": 35000,
+    "bbox_json": [
+      0.4,
+      0.2,
+      0.1,
+      0.4
+    ],
+    "media_status": "missing",
+    "media_url": null
+  }
+}

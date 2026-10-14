@@ -1,0 +1,6233 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "ParTrace Vision MVP API",
+    "version": "0.3-mvp-draft",
+    "description": "设计草案，未实现、未冻结。单视频区域事件、关键帧、文本向量、人工核查、AI聊天/分析历史及二维码包裹入出库；十一张SQL表（77字段），27个草案操作。已选PostgreSQL+pgvector；模型/维度、鉴权和服务未实现，未建立ANN索引或生产库。API形状保持UTC时间字符串、JSON对象/数组和embedding数组。 全部外部路径以/api/v1为前缀，Agent命名空间为/api/v1/agent，代码归属仍是agent/；统一路径不表示网关已部署。v1是路由主版本，0.3-mvp-draft是本次未冻结契约资料/示例版本，api_version字段保持后者。 Android只配置一个API base URL；backend/agent可分模块实现，内部接入仍待实现。"
+  },
+  "servers": [
+    {
+      "url": "https://api.example.invalid",
+      "description": "统一公开入口的占位地址；当前没有真实API服务、统一入口或网关部署。"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Backend",
+      "description": "backend/ 工作包；19 operations，含5个包裹建档/查询与管理员入出库操作。"
+    },
+    {
+      "name": "Agent",
+      "description": "agent/ 独立工作包；8 operations，持久化自己会话和运行状态，监控事实工具只读。"
+    }
+  ],
+  "x-design-status": "draft-not-implemented",
+  "x-source-revisions": {
+    "technical": "r51",
+    "prd": "r230",
+    "scope": "2026-10-13 用户要求事件向量关联、AI聊天/分析持久化及二维码包裹入出库；包裹5操作已纳入本地未冻结设计，未修改飞书原文。 用户已确认AI会话不固定录像；每次分析仍使用单视频Query。"
+  },
+  "paths": {
+    "/api/v1/user": {
+      "get": {
+        "operationId": "get_user",
+        "summary": "读取当前用户",
+        "description": "认证方式仍待确认；Bearer subject 由服务端映射 users.user_id，缺失/无效身份 401，禁用身份 403。只返回公开资料，不创建用户、不读取 SDK 凭据，不扩大授权资源范围。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。 路径user仍代表认证主体映射的当前用户；不接收user_id来读取其他人。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "responses": {
+          "200": {
+            "description": "当前 active 用户资料",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "身份未认证或无法映射",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户已禁用或没有权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/configs/{config_version}": {
+      "get": {
+        "operationId": "读取不可变区域配置",
+        "summary": "读取不可变区域配置",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "config_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/recordings": {
+      "get": {
+        "operationId": "列出已完整发布录制",
+        "summary": "列出已完整发布录制",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "camera_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      },
+      "post": {
+        "operationId": "原子导入视频事件与关键帧",
+        "summary": "原子导入视频事件与关键帧",
+        "description": "首次导入 201；同 recording_id + 服务端规范化清单/文件 SHA256 重放 200。同 ID 内容改变 409。文件验证与事实发布必须全部成功；失败不落半包数据。仅 mock 无媒体可以 JSON；真实输入用 multipart。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "相同 ID 对应不同内容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "上传超限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "不支持的媒体类型",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "相同输入重放原结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/MultipartRecordingImport"
+              },
+              "encoding": {
+                "manifest": {
+                  "contentType": "application/json"
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MockRecordingManifest"
+              }
+            }
+          }
+        },
+        "x-allowed-roles": [
+          "admin"
+        ],
+        "x-required-scope": "data:ingest"
+      }
+    },
+    "/api/v1/recordings/{recording_id}": {
+      "get": {
+        "operationId": "读取录制元数据",
+        "summary": "读取录制元数据",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "recording_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "按单视频区域与时间查事件",
+        "summary": "按单视频区域与时间查事件",
+        "description": "必须给出 start_offset_ms/end_offset_ms 或 start/end 其中一对，不能混用。UTC 仅在已验证 started_at 下换算。返回规范化偏移与录制交集摘要；结果完整返回，不隐式截断，超配置限额返回 422。视频偏移窗口 [start,end)，事件相交，零时长点按窗口包含判断。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "recording_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          },
+          {
+            "name": "camera_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          },
+          {
+            "name": "zone_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          },
+          {
+            "name": "start_offset_ms",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OffsetMs"
+            },
+            "description": ""
+          },
+          {
+            "name": "end_offset_ms",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OffsetMs"
+            },
+            "description": ""
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UtcTime"
+            },
+            "description": ""
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UtcTime"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/events/{event_id}": {
+      "get": {
+        "operationId": "读取事件与关键帧",
+        "summary": "读取事件与关键帧",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/evidence/{evidence_id}": {
+      "get": {
+        "operationId": "读取关键帧元数据",
+        "summary": "读取关键帧元数据",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/evidence/{evidence_id}/media": {
+      "get": {
+        "operationId": "读取真实关键帧字节",
+        "summary": "读取真实关键帧字节",
+        "description": "available 且真实文件存在才返回 200。missing 返回 404 media_missing；不存在的 evidence 返回 404 not_found；禁止返回占位图充当成功。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "真实关键帧字节",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/review-records": {
+      "get": {
+        "operationId": "列出人工核查记录",
+        "summary": "列出人工核查记录",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "recording_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      },
+      "post": {
+        "operationId": "保存单事件人工核查",
+        "summary": "保存单事件人工核查",
+        "description": "仅管理员显式提交；query 在服务端规范化，验证事件命中有效视频窗口并固定所属区域/摄像头。全部 event 关键帧自动引用，不接受客户端快照。同 review_id + 当前身份 + 相同规范化请求重放 200，内容不同 409。事实不修改，核查记录只追加。 用户必须存在、active、role=admin 且已授权目标事件；reviewer_id 从当前服务端身份填入，不接收客户端值。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "相同 ID 对应不同内容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同一次人工保存重放",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCreateRequest"
+              }
+            }
+          }
+        },
+        "x-allowed-roles": [
+          "admin"
+        ],
+        "x-required-scope": "reviews:write"
+      }
+    },
+    "/api/v1/review-records/{review_id}": {
+      "get": {
+        "operationId": "回读核查与当前证据状态",
+        "summary": "回读核查与当前证据状态",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份没有授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源或真实媒体不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read"
+      }
+    },
+    "/api/v1/agent/plans": {
+      "post": {
+        "operationId": "问题转为可修改查询",
+        "summary": "问题转为可修改查询",
+        "description": "设计草案，尚未实现。仅当前active会话owner可访问；每次请求（含历史、停止及同ID重试）校验data:read和本次Query.recording_id的当前录像授权，禁止以其他轮次或会话权限替代。禁用、非owner、scope不足或该次录像未授权返回403，不返回正文、计划、状态、摘要或引用。引用event须来自本次Query录像并命中查询范围，evidence须属于对应event，并重新读取当前媒体状态；媒体missing不等于失去授权。Agent可保存自己的AI历史，监控事实工具凭据仍仅data:read，不能写监控事实、向量或人工核查。input_message_id必须是owner同会话的user消息；从其正文生成可修改query/query_text/steps。scope仅限定本次单视频分析，可与同会话其他运行的录像不同；不单独保存plans。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner、data:read不足或本次查询录像未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "会话、消息、运行或录制不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentPlanRequest"
+              }
+            }
+          }
+        },
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agent/runs": {
+      "post": {
+        "operationId": "执行已确认只读查询",
+        "summary": "执行已确认只读查询",
+        "description": "设计草案，尚未实现。仅当前active会话owner可访问；每次请求（含历史、停止及同ID重试）校验data:read和本次Query.recording_id的当前录像授权，禁止以其他轮次或会话权限替代。禁用、非owner、scope不足或该次录像未授权返回403，不返回正文、计划、状态、摘要或引用。引用event须来自本次Query录像并命中查询范围，evidence须属于对应event，并重新读取当前媒体状态；媒体missing不等于失去授权。Agent可保存自己的AI历史，监控事实工具凭据仍仅data:read，不能写监控事实、向量或人工核查。客户端稳定run_id绑定input_message_id与最终确认plan；消息须为同会话user问题。首次202；相同run_id+owner+全部规范input/plan重试200且不启动第二次，不同内容409。plan保存实际query_text，本次录像可与同会话其他运行不同；model_key由固定模型与运行配置版本生成。completed终态与唯一完整assistant答复同事务提交，提交前再次验证本次录像权限与引用归属；running/stopped/failed只有状态、summary=null。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner、data:read不足或本次查询录像未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "相同请求重放既有运行，不启动第二次",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "相同run_id规范请求不同",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "会话、消息、运行或录制不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          }
+        },
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agent/runs/{run_id}": {
+      "get": {
+        "operationId": "读取运行状态与引用",
+        "summary": "读取运行状态与引用",
+        "description": "设计草案，尚未实现。仅当前active会话owner可访问；每次请求（含历史、停止及同ID重试）校验data:read和本次Query.recording_id的当前录像授权，禁止以其他轮次或会话权限替代。禁用、非owner、scope不足或该次录像未授权返回403，不返回正文、计划、状态、摘要或引用。引用event须来自本次Query录像并命中查询范围，evidence须属于对应event，并重新读取当前媒体状态；媒体missing不等于失去授权。Agent可保存自己的AI历史，监控事实工具凭据仍仅data:read，不能写监控事实、向量或人工核查。回读该运行已保存的计划、引用、model_key、状态和错误，录像权限来自该运行plan.query而非会话。completed摘要取自关联助手消息；重启旧running置failed/service_restarted，历史保留，不自动续跑；仅不存在ID返回404。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner、data:read不足或本次查询录像未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "会话、消息、运行或录制不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agent/runs/{run_id}/stop": {
+      "post": {
+        "operationId": "停止只读运行",
+        "summary": "停止只读运行",
+        "description": "设计草案，尚未实现。仅当前active会话owner可访问；每次请求（含历史、停止及同ID重试）校验data:read和本次Query.recording_id的当前录像授权，禁止以其他轮次或会话权限替代。禁用、非owner、scope不足或该次录像未授权返回403，不返回正文、计划、状态、摘要或引用。引用event须来自本次Query录像并命中查询范围，evidence须属于对应event，并重新读取当前媒体状态；媒体missing不等于失去授权。Agent可保存自己的AI历史，监控事实工具凭据仍仅data:read，不能写监控事实、向量或人工核查。按该运行plan.query验证当前录像权限后原子停止running；completed/stopped/failed为终态，重复停止回读当前状态。停止后晚到回调不追加结果、引用、状态或助手消息。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner、data:read不足或本次查询录像未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "会话、消息、运行或录制不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentStopRequest"
+              }
+            }
+          }
+        },
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/event-embeddings": {
+      "post": {
+        "operationId": "写入事件描述文本向量",
+        "summary": "写入事件描述文本向量",
+        "description": "设计草案，尚未实现。服务端同时检查 active 用户、角色、token scope 和资源授权。 一次一条；检查1–16000维有限非全零向量、dimensions、模型编码配置、Event/Evidence 归属。服务端算内容摘要和时间；首次 201，同 embedding_id + 身份 + 全部规范请求重试 200，不同内容 409。相同 content_sha256 但向量/模型改变仍冲突。Agent 后端凭据只有 data:read，禁止写入。 同事件/关键帧来源、模型版本、内容摘要的不同ID重复记录也返回409 duplicate_embedding_source；同model_version维度配置不符422。 验证后统一float32编码并复查有限/非零，完整规范请求使用规范化向量比较；响应可有float32舍入。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin"
+        ],
+        "x-required-scope": "data:ingest",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventEmbeddingCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功；不证明真实模型已运行",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventEmbeddingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份/scope/资源不允许",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/定位/数值/配置验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "模型、向量存储或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "相同规范请求重放原记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventEmbeddingResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "同 embedding_id 请求内容改变，或不同ID重复同源描述向量",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/search": {
+      "post": {
+        "operationId": "只读语义检索事件",
+        "summary": "只读语义检索事件",
+        "description": "设计草案，尚未实现。服务端同时检查 active 用户、角色、token scope 和资源授权。 先授权和单录像区域/时间过滤，再在服务端配置的同模型名/版本/维度空间对 query_text 编码并用pgvector精确余弦排序；不同空间不混排。同(event,evidence或null,model/version/dimensions)先选最新成功描述版本（created_at DESC、embedding_id DESC），再按事件保留最高分，稳定排序后应用 min_score 和 top_k；分数不是动作置信度。eligible/indexed/missing 在阈值/top_k 前统计，全部未索引必须 unindexed；引擎故障503不回模拟成功。 真实scope不可由mock事件/模型候选补齐；模拟空间仅用于显式mock录制评审，来源标记必须保留。 PostgreSQL中业务与event_embeddings分表，Agent仅经后端只读工具访问；本轮只确认存储方案，不建立ANN索引或声称服务已实现。 SQL示例以MATERIALIZED CTE固定已授权范围/元数据/同模型空间候选后再计算<=>，普通WHERE不保证物理执行顺序；MATERIALIZED不是鉴权机制，授权录像范围必须由后端确定。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功；不证明真实模型已运行",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "身份/scope/资源不允许",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/定位/数值/配置验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "模型、向量存储或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/conversations": {
+      "get": {
+        "operationId": "列出自己的AI会话",
+        "summary": "列出自己的AI会话",
+        "description": "设计草案，未实现；必须使用有效Bearer身份，仅当前active用户访问自己的会话；禁用用户或非owner返回403，管理员也不能越过owner。会话不固定录像；会话元数据与user问题不要求监控事实data:read scope或录像授权。按(created_at DESC,conversation_id DESC)稳定分页；cursor绑定owner、排序和limit，禁止切换身份重用。会话列表仅返回元数据，不因任何一次分析的录像撤权而隐藏或删除会话。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "none",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用用户或非owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段、身份关联或分页参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "创建自己的AI会话",
+        "summary": "创建自己的AI会话",
+        "description": "设计草案，未实现；必须使用有效Bearer身份，仅当前active用户访问自己的会话；禁用用户或非owner返回403，管理员也不能越过owner。会话不固定录像；会话元数据与user问题不要求监控事实data:read scope或录像授权。只接收稳定conversation_id；user_id和created_at由服务端填写。首次201；相同conversation_id+owner+规范化会话创建请求重试200，不比较录像；不同规范请求409。拒绝客户端recording_id等未知字段422，不新增团队共享。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "none",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用用户或非owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段、身份关联或分页参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "相同请求重放既有资源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "相同稳定ID对应不同请求",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreateRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agent/conversations/{conversation_id}/messages": {
+      "get": {
+        "operationId": "回读自己的会话消息",
+        "summary": "回读自己的会话消息",
+        "description": "设计草案，未实现；必须使用有效Bearer身份，仅当前active用户访问自己的会话；禁用用户或非owner返回403，管理员也不能越过owner。会话不固定录像；会话元数据与user问题不要求监控事实data:read scope或录像授权。按(created_at ASC,message_id ASC)稳定分页；cursor绑定owner、conversation_id、排序和limit，不按录像授权筛选或跳过消息。user问题只按active owner验证；先确定待返回页，再对其中每条assistant消息通过run_id校验同会话completed运行、该run的Query.recording_id当前授权、data:read与Event/Evidence引用归属。若待返回页含任何无权助手消息，整页403，仅返回ErrorResponse，不返回正文、部分消息、next_cursor或运行信息；禁止静默过滤。全页通过后才返回user问题及completed完整assistant答复；运行状态通过runs读取。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "none",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner，或待返回页任一助手消息的data:read/当前录像授权不足；整页仅返回错误，无正文或部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段、分页参数、cursor或消息/运行/引用关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-conditional-required-scope": {
+          "scope": "data:read",
+          "when": "待返回消息页包含assistant消息",
+          "description": "基础授权仅Bearer+active owner，user问题不要求data:read。先按未过滤的消息序列确定页，对每条assistant经run_id验证同会话completed运行、该run Query.recording_id当前录像授权及引用归属；任一scope或录像授权不足则整页403，仅ErrorResponse，无正文/部分结果/next_cursor，不静默过滤。"
+        }
+      },
+      "post": {
+        "operationId": "保存自己的用户问题",
+        "summary": "保存自己的用户问题",
+        "description": "设计草案，未实现；必须使用有效Bearer身份，仅当前active用户访问自己的会话；禁用用户或非owner返回403，管理员也不能越过owner。会话不固定录像；会话元数据与user问题不要求监控事实data:read scope或录像授权。只接受稳定message_id+content，保存问题及同ID重试仅校验active owner；服务端固定role=user、run_id=null与时间。相同ID、owner、会话及规范正文重放200，否则409。拒绝客户端伪造assistant、引用、终态或时间；助手消息只能由completed运行事务生成，提交前重新校验该运行Query的data:read、当前录像授权与引用归属。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "none",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用用户或非owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段、身份关联或分页参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "相同请求重放既有资源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "相同稳定ID对应不同请求",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserMessageCreateRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/parcels": {
+      "post": {
+        "operationId": "post_parcels",
+        "summary": "创建包裹并返回二维码单号",
+        "description": "设计草案，未实现。仅管理员显式建档，parcel_id由客户端生成并跨网络重试复用，parcel_no可指定现有业务单号或省略由后端生成。单号TEXT保留前导零、大小写敏感且不可变；二维码由Android使用返回单号生成，不保存图片。首次201/pending；同ID且未指定不同单号重放200既有资源（状态按当前流水派生），不得重新生成单号或写流水。同ID不同单号返回409 idempotency_conflict；不同ID占用唯一单号返回409 parcel_no_conflict。请求未知字段422。每次请求含重试均校验当前active用户、角色、scope与单驿站资源授权；角色或扫码结果不扩大权限。当前不建stations表，授权来自部署配置，鉴权与业务接口均未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin"
+        ],
+        "x-required-scope": "parcels:write",
+        "responses": {
+          "201": {
+            "description": "首次建档；没有入出库流水",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelResponse"
+                },
+                "examples": {
+                  "provided_no": {
+                    "summary": "自报单号保留前导零 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "pending",
+                        "current_zone_id": null,
+                        "last_sequence_no": 0
+                      }
+                    }
+                  },
+                  "generated_no": {
+                    "summary": "省略单号由服务器生成 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "PT20261013-000001",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "pending",
+                        "current_zone_id": null,
+                        "last_sequence_no": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同稳定parcel_id重放既有包裹；不生成新单号或流水",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelResponse"
+                },
+                "examples": {
+                  "replayed": {
+                    "summary": "原包裹重放 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "pending",
+                        "current_zone_id": null,
+                        "last_sequence_no": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求JSON或参数格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证或无法映射当前身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户禁用、角色/scope或当前驿站资源授权不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "单号编码、ID、字段、区域或分页游标验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "validation_failed": {
+                    "summary": "单号编码、ID、字段、区域或分页游标验证失败 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "validation_failed",
+                        "message": "单号编码、ID、字段、区域或分页游标验证失败",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败；写入不发布部分记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用；不伪装未建档或空历史",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ID对应不同单号，或单号已被另一包裹占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "idempotency_conflict": {
+                    "summary": "相同ID不同单号 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "idempotency_conflict",
+                        "message": "parcel_id已经绑定另一单号",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  },
+                  "parcel_no_conflict": {
+                    "summary": "单号唯一性冲突 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "parcel_no_conflict",
+                        "message": "parcel_no已被其他包裹登记",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParcelCreateRequest"
+              },
+              "examples": {
+                "provided_no": {
+                  "summary": "指定已有单号 · 模拟契约样例",
+                  "value": {
+                    "parcel_id": "parcel_demo_0001",
+                    "parcel_no": "000123456789"
+                  }
+                },
+                "server_no": {
+                  "summary": "服务器生成单号 · 模拟契约样例",
+                  "value": {
+                    "parcel_id": "parcel_demo_0001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_parcels",
+        "summary": "按扫码单号精确查询包裹",
+        "description": "设计草案，未实现。parcel_no为必填query参数，按原文本精确匹配，保留前导零；未知参数或无效编码422。单号唯一，200 matched返回一个包裹及派生状态，200 not_registered返回parcel=null并明确未建档。重复扫码只读取，不建档、不写流水。二维码只包含单号，任意外部网址或文本须先按已确认编码解析；Agent也只能只读查询。每次请求含重试均校验当前active用户、角色、scope与单驿站资源授权；角色或扫码结果不扩大权限。当前不建stations表，授权来自部署配置，鉴权与业务接口均未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "responses": {
+          "200": {
+            "description": "精确匹配或明确未建档",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelLookupResponse"
+                },
+                "examples": {
+                  "matched": {
+                    "summary": "扫码查询到在库包裹 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel_no": "000123456789",
+                      "lookup_status": "matched",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "in_stock",
+                        "current_zone_id": "zone_shelf_a",
+                        "last_sequence_no": 1
+                      }
+                    }
+                  },
+                  "not_registered": {
+                    "summary": "有效单号尚未建档 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel_no": "000987654321",
+                      "lookup_status": "not_registered",
+                      "parcel": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求JSON或参数格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证或无法映射当前身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户禁用、角色/scope或当前驿站资源授权不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "单号编码、ID、字段、区域或分页游标验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "validation_failed": {
+                    "summary": "单号编码、ID、字段、区域或分页游标验证失败 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "validation_failed",
+                        "message": "单号编码、ID、字段、区域或分页游标验证失败",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败；写入不发布部分记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用；不伪装未建档或空历史",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "parcel_no",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ParcelNo"
+            },
+            "description": "二维码解码的原单号文本；保留000等前导零，URI query编码不改变解码后的值。",
+            "example": "000123456789"
+          }
+        ]
+      }
+    },
+    "/api/v1/parcels/{parcel_id}": {
+      "get": {
+        "operationId": "get_parcels_parcel_id",
+        "summary": "读取包裹与派生在库状态",
+        "description": "设计草案，未实现。稳定ID读取包裹。以同一读快照内最大sequence_no派生status/current_zone_id/last_sequence_no；无记录pending且位置为空；最后inbound为in_stock并显示该zone；最后outbound为outbound且当前位置为空，原货架只保留在历史。状态不持久化到parcels，不依据相同时刻排序，也不把扫码或视频识别当入库。每次请求含重试均校验当前active用户、角色、scope与单驿站资源授权；角色或扫码结果不扩大权限。当前不建stations表，授权来自部署配置，鉴权与业务接口均未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "responses": {
+          "200": {
+            "description": "包裹信息和同一快照派生状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelResponse"
+                },
+                "examples": {
+                  "pending": {
+                    "summary": "仅建档未入库 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "pending",
+                        "current_zone_id": null,
+                        "last_sequence_no": 0
+                      }
+                    }
+                  },
+                  "in_stock": {
+                    "summary": "最近入库后在库 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "in_stock",
+                        "current_zone_id": "zone_shelf_a",
+                        "last_sequence_no": 1
+                      }
+                    }
+                  },
+                  "outbound": {
+                    "summary": "最近出库后当前位置为空 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel": {
+                        "parcel_id": "parcel_demo_0001",
+                        "parcel_no": "000123456789",
+                        "created_at": "2026-10-13T01:00:00Z",
+                        "status": "outbound",
+                        "current_zone_id": null,
+                        "last_sequence_no": 2
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求JSON或参数格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证或无法映射当前身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户禁用、角色/scope或当前驿站资源授权不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "单号编码、ID、字段、区域或分页游标验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "validation_failed": {
+                    "summary": "单号编码、ID、字段、区域或分页游标验证失败 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "validation_failed",
+                        "message": "单号编码、ID、字段、区域或分页游标验证失败",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败；写入不发布部分记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用；不伪装未建档或空历史",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "目标包裹不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "parcel_not_found": {
+                    "summary": "目标包裹不存在 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "parcel_not_found",
+                        "message": "目标包裹不存在",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "parcel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": "建档时分配的稳定内部包裹ID；不是二维码单号。",
+            "example": "parcel_demo_0001"
+          }
+        ]
+      }
+    },
+    "/api/v1/parcels/{parcel_id}/records": {
+      "get": {
+        "operationId": "get_parcels_parcel_id_records",
+        "summary": "按序号分页读取入出库历史",
+        "description": "设计草案，未实现。按sequence_no ASC，limit默认20、范围1–100。首请求固定最大序号；next_cursor为不透明游标，绑定parcel_id、当前身份/授权、limit和该序号上界，后续页不得换包裹、身份或limit。并发追加不进入当前快照，重新从第一页刷新。无流水返回200空数组；包裹不存在404；无效/不匹配cursor或未知参数422。出库历史仍返回原zone_id，不能解释为当前所在位置。Agent仅访问GET。每次请求含重试均校验当前active用户、角色、scope与单驿站资源授权；角色或扫码结果不扩大权限。当前不建stations表，授权来自部署配置，鉴权与业务接口均未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin",
+          "viewer"
+        ],
+        "x-required-scope": "data:read",
+        "responses": {
+          "200": {
+            "description": "按序号递增的历史页；末页游标为空",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelRecordListResponse"
+                },
+                "examples": {
+                  "inbound_outbound_inbound": {
+                    "summary": "同包裹入库、出库后再次入库 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel_id": "parcel_demo_0001",
+                      "records": [
+                        {
+                          "record_id": "parcel_record_demo_1",
+                          "parcel_id": "parcel_demo_0001",
+                          "sequence_no": 1,
+                          "action": "inbound",
+                          "zone_id": "zone_shelf_a",
+                          "operator_id": "user_admin_demo",
+                          "created_at": "2026-10-13T01:01:00Z"
+                        },
+                        {
+                          "record_id": "parcel_record_demo_2",
+                          "parcel_id": "parcel_demo_0001",
+                          "sequence_no": 2,
+                          "action": "outbound",
+                          "zone_id": "zone_shelf_a",
+                          "operator_id": "user_admin_demo",
+                          "created_at": "2026-10-13T01:02:00Z"
+                        },
+                        {
+                          "record_id": "parcel_record_demo_3",
+                          "parcel_id": "parcel_demo_0001",
+                          "sequence_no": 3,
+                          "action": "inbound",
+                          "zone_id": "zone_shelf_b",
+                          "operator_id": "user_admin_demo",
+                          "created_at": "2026-10-13T01:03:00Z"
+                        }
+                      ],
+                      "next_cursor": null
+                    }
+                  },
+                  "no_records": {
+                    "summary": "已建档且暂无流水 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "parcel_id": "parcel_demo_0001",
+                      "records": [],
+                      "next_cursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求JSON或参数格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证或无法映射当前身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户禁用、角色/scope或当前驿站资源授权不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "单号编码、ID、字段、区域或分页游标验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "validation_failed": {
+                    "summary": "单号编码、ID、字段、区域或分页游标验证失败 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "validation_failed",
+                        "message": "单号编码、ID、字段、区域或分页游标验证失败",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败；写入不发布部分记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用；不伪装未建档或空历史",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "目标包裹不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "parcel_not_found": {
+                    "summary": "目标包裹不存在 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "parcel_not_found",
+                        "message": "目标包裹不存在",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "parcel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": "建档时分配的稳定内部包裹ID；不是二维码单号。",
+            "example": "parcel_demo_0001"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "每页条数；带cursor时与第一页保持一致。"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "上一页next_cursor；不解析、不生成、不复用到其他包裹或身份。"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_parcels_parcel_id_records",
+        "summary": "管理员确认并追加入库或出库",
+        "description": "设计草案，未实现。只接受record_id+action；inbound必填有效且已授权zone_id，outbound禁止客户端zone_id并由后端保留最近入库位置。zone沿用当前单驿站已确认版本配置，非DB外键；未知/非可用入库zone返回422 invalid_zone，不允许任意文本货架。operator_id从当前认证users身份填写，created_at为服务器实际登记UTC，sequence_no在锁定该包裹事务中从最近序号递增分配。先校验身份和已有record_id，再判断状态；同ID/路径包裹/操作人/确认内容重放200原记录，即使后来状态变化也不重新执行。出库重试不按新状态重新计算zone；同ID不同内容或操作人返回409 idempotency_conflict。新操作只能pending→inbound、in_stock→outbound、outbound→inbound；首次outbound、在库再次inbound、已出库再次outbound返回409 parcel_state_conflict。并发请求串行验证并追加，事务失败无部分记录；记录不编辑、不移库、不离线补录。Agent、视觉算法禁止提交写入，Android在管理员显式确认后调用。每次请求含重试均校验当前active用户、角色、scope与单驿站资源授权；角色或扫码结果不扩大权限。当前不建stations表，授权来自部署配置，鉴权与业务接口均未实现。",
+        "tags": [
+          "Backend"
+        ],
+        "x-service": "backend",
+        "x-allowed-roles": [
+          "admin"
+        ],
+        "x-required-scope": "parcels:write",
+        "responses": {
+          "201": {
+            "description": "首次登记；服务器填操作人、序号和时间",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelRecordResponse"
+                },
+                "examples": {
+                  "inbound": {
+                    "summary": "确认入库并记录货架 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "record": {
+                        "record_id": "parcel_record_demo_1",
+                        "parcel_id": "parcel_demo_0001",
+                        "sequence_no": 1,
+                        "action": "inbound",
+                        "zone_id": "zone_shelf_a",
+                        "operator_id": "user_admin_demo",
+                        "created_at": "2026-10-13T01:01:00Z"
+                      }
+                    }
+                  },
+                  "outbound": {
+                    "summary": "确认出库并保留最近入库货架 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "record": {
+                        "record_id": "parcel_record_demo_2",
+                        "parcel_id": "parcel_demo_0001",
+                        "sequence_no": 2,
+                        "action": "outbound",
+                        "zone_id": "zone_shelf_a",
+                        "operator_id": "user_admin_demo",
+                        "created_at": "2026-10-13T01:02:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同一次确认重放原记录；不追加、不重新分配字段",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelRecordResponse"
+                },
+                "examples": {
+                  "replayed": {
+                    "summary": "同record_id入库重试 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "record": {
+                        "record_id": "parcel_record_demo_1",
+                        "parcel_id": "parcel_demo_0001",
+                        "sequence_no": 1,
+                        "action": "inbound",
+                        "zone_id": "zone_shelf_a",
+                        "operator_id": "user_admin_demo",
+                        "created_at": "2026-10-13T01:01:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求JSON或参数格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证或无法映射当前身份",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "用户禁用、角色/scope或当前驿站资源授权不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "单号编码、ID、字段、区域或分页游标验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "validation_failed": {
+                    "summary": "单号编码、ID、字段、区域或分页游标验证失败 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "validation_failed",
+                        "message": "单号编码、ID、字段、区域或分页游标验证失败",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败；写入不发布部分记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "持久化或依赖不可用；不伪装未建档或空历史",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "目标包裹不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "parcel_not_found": {
+                    "summary": "目标包裹不存在 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "parcel_not_found",
+                        "message": "目标包裹不存在",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "重试内容或当前包裹状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "idempotency_conflict": {
+                    "summary": "同record_id不同确认内容 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "idempotency_conflict",
+                        "message": "record_id已绑定不同包裹、操作人或确认内容",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  },
+                  "parcel_state_conflict": {
+                    "summary": "首次出库或重复入出库 · 模拟契约样例",
+                    "value": {
+                      "api_version": "0.3-mvp-draft",
+                      "error": {
+                        "code": "parcel_state_conflict",
+                        "message": "当前包裹未在库，不能确认出库",
+                        "request_id": "req_parcel_demo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "parcel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": "建档时分配的稳定内部包裹ID；不是二维码单号。",
+            "example": "parcel_demo_0001"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParcelRecordCreateRequest"
+              },
+              "examples": {
+                "inbound": {
+                  "summary": "管理员确认入库 · 模拟契约样例",
+                  "value": {
+                    "record_id": "parcel_record_demo_1",
+                    "action": "inbound",
+                    "zone_id": "zone_shelf_a"
+                  }
+                },
+                "outbound": {
+                  "summary": "管理员确认出库；位置由服务器保留 · 模拟契约样例",
+                  "value": {
+                    "record_id": "parcel_record_demo_2",
+                    "action": "outbound"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "拟议身份边界，尚未实现。Bearer subject由服务端映射users.user_id，必须active；角色仅admin/viewer，角色与资源授权独立。x-required-scope=none表示无需事实读取scope，并不免除Bearer或active owner校验：会话元数据与用户问题只按owner验证。消息列表基础scope为none；x-conditional-required-scope要求待返回页中每条assistant按关联run校验data:read及本次Query录像当前授权，任一无权则整页403，不返回部分正文。计划和运行始终需要data:read与本次录像授权。其余data:ingest/reviews:write/parcels:write按各operation原规则校验。机器token只能收窄所代表身份权限；Agent后端凭据仅data:read，不能写监控事实、向量、人工核查或包裹流水。SDK凭据不存users。"
+      }
+    },
+    "schemas": {
+      "Id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+      },
+      "UtcTime": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$",
+        "description": "ISO 8601 UTC 字符串，最多毫秒精度；SQL 同名 created_at/started_at/finished_at 存 TIMESTAMPTZ，由服务端统一输出 UTC。offset_ms/duration_ms 仍是相对时间的数值毫秒。"
+      },
+      "OffsetMs": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "Bbox": {
+        "type": "array",
+        "minItems": 4,
+        "maxItems": 4,
+        "items": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "description": "归一化 [x,y,w,h]。服务端另验证 w/h > 0、x+w <= 1、y+h <= 1，以及框确属该事件匿名片段。"
+      },
+      "SourceMode": {
+        "type": "string",
+        "enum": [
+          "prerecorded",
+          "sdk",
+          "mock"
+        ]
+      },
+      "MediaStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "missing"
+        ]
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "enter_zone",
+          "dwell",
+          "shelf_interaction",
+          "leave_zone"
+        ]
+      },
+      "Decision": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "dismissed",
+          "uncertain"
+        ]
+      },
+      "Query": {
+        "type": "object",
+        "properties": {
+          "recording_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "camera_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "start_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "end_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          }
+        },
+        "required": [
+          "recording_id",
+          "camera_id",
+          "zone_id",
+          "start_offset_ms",
+          "end_offset_ms"
+        ],
+        "additionalProperties": false,
+        "description": "单份录制、单个区域的视频相对窗口。服务端校验 start < end、camera/zone 与不可变配置一致。人工保存须完全落在视频范围内。"
+      },
+      "UtcQuery": {
+        "type": "object",
+        "properties": {
+          "recording_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "camera_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "start": {
+            "$ref": "#/components/schemas/UtcTime"
+          },
+          "end": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "recording_id",
+          "camera_id",
+          "zone_id",
+          "start",
+          "end"
+        ],
+        "additionalProperties": false,
+        "description": "仅在 recording.started_at 已经服务端验证时可用；转换后返回 Query。不能映射到有效非负偏移则 422，未校准则 422 clock_unverified。"
+      },
+      "QueryInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Query"
+          },
+          {
+            "$ref": "#/components/schemas/UtcQuery"
+          }
+        ]
+      },
+      "RecordingInput": {
+        "type": "object",
+        "properties": {
+          "recording_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "camera_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "config_version": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "source_mode": {
+            "$ref": "#/components/schemas/SourceMode"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UtcTime"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?!\\.{1,2}$)[^/\\\\]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "recording_id",
+          "camera_id",
+          "config_version",
+          "source_mode",
+          "started_at",
+          "duration_ms",
+          "file_name"
+        ],
+        "additionalProperties": false,
+        "description": "file_name 对应 multipart 文件 basename；null 表示没有视频字节。started_at 非空必须有服务端可核验的时间基准，不能只信客户端声明。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "source_mode": {
+                  "enum": [
+                    "prerecorded",
+                    "sdk"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "file_name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EventInput": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "track_key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "observation_status": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "candidate"
+            ]
+          },
+          "start_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "end_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "detection_source": {
+            "type": "string",
+            "enum": [
+              "automatic",
+              "manual",
+              "mock"
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "zone_id",
+          "track_key",
+          "event_type",
+          "observation_status",
+          "start_offset_ms",
+          "end_offset_ms",
+          "detection_source",
+          "summary"
+        ],
+        "additionalProperties": false,
+        "description": "事件归属 manifest.recording；start <= end <= 视频长度。track_key 只在这份录制内有效，不是永久人物身份。"
+      },
+      "EvidenceInput": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "bbox_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Bbox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?!\\.{1,2}$)[^/\\\\]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "evidence_id",
+          "event_id",
+          "offset_ms",
+          "bbox_json",
+          "file_name"
+        ],
+        "additionalProperties": false,
+        "description": "只接收单张关键帧；offset 可位于事件前后上下文，但必须在同一视频内。bbox 必须来自对应匿名片段的实际观测。"
+      },
+      "RecordingManifest": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "recording": {
+            "$ref": "#/components/schemas/RecordingInput"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventInput"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvidenceInput"
+            }
+          }
+        },
+        "required": [
+          "schema_version",
+          "recording",
+          "events",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "description": "一份视频的一次最终原子结果包。没有 pending/partial/failed 行；发布前任何校验或处理失败都返回错误。 真实 prerecorded/sdk 输入必须上传连续视频；原生 SDK 元数据或离散帧集不可导入。"
+      },
+      "MockRecordingManifest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/RecordingManifest"
+          },
+          {
+            "properties": {
+              "recording": {
+                "properties": {
+                  "source_mode": {
+                    "const": "mock"
+                  },
+                  "started_at": {
+                    "type": "null"
+                  },
+                  "file_name": {
+                    "type": "null"
+                  }
+                }
+              },
+              "events": {
+                "items": {
+                  "properties": {
+                    "detection_source": {
+                      "const": "mock"
+                    }
+                  }
+                }
+              },
+              "evidence": {
+                "items": {
+                  "properties": {
+                    "file_name": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "MultipartRecordingImport": {
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/RecordingManifest"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "required": [
+          "manifest"
+        ],
+        "additionalProperties": false,
+        "description": "manifest 是 JSON part；files 是重复 binary part。filename 必须和清单引用一一对应。客户端不提供 storage_key、下载 URL 或本地路径。"
+      },
+      "Recording": {
+        "type": "object",
+        "properties": {
+          "recording_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "camera_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "config_version": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "source_mode": {
+            "$ref": "#/components/schemas/SourceMode"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UtcTime"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "media_status": {
+            "$ref": "#/components/schemas/MediaStatus"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "recording_id",
+          "camera_id",
+          "config_version",
+          "source_mode",
+          "started_at",
+          "duration_ms",
+          "manifest_sha256",
+          "media_status",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "SQL started_at/created_at 存 TIMESTAMPTZ，映射为 API 同名 ISO 8601 UTC 字符串。storage_key 为后端私有字段。一次发布后数据不覆盖；重跑使用新的 recording_id。 available 必须对应真实 storage_key 与文件；missing 不返回视频访问地址。"
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "recording_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "track_key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "observation_status": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "candidate"
+            ]
+          },
+          "start_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "end_offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "detection_source": {
+            "type": "string",
+            "enum": [
+              "automatic",
+              "manual",
+              "mock"
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        },
+        "required": [
+          "event_id",
+          "recording_id",
+          "zone_id",
+          "track_key",
+          "event_type",
+          "observation_status",
+          "start_offset_ms",
+          "end_offset_ms",
+          "detection_source",
+          "summary",
+          "evidence_ids"
+        ],
+        "additionalProperties": false,
+        "description": "evidence_ids 从 evidence.event_id 派生；不是新的存储列。"
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "bbox_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Bbox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "media_status": {
+            "$ref": "#/components/schemas/MediaStatus"
+          },
+          "media_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "evidence_id",
+          "event_id",
+          "offset_ms",
+          "bbox_json",
+          "media_status",
+          "media_url"
+        ],
+        "additionalProperties": false,
+        "description": "storage_key 不公开；media_url 为当前读取生成的受控端点，不持久化。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "media_status": {
+                  "const": "missing"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "media_url": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "media_status": {
+                  "const": "available"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "media_url": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ObservedPoint": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "bbox": {
+            "$ref": "#/components/schemas/Bbox"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "offset_ms",
+          "bbox"
+        ],
+        "additionalProperties": false,
+        "description": "从非 mock 关键帧中经导入校验的 bbox 派生；不代表采样间连续轨迹，不跨 recording/track_key 自动关联。mock 返回空点集。"
+      },
+      "RecordingRange": {
+        "type": "object",
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "outside"
+            ]
+          },
+          "covered_start_offset_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OffsetMs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "covered_end_offset_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OffsetMs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "relation",
+          "covered_start_offset_ms",
+          "covered_end_offset_ms"
+        ],
+        "additionalProperties": false,
+        "description": "只描述这份已完整导入连续视频与请求窗口的交集。没有全局采集台账，不能据此断言驿站没有采集或无人经过。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "relation": {
+                  "const": "outside"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "covered_start_offset_ms": {
+                  "type": "null"
+                },
+                "covered_end_offset_ms": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "covered_start_offset_ms": {
+                  "$ref": "#/components/schemas/OffsetMs"
+                },
+                "covered_end_offset_ms": {
+                  "$ref": "#/components/schemas/OffsetMs"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ReviewCreateRequest": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "query": {
+            "$ref": "#/components/schemas/QueryInput"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "review_id",
+          "event_id",
+          "query",
+          "decision",
+          "note"
+        ],
+        "additionalProperties": false,
+        "description": "一个事件一次人工核查；同 review_id/身份/规范化请求重放原结果，不同内容 409。不接受 reviewer_id、created_at、事实快照或任意 Evidence 选择。 当前身份必须映射到存在、active 且 role=admin 的 users 记录，并通过目标事件授权；reviewer_id 由服务端填写。"
+      },
+      "ReviewRecord": {
+        "type": "object",
+        "properties": {
+          "review_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewer_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "review_id",
+          "event_id",
+          "query",
+          "decision",
+          "note",
+          "reviewer_id",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "SQL query_json（JSONB）保存规范化 Query，reviewer/created_at 来自服务端。记录追加保存，首版不编辑。自动引用该 event 的全部不可变关键帧。 reviewer_id 是 users.user_id 的真实外键，禁用用户也保留历史引用。"
+      },
+      "ZoneConfig": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "roi": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "required": [
+          "zone_id",
+          "name",
+          "roi"
+        ],
+        "additionalProperties": false,
+        "description": "固定视角归一化多边形区域；来自不可变版本文件，不新增数据库表。"
+      },
+      "CameraConfig": {
+        "type": "object",
+        "properties": {
+          "camera_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "zones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZoneConfig"
+            }
+          }
+        },
+        "required": [
+          "camera_id",
+          "name",
+          "zones"
+        ],
+        "additionalProperties": false
+      },
+      "Config": {
+        "type": "object",
+        "properties": {
+          "config_version": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "cameras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CameraConfig"
+            }
+          }
+        },
+        "required": [
+          "config_version",
+          "cameras"
+        ],
+        "additionalProperties": false,
+        "description": "版本文件封存后不覆盖；改 ROI 使用新 config_version，历史录制仍读取旧配置。"
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "api_version",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "ConfigResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "config": {
+            "$ref": "#/components/schemas/Config"
+          }
+        },
+        "required": [
+          "api_version",
+          "config"
+        ],
+        "additionalProperties": false
+      },
+      "RecordingResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "recording": {
+            "$ref": "#/components/schemas/Recording"
+          }
+        },
+        "required": [
+          "api_version",
+          "recording"
+        ],
+        "additionalProperties": false
+      },
+      "RecordingListResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "recordings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recording"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "recordings"
+        ],
+        "additionalProperties": false
+      },
+      "ImportResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "recording": {
+            "$ref": "#/components/schemas/Recording"
+          },
+          "event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evidence_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_version",
+          "recording",
+          "event_count",
+          "evidence_count",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "EventsResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "query_status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "no_detections",
+              "outside_recording"
+            ]
+          },
+          "recording_range": {
+            "$ref": "#/components/schemas/RecordingRange"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "query",
+          "query_status",
+          "recording_range",
+          "events"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "query_status": {
+                  "const": "matched"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "events": {
+                  "minItems": 1
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "events": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "query_status": {
+                  "const": "outside_recording"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recording_range": {
+                  "properties": {
+                    "relation": {
+                      "const": "outside"
+                    }
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "recording_range": {
+                  "properties": {
+                    "relation": {
+                      "enum": [
+                        "full",
+                        "partial"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EventResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "event": {
+            "$ref": "#/components/schemas/Event"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            }
+          },
+          "observed_points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObservedPoint"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "event",
+          "evidence",
+          "observed_points"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "detection_source": {
+                      "const": "mock"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "observed_points": {
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EvidenceResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          }
+        },
+        "required": [
+          "api_version",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "review": {
+            "$ref": "#/components/schemas/ReviewRecord"
+          },
+          "event": {
+            "$ref": "#/components/schemas/Event"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "review",
+          "event",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewListResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewRecord"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "reviews"
+        ],
+        "additionalProperties": false
+      },
+      "AgentPlanRequest": {
+        "type": "object",
+        "properties": {
+          "input_message_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Query"
+          }
+        },
+        "required": [
+          "input_message_id",
+          "scope"
+        ],
+        "additionalProperties": false,
+        "description": "绑定当前active owner会话中的user消息，从正文生成计划；scope是本次单视频Query，服务端校验data:read与该录像当前授权，可与同会话其他运行录像不同。draft plan不单独落表。"
+      },
+      "AgentPlanResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "query_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "query",
+          "query_text",
+          "steps"
+        ],
+        "additionalProperties": false,
+        "description": ""
+      },
+      "AgentRunRequest": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "input_message_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AgentPlan"
+          }
+        },
+        "required": [
+          "run_id",
+          "input_message_id",
+          "plan"
+        ],
+        "additionalProperties": false,
+        "description": "客户端稳定run_id绑定同会话user消息与最终确认计划。服务端校验active owner、消息角色/会话、data:read、plan.query录像的当前授权与引用范围，不要求与其他轮次录像相同。相同run_id+owner+全部规范input/plan重试回读原运行，不启动第二次；不同内容409。model_key/时间不可由客户端指定。"
+      },
+      "AgentReference": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "evidence_id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "event_id",
+          "evidence_id"
+        ],
+        "additionalProperties": false,
+        "description": "本次运行的逻辑引用；event必须来自plan.query指定录像并命中查询范围，evidence必须属于该event，可保留事件前后的真实上下文帧。读取或提交助手答复时重新验证该运行录像的当前授权和引用归属，媒体状态从当前资源读取。"
+      },
+      "AgentRunResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "run_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "conversation_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "input_message_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "stopped",
+              "failed"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AgentPlan"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReference"
+            }
+          },
+          "model_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Error"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UtcTime"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "api_version",
+          "run_id",
+          "conversation_id",
+          "input_message_id",
+          "status",
+          "plan",
+          "summary",
+          "references",
+          "model_key",
+          "error",
+          "created_at",
+          "finished_at"
+        ],
+        "additionalProperties": false,
+        "description": "计划、引用、状态、模型配置标识和时间持久化；summary只从关联completed助手消息正文读取，不重复存到run。references_json是逻辑ID引用，服务端验证同范围Event/Evidence，不是假SQL外键。model_key包含模型与运行配置版本，不含凭据。历史可回读，服务重启将旧running明确置failed/service_restarted，不自动续跑。 SQL created_at/finished_at 存 TIMESTAMPTZ，API 同名字段转为 ISO 8601 UTC 字符串。 SQL plan_json/references_json/error_json 为 JSONB；API仍是JSON对象/数组。 数据库表名为runs，每行对应一次已确认计划的分析执行；同一会话可以有多个运行，不复用终态run。 读取、停止和同ID重试均按本次plan.query录像检查当前data:read与授权，不能用会话或其他轮次的录像替代；权限不足403，不返回计划、状态、摘要或引用。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "error": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "completed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000,
+                  "pattern": "\\S"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "summary": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "running"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "finished_at": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "finished_at": {
+                  "$ref": "#/components/schemas/UtcTime"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AgentStopRequest": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "viewer"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled"
+            ]
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "role",
+          "status",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "应用用户公开资料，对应 users 的 5 字段；SQL created_at 的 TIMESTAMPTZ 转成 API 同名 UTC 字符串。不是 SDK/设备账号，不包含密码或令牌。"
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "api_version",
+          "user"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "user": {
+                "properties": {
+                  "status": {
+                    "const": "active"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EmbeddingVector": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "number"
+        },
+        "contains": {
+          "type": "number",
+          "not": {
+            "const": 0
+          }
+        },
+        "minContains": 1,
+        "description": "1–16000维有限浮点数组，长度须等于dimensions且至少一个非零分量。服务端严格JSON解码并先检查isfinite/非零，再统一规范化为float32并复查有限/非零；规范请求幂等比较用此规范化向量，响应允许float32舍入。JSON Schema不能代替数值与编码检查。",
+        "maxItems": 16000
+      },
+      "EmbeddingSpace": {
+        "type": "object",
+        "properties": {
+          "model_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16000
+          }
+        },
+        "required": [
+          "model_name",
+          "model_version",
+          "dimensions"
+        ],
+        "additionalProperties": false,
+        "description": "由服务配置指定的同一文本编码空间；version 包含编码/预处理配置标识，不能跨模型或版本比较相似度。PostgreSQL+pgvector已选，模型、provider和维度仍待确认；按同模型/版本/维度先精确排序，不混合空间，不声明ANN已建立。"
+      },
+      "EventEmbeddingCreateRequest": {
+        "type": "object",
+        "properties": {
+          "embedding_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000,
+            "pattern": "\\S"
+          },
+          "embedding": {
+            "$ref": "#/components/schemas/EmbeddingVector"
+          },
+          "model_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16000
+          }
+        },
+        "required": [
+          "embedding_id",
+          "event_id",
+          "evidence_id",
+          "source_text",
+          "embedding",
+          "model_name",
+          "model_version",
+          "dimensions"
+        ],
+        "additionalProperties": false,
+        "description": "一次写入一条事件描述文本向量；evidence_id 非空须属于该 event。向量由已授权写入方生成，Agent 凭据不得调用。source_text 是可核对描述，不等于动作事实。hash/time 仅由服务端产生；重试比较全部规范请求，包括 vector/model/定位，而非仅内容哈希。 相同模型版本必须固定编码配置及维度；已注册空间维度不符返回422。不同ID但相同来源/模型版本/content摘要的重复写入返回409 duplicate_embedding_source。 embedding统一规范化为float32后参与完整请求幂等比较；content_sha256仍不包含向量，不可单独比较。"
+      },
+      "EventEmbedding": {
+        "type": "object",
+        "properties": {
+          "embedding_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000,
+            "pattern": "\\S"
+          },
+          "embedding": {
+            "$ref": "#/components/schemas/EmbeddingVector"
+          },
+          "model_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16000
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "embedding_id",
+          "event_id",
+          "evidence_id",
+          "source_text",
+          "embedding",
+          "model_name",
+          "model_version",
+          "dimensions",
+          "content_sha256",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "SQL embedding 是 pgvector vector，映射为 API embedding 数组；dimensions保留校验且不硬编码。SQL created_at 的 TIMESTAMPTZ 转成 API 同名 UTC 字符串；content_sha256 为服务端规范化 source_text + Event/Evidence 真实定位的摘要，不包含向量、模型或临时媒体 URL，不能单独用于请求幂等比较。 本地拟议摘要规则：source_text首尾strip；按键排序的UTF8紧凑JSON包含source_text、event(event_id/recording_id/zone_id/track_key/start_offset_ms/end_offset_ms)、recording(camera_id/config_version)及evidence(evidence_id/event_id/offset_ms/bbox_json)或null；数组顺序保留。 响应embedding保持JSON数组，数值可能反映float32舍入。"
+      },
+      "EventEmbeddingResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "event_embedding": {
+            "$ref": "#/components/schemas/EventEmbedding"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_version",
+          "event_embedding",
+          "replayed"
+        ],
+        "additionalProperties": false,
+        "description": ""
+      },
+      "SemanticSearchRequest": {
+        "type": "object",
+        "properties": {
+          "query_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/QueryInput"
+          },
+          "top_k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "min_score": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "query_text",
+          "filter",
+          "top_k"
+        ],
+        "additionalProperties": false,
+        "description": "只读检索：查询文本由服务端在 active 文本模型空间编码；不收客户端查询向量或临时选择模型。先验证权限、单视频区域/时间元数据，再计算同空间相似度。min_score 可选，余弦分数不是动作置信度。"
+      },
+      "SemanticCoverage": {
+        "type": "object",
+        "properties": {
+          "eligible_event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "indexed_event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_event_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "eligible_event_count",
+          "indexed_event_count",
+          "missing_event_count"
+        ],
+        "additionalProperties": false,
+        "description": "eligible 为授权且命中元数据范围的事件数；indexed 为同 active 模型/版本/维度有可用向量的事件数；missing=eligible-indexed。仅不同空间的向量视作该空间未索引。"
+      },
+      "SemanticCandidate": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "embedding_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "score": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "media_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_mode": {
+            "$ref": "#/components/schemas/SourceMode"
+          },
+          "detection_source": {
+            "type": "string",
+            "enum": [
+              "automatic",
+              "manual",
+              "mock"
+            ]
+          },
+          "observation_status": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "candidate"
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "evidence_id",
+          "embedding_id",
+          "score",
+          "source_text",
+          "media_status",
+          "source_mode",
+          "detection_source",
+          "observation_status"
+        ],
+        "additionalProperties": false,
+        "description": "每事件只返回最高相似度的一条向量；相同分数按稳定 event_id/embedding_id 排序。score 仅为文本余弦相似度，结果是候选。source provenance 来自真实 Event/Recording；mock 不冒充真实来源。未绑定 evidence 时 media_status=null，需 get_event 再读具体关键帧；绑定时回显当前 available/missing。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "evidence_id": {
+                  "type": "null"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "media_status": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "media_status": {
+                  "$ref": "#/components/schemas/MediaStatus"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SemanticSearchResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "query_text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "filter": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "model": {
+            "$ref": "#/components/schemas/EmbeddingSpace"
+          },
+          "search_status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "no_matches",
+              "unindexed"
+            ]
+          },
+          "recording_range": {
+            "$ref": "#/components/schemas/RecordingRange"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/SemanticCoverage"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SemanticCandidate"
+            }
+          }
+        },
+        "required": [
+          "api_version",
+          "query_text",
+          "filter",
+          "model",
+          "search_status",
+          "recording_range",
+          "coverage",
+          "candidates"
+        ],
+        "additionalProperties": false,
+        "description": "有 eligible 但 indexed=0 必须 unindexed；有部分索引可 matched/no_matches，但 missing 数量如实返回。eligible=0 可 no_matches，同时报告视频范围。引擎/模型/向量存储故障是 503，不能把失败或全部未索引变成成功零匹配。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "search_status": {
+                  "const": "matched"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "candidates": {
+                  "minItems": 1
+                },
+                "coverage": {
+                  "properties": {
+                    "indexed_event_count": {
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "candidates": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "search_status": {
+                  "const": "unindexed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "coverage": {
+                  "properties": {
+                    "eligible_event_count": {
+                      "minimum": 1
+                    },
+                    "indexed_event_count": {
+                      "const": 0
+                    },
+                    "missing_event_count": {
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "search_status": {
+                  "const": "no_matches"
+                },
+                "coverage": {
+                  "properties": {
+                    "eligible_event_count": {
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "coverage": {
+                  "properties": {
+                    "indexed_event_count": {
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ConversationCreateRequest": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ],
+        "additionalProperties": false,
+        "description": "只创建当前active用户自己的会话，不要求录像授权或data:read。稳定conversation_id用于重试，服务端比较owner及规范化创建请求，不比较录像；user_id/created_at由服务端产生，不接受客户端recording_id、身份或时间。"
+      },
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "user_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "user_id",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "当前active用户拥有的会话；仅保存conversation_id、user_id、created_at，不固定录像。同会话的不同分析可使用不同录像，各运行仍使用单视频Query。SQL created_at的TIMESTAMPTZ转为API同名UTC字符串；列表不因某次分析录像撤权而消失。"
+      },
+      "ConversationResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "conversation": {
+            "$ref": "#/components/schemas/Conversation"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_version",
+          "conversation",
+          "replayed"
+        ],
+        "additionalProperties": false,
+        "description": ""
+      },
+      "ConversationListResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Conversation"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "api_version",
+          "conversations",
+          "next_cursor"
+        ],
+        "additionalProperties": false,
+        "description": "仅按active owner读取会话元数据，不按任何运行的录像授权过滤；某段录像撤权不隐藏会话。"
+      },
+      "UserMessageCreateRequest": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "message_id",
+          "content"
+        ],
+        "additionalProperties": false,
+        "description": "客户端只能提交用户问题，role=user、run_id=null 和时间由服务端填；稳定 message_id + 相同会话/正文重试返回原消息，不同内容409。禁止客户端伪造助手回复。"
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "conversation_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          }
+        },
+        "required": [
+          "message_id",
+          "conversation_id",
+          "role",
+          "content",
+          "run_id",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "只保存用户问题和 completed 运行的完整助手答复。assistant 必须绑定同会话 completed run，一run一条；running/stopped/failed仅展示运行状态，不生成完成答复。 user问题仅按active owner验证；assistant读取与提交按关联run的本次Query当前录像授权、data:read及引用归属验证。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "role": {
+                  "const": "assistant"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "run_id": {
+                  "$ref": "#/components/schemas/Id"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "run_id": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "message": {
+            "$ref": "#/components/schemas/ChatMessage"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_version",
+          "message",
+          "replayed"
+        ],
+        "additionalProperties": false,
+        "description": ""
+      },
+      "MessageListResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "api_version",
+          "messages",
+          "next_cursor"
+        ],
+        "additionalProperties": false,
+        "description": "先按消息序列确定待返回页，再校验页内每条assistant关联run的当前录像授权、data:read和引用归属。任一无权助手消息使整页403，仅ErrorResponse，不返回正文、部分结果或next_cursor；不静默过滤。user问题本身仅按active owner验证。"
+      },
+      "AgentPlan": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "query_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "query",
+          "query_text",
+          "steps"
+        ],
+        "additionalProperties": false,
+        "description": "用户最终确认计划；query为本次单视频规范5字段，可与同会话其他运行录像不同。query_text是真正交给语义检索的问题文本，steps为可见描述，不是任意工具指令；服务端校验active owner、data:read、当前录像授权、配置和工具。"
+      },
+      "ParcelNo": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+        "description": "二维码只保存该单号。SQL用TEXT；按大小写敏感文本精确匹配，保留前导零，不转数值、不去零、不自动改大小写。首版仅接受1–100字符的ASCII字母/数字及_ . : -，禁止空白、网址和任意外部二维码内容；编码规则变更另行评审。省略创建请求中的parcel_no时后端生成同规则下唯一单号。",
+        "examples": [
+          "000123456789",
+          "PT20261013-000001"
+        ]
+      },
+      "ParcelStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "in_stock",
+          "outbound"
+        ],
+        "description": "从同包裹最大sequence_no记录派生：无流水pending；最后inbound为in_stock；最后outbound为outbound。生成二维码或重复扫码不改变状态。"
+      },
+      "ParcelCreateRequest": {
+        "type": "object",
+        "properties": {
+          "parcel_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "parcel_no": {
+            "$ref": "#/components/schemas/ParcelNo"
+          }
+        },
+        "required": [
+          "parcel_id"
+        ],
+        "additionalProperties": false,
+        "description": "管理员建档；稳定parcel_id网络重试复用。parcel_no可省略（不能传null/空值）由后端生成，重试省略时复用既有单号；指定不同单号或另一ID占用同单号均409。禁止客户端created_at、status、operator_id、zone_id或二维码图片。"
+      },
+      "Parcel": {
+        "type": "object",
+        "properties": {
+          "parcel_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "parcel_no": {
+            "$ref": "#/components/schemas/ParcelNo"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ParcelStatus"
+          },
+          "current_zone_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "仅in_stock时取最后入库记录zone_id；pending/outbound为null。不是SQL parcels列。"
+          },
+          "last_sequence_no": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "最后流水序号，无流水为0。状态和位置与该序号在同一读快照中派生；不是SQL parcels列。"
+          }
+        },
+        "required": [
+          "parcel_id",
+          "parcel_no",
+          "created_at",
+          "status",
+          "current_zone_id",
+          "last_sequence_no"
+        ],
+        "additionalProperties": false,
+        "description": "持久化仅parcel_id/parcel_no/created_at三列；status/current_zone_id/last_sequence_no由有序流水派生，读取不会追加操作。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "pending"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "last_sequence_no": {
+                  "const": 0
+                },
+                "current_zone_id": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "last_sequence_no": {
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "in_stock"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "current_zone_id": {
+                  "$ref": "#/components/schemas/Id"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "current_zone_id": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ParcelResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "parcel": {
+            "$ref": "#/components/schemas/Parcel"
+          }
+        },
+        "required": [
+          "api_version",
+          "parcel"
+        ],
+        "additionalProperties": false,
+        "description": "包裹详情或建档结果。首次建档pending；创建重试返回既有包裹及读取时派生状态，不重新生成单号或追加流水。"
+      },
+      "ParcelLookupResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "parcel_no": {
+            "$ref": "#/components/schemas/ParcelNo"
+          },
+          "lookup_status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "not_registered"
+            ]
+          },
+          "parcel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Parcel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "api_version",
+          "parcel_no",
+          "lookup_status",
+          "parcel"
+        ],
+        "additionalProperties": false,
+        "description": "单号唯一，精确查询最多一个包裹。未建档200/not_registered/parcel=null，不自动建档；依赖故障返回错误，不当作未建档。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "lookup_status": {
+                  "const": "matched"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "parcel": {
+                  "$ref": "#/components/schemas/Parcel"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "parcel": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ParcelRecordAction": {
+        "type": "string",
+        "enum": [
+          "inbound",
+          "outbound"
+        ],
+        "description": "管理员确认动作；记录只追加，不表示由视觉算法自动识别。"
+      },
+      "ParcelRecordCreateRequest": {
+        "type": "object",
+        "properties": {
+          "record_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ParcelRecordAction"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "record_id",
+          "action"
+        ],
+        "additionalProperties": false,
+        "description": "管理员显式确认；首次必须inbound，入库必须zone_id；outbound禁止传zone_id，由后端保留最近入库位置。禁止客户端parcel_id、operator_id、created_at、sequence_no、状态或历史补录时间。相同record_id/路径包裹/操作人/确认内容重放原记录。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "const": "inbound"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "zone_id"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "zone_id"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ParcelRecord": {
+        "type": "object",
+        "properties": {
+          "record_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "parcel_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "sequence_no": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "后端在锁定包裹事务中递增分配，同包裹内唯一；排序依据，不能用时间戳替代。"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ParcelRecordAction"
+          },
+          "zone_id": {
+            "$ref": "#/components/schemas/Id",
+            "description": "入库为校验后的确认区域；出库保留最近入库的区域，不是当前所在位置。当前允许的入出库流程始终能确定该值；SQL列可空不表示客户端可提交空位置。"
+          },
+          "operator_id": {
+            "$ref": "#/components/schemas/Id",
+            "description": "服务端认证身份映射到users.user_id，客户端不能自报。"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/UtcTime",
+            "description": "服务器实际登记UTC时间，不接受离线补录或客户端时间。"
+          }
+        },
+        "required": [
+          "record_id",
+          "parcel_id",
+          "sequence_no",
+          "action",
+          "zone_id",
+          "operator_id",
+          "created_at"
+        ],
+        "additionalProperties": false,
+        "description": "对应parcel_records七列。只追加；出库后Parcel.current_zone_id=null，但本历史记录保留原入库zone_id。"
+      },
+      "ParcelRecordResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "record": {
+            "$ref": "#/components/schemas/ParcelRecord"
+          }
+        },
+        "required": [
+          "api_version",
+          "record"
+        ],
+        "additionalProperties": false,
+        "description": "首次登记201；同一确认请求重试200且返回原记录，序号、操作人及登记时间均不重新分配。当前包裹状态另用GET详情读取。"
+      },
+      "ParcelRecordListResponse": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "const": "0.3-mvp-draft"
+          },
+          "parcel_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParcelRecord"
+            },
+            "maxItems": 100
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "api_version",
+          "parcel_id",
+          "records",
+          "next_cursor"
+        ],
+        "additionalProperties": false,
+        "description": "按sequence_no ASC读取一个包裹历史；包裹已存在但未登记时records=[]。游标绑定包裹、身份/授权、limit及首请求最大序号快照，追加记录不会移动当前分页；刷新首请求才能看到新记录。末页next_cursor=null，禁用/撤销权限后不返回旧历史。"
+      }
+    }
+  },
+  "x-fixture-schemas": {
+    "examples/v0.3/recording-import-mock-request.json": "MockRecordingManifest",
+    "examples/v0.3/recording-import-response.json": "ImportResponse",
+    "examples/v0.3/recording-import-replayed-response.json": "ImportResponse",
+    "examples/v0.3/recording-response.json": "RecordingResponse",
+    "examples/v0.3/recording-list-response.json": "RecordingListResponse",
+    "examples/v0.3/query-request.json": "Query",
+    "examples/v0.3/events-matched-response.json": "EventsResponse",
+    "examples/v0.3/events-no-detections-response.json": "EventsResponse",
+    "examples/v0.3/events-outside-recording-response.json": "EventsResponse",
+    "examples/v0.3/events-partial-range-response.json": "EventsResponse",
+    "examples/v0.3/event-response.json": "EventResponse",
+    "examples/v0.3/evidence-missing-response.json": "EvidenceResponse",
+    "examples/v0.3/review-create-request.json": "ReviewCreateRequest",
+    "examples/v0.3/review-response.json": "ReviewResponse",
+    "examples/v0.3/review-list-response.json": "ReviewListResponse",
+    "examples/v0.3/config-response.json": "ConfigResponse",
+    "examples/v0.3/validation-error-response.json": "ErrorResponse",
+    "examples/v0.3/media-missing-error-response.json": "ErrorResponse",
+    "examples/v0.3/idempotency-conflict-response.json": "ErrorResponse",
+    "examples/v0.3/clock-unverified-error-response.json": "ErrorResponse",
+    "examples/v0.3/import-failed-error-response.json": "ErrorResponse",
+    "examples/v0.3/agent-plan-request.json": "AgentPlanRequest",
+    "examples/v0.3/agent-plan-response.json": "AgentPlanResponse",
+    "examples/v0.3/agent-run-request.json": "AgentRunRequest",
+    "examples/v0.3/agent-run-response.json": "AgentRunResponse",
+    "examples/v0.3/agent-stop-request.json": "AgentStopRequest",
+    "examples/v0.3/agent-stopped-response.json": "AgentRunResponse",
+    "examples/v0.3/agent-failed-response.json": "AgentRunResponse",
+    "examples/v0.3/user-response.json": "UserResponse",
+    "examples/v0.3/event-embedding-create-request.json": "EventEmbeddingCreateRequest",
+    "examples/v0.3/event-embedding-response.json": "EventEmbeddingResponse",
+    "examples/v0.3/event-embedding-replayed-response.json": "EventEmbeddingResponse",
+    "examples/v0.3/semantic-search-request.json": "SemanticSearchRequest",
+    "examples/v0.3/semantic-search-matched-response.json": "SemanticSearchResponse",
+    "examples/v0.3/semantic-search-no-matches-response.json": "SemanticSearchResponse",
+    "examples/v0.3/semantic-search-unindexed-response.json": "SemanticSearchResponse",
+    "examples/v0.3/semantic-search-partial-response.json": "SemanticSearchResponse",
+    "examples/v0.3/semantic-search-storage-error-response.json": "ErrorResponse",
+    "examples/v0.3/event-embedding-conflict-response.json": "ErrorResponse",
+    "examples/v0.3/event-embedding-duplicate-source-response.json": "ErrorResponse",
+    "examples/v0.3/semantic-partial-recording-mock-request.json": "MockRecordingManifest",
+    "examples/v0.3/semantic-partial-event-embedding-request.json": "EventEmbeddingCreateRequest",
+    "examples/v0.3/agent-running-response.json": "AgentRunResponse",
+    "examples/v0.3/agent-restarted-response.json": "AgentRunResponse",
+    "examples/v0.3/conversation-create-request.json": "ConversationCreateRequest",
+    "examples/v0.3/conversation-response.json": "ConversationResponse",
+    "examples/v0.3/conversation-list-response.json": "ConversationListResponse",
+    "examples/v0.3/user-message-create-request.json": "UserMessageCreateRequest",
+    "examples/v0.3/user-message-response.json": "MessageResponse",
+    "examples/v0.3/messages-response.json": "MessageListResponse",
+    "examples/v0.3/agent-run-conflict-response.json": "ErrorResponse",
+    "examples/v0.3/conversation-owner-error-response.json": "ErrorResponse"
+  },
+  "x-service-credential-policy": {
+    "user_roles": [
+      "admin",
+      "viewer"
+    ],
+    "proposed_scopes": [
+      "data:read",
+      "data:ingest",
+      "reviews:write",
+      "parcels:write"
+    ],
+    "agent_backend_scopes": [
+      "data:read"
+    ],
+    "description": "角色与 scope 独立校验；机器 token 不新增 users.role。Agent 后端凭据只有 data:read，即使代表 admin 也不能导入或保存。鉴权实现尚未选择。 event-embeddings 写入需要 admin+data:ingest；events/search 是 data:read，只读 POST，不因方法为 POST 赋予写权限。 Agent聊天/运行状态持久化属于owner限定的AI资源，不授予事实/向量/人工核查写scope；client不能直接伪造assistant消息、引用或终态。 包裹建档及入出库写入需要 active admin + parcels:write，并校验当前单驿站资源授权；Agent只使用data:read查询包裹和历史，不能写包裹或流水。 会话不固定录像：创建/列出会话及保存user问题的x-required-scope=none，仅Bearer+active owner；计划/运行需要data:read及本次Query录像授权。消息列表按x-conditional-required-scope逐助手消息验证关联run，任一无权则整页403，不返回正文或部分结果，会话列表仍保留。none仅是扩展字段中的无额外scope标识，不是新token scope。"
+  }
+}

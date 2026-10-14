@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.2-draft",
+  "import_id": "mock-sdk-import-01",
+  "recording_id": "mock-sdk-recording-01",
+  "index_version": 1,
+  "index_status": "complete",
+  "producer_name": "mock-sdk-adapter-fixture",
+  "producer_version": "0.2",
+  "recording": {
+    "recording_id": "mock-sdk-recording-01",
+    "camera_id": "mock-camera-indoor-01",
+    "source_mode": "mock",
+    "media_kind": "event_metadata",
+    "clock": {
+      "time_base": "raw_epoch_ms",
+      "raw_start_epoch_ms": 1791439200000,
+      "raw_end_epoch_ms": 1791446400000,
+      "clock_offset_ms": null,
+      "alignment_status": "unknown",
+      "calibration_note": "Synthetic SDK metadata shape; device clock not calibrated, no real device or frames.",
+      "time_mapping_version": "mock-unknown-clock-v1",
+      "time_base_num": 1,
+      "time_base_den": 1000,
+      "raw_time_origin_pts": 0
+    },
+    "media": {
+      "unavailable_reason": "sdk_event_has_no_media"
+    },
+    "source_recording_id": "mock-sdk-source-recording-01"
+  },
+  "track_segments": [],
+  "events": [
+    {
+      "event_id": "mock-sdk-event-01",
+      "recording_id": "mock-sdk-recording-01",
+      "camera_id": "mock-camera-indoor-01",
+      "zone_id": null,
+      "zone_config_id": null,
+      "track_segment_id": null,
+      "event_type": "device_detection",
+      "raw_start_epoch_ms": 1791439260000,
+      "raw_end_epoch_ms": 1791439265000,
+      "detection_source": "sdk_event",
+      "observation_status": "observed",
+      "confidence": null,
+      "evidence_ids": [],
+      "metadata": {
+        "raw_sdk_type": "mock_motion"
+      },
+      "source_event_id": "mock-sdk-source-event-01",
+      "start_offset_ms": null,
+      "end_offset_ms": null,
+      "doorway_direction": null,
+      "enhancement_tags": []
+    }
+  ],
+  "evidence": [],
+  "coverage_intervals": [],
+  "detection_source": "sdk_event",
+  "detector_version": null,
+  "tracker_version": null,
+  "failure_reason": null
+}

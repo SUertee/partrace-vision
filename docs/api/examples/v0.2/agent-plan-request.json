@@ -1,0 +1,15 @@
+{
+  "question": "Mock query: E3 shelf interactions between the two UTC times.",
+  "context_query": {
+    "zone_id": "E3",
+    "camera_id": "mock-camera-indoor-01",
+    "start": "2026-10-08T06:00:00Z",
+    "end": "2026-10-08T08:00:00Z",
+    "event_types": [
+      "shelf_interaction"
+    ],
+    "source_modes": [
+      "mock"
+    ]
+  }
+}

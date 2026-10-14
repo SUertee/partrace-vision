@@ -1,0 +1,43 @@
+{
+  "api_version": "0.2-draft",
+  "query": {
+    "zone_id": "E3",
+    "camera_id": "mock-camera-indoor-01",
+    "start": "2026-10-08T06:00:00Z",
+    "end": "2026-10-08T08:00:00Z",
+    "event_types": [
+      "shelf_interaction"
+    ],
+    "source_modes": [
+      "mock"
+    ]
+  },
+  "items": [],
+  "next_cursor": null,
+  "snapshot": {
+    "index_import_ids": [],
+    "selection_mode": "latest_complete",
+    "selected_at": "2026-10-12T07:00:00Z"
+  },
+  "query_status": "no_capture",
+  "coverage_summary": {
+    "capture_status": "no_capture",
+    "index_status": "pending",
+    "captured_intervals": [],
+    "unknown_intervals": [
+      {
+        "start": "2026-10-08T06:00:00Z",
+        "end": "2026-10-08T08:00:00Z",
+        "reason": "no_capture",
+        "coverage_ids": []
+      }
+    ],
+    "media_availability_counts": {
+      "available": 0,
+      "missing": 0,
+      "expired": 0,
+      "deleted": 0,
+      "unverified": 0
+    }
+  }
+}

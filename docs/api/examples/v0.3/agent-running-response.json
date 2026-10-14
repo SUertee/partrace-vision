@@ -1,0 +1,28 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "run_id": "run_mock_running",
+  "conversation_id": "conv_mock_001",
+  "input_message_id": "msg_mock_question_001",
+  "status": "running",
+  "plan": {
+    "query": {
+      "recording_id": "rec_mock_001",
+      "camera_id": "cam_demo_01",
+      "zone_id": "E3",
+      "start_offset_ms": 0,
+      "end_offset_ms": 120000
+    },
+    "query_text": "看看 E3 货架附近有哪些值得核查的事件。",
+    "steps": [
+      "按明确视频/区域/时间做只读语义检索",
+      "读取候选Event和关键帧，核对来源与媒体状态",
+      "缺少真实画面时只说明候选/未知"
+    ]
+  },
+  "summary": null,
+  "references": [],
+  "model_key": "mock-language-model@mock-run-config-v1",
+  "error": null,
+  "created_at": "2026-10-13T03:00:03Z",
+  "finished_at": null
+}

@@ -1,0 +1,40 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "query_text": "谁靠近过 E3 货架？",
+  "filter": {
+    "recording_id": "rec_mock_001",
+    "camera_id": "cam_demo_01",
+    "zone_id": "E3",
+    "start_offset_ms": 0,
+    "end_offset_ms": 120000
+  },
+  "model": {
+    "model_name": "mock-text-encoder",
+    "model_version": "mock-v1-preprocess-demo",
+    "dimensions": 3
+  },
+  "recording_range": {
+    "relation": "full",
+    "covered_start_offset_ms": 0,
+    "covered_end_offset_ms": 120000
+  },
+  "search_status": "matched",
+  "coverage": {
+    "eligible_event_count": 1,
+    "indexed_event_count": 1,
+    "missing_event_count": 0
+  },
+  "candidates": [
+    {
+      "event_id": "evt_mock_001",
+      "evidence_id": "evd_mock_001",
+      "embedding_id": "emb_mock_001",
+      "score": 0.8,
+      "source_text": "模拟描述：人物靠近 E3 货架，发生候选货架交互；动作需人工核查。",
+      "media_status": "missing",
+      "source_mode": "mock",
+      "detection_source": "mock",
+      "observation_status": "candidate"
+    }
+  ]
+}

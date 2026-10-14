@@ -1,0 +1,31 @@
+{
+  "api_version": "0.2-draft",
+  "recording": {
+    "recording_id": "mock-sdk-recording-01",
+    "camera_id": "mock-camera-indoor-01",
+    "source_mode": "mock",
+    "media_kind": "event_metadata",
+    "clock": {
+      "time_base": "raw_epoch_ms",
+      "raw_start_epoch_ms": 1791439200000,
+      "raw_end_epoch_ms": 1791446400000,
+      "clock_offset_ms": null,
+      "alignment_status": "unknown",
+      "calibration_note": "Synthetic SDK metadata shape; device clock not calibrated, no real device or frames.",
+      "time_mapping_version": "mock-unknown-clock-v1",
+      "time_base_num": 1,
+      "time_base_den": 1000,
+      "raw_time_origin_pts": 0
+    },
+    "start": null,
+    "end": null,
+    "availability": "missing",
+    "media_sha256": null,
+    "latest_import_id": "mock-sdk-import-01",
+    "latest_index_status": "complete",
+    "effective_import_id": "mock-sdk-import-01",
+    "effective_index_version": 1,
+    "playback": null,
+    "source_recording_id": "mock-sdk-source-recording-01"
+  }
+}
