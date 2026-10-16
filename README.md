@@ -16,7 +16,7 @@
 - [在线工作台：原型、模块、API 与数据库](https://yizhan-trace-workbench.vercel.app/)
 - [最新离线工作台 HTML](docs/workbench/index.html)：原型、开发模块、流程和数据库设计，下载此文件双击即可打开。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
-- [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 79 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
+- [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 80 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
 - [开发协作规范：AGENTS.md](AGENTS.md)
 - [OpenSpec：安装、规格与开发流程](docs/OPENSPEC.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)

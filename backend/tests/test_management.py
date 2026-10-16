@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import psycopg
 import pytest
@@ -80,7 +81,7 @@ class DatabaseDouble:
 
 def test_init_locks_checks_and_executes_ddl_in_one_transaction(settings, monkeypatch):
     database = DatabaseDouble()
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     assert manage.init_database(settings) == 11
     assert database.committed and not database.rolled_back
     assert database.calls[0][0] == "SELECT pg_catalog.pg_advisory_xact_lock(%s)"
@@ -97,7 +98,7 @@ def test_init_locks_checks_and_executes_ddl_in_one_transaction(settings, monkeyp
 
 def test_existing_schema_is_preserved_after_acquiring_lock(settings, monkeypatch):
     database = DatabaseDouble(nonempty=True)
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     with pytest.raises(manage.ManagementError, match="not empty"):
         manage.init_database(settings)
     assert database.rolled_back and not database.committed
@@ -108,7 +109,7 @@ def test_existing_schema_is_preserved_after_acquiring_lock(settings, monkeypatch
 
 def test_ddl_failure_rolls_back_and_redacts_driver_details(settings, monkeypatch):
     database = DatabaseDouble(ddl_error=True)
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     with pytest.raises(manage.ManagementError, match="rolled back") as error:
         manage.init_database(settings)
     assert database.rolled_back and not database.committed
@@ -133,30 +134,32 @@ def test_unexpected_schema_wrapper_is_rejected_before_connecting(
     def forbidden(*args, **kwargs):
         pytest.fail("must reject an unexpected schema before connecting")
 
-    monkeypatch.setattr(psycopg, "connect", forbidden)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=forbidden))
     with pytest.raises(manage.ManagementError, match="wrapper"):
         manage.init_database(settings)
 
 
 @pytest.mark.parametrize("environment", ["staging", "production"])
-@pytest.mark.parametrize("command", ["init-db", "seed-user"])
+@pytest.mark.parametrize("command", ["init-db", "seed-user", "migrate-event-person-id"])
 def test_bootstrap_is_development_only(settings, environment, command, monkeypatch):
     settings.environment = environment
 
     def forbidden(*args, **kwargs):
         pytest.fail("non-development bootstrap must not connect")
 
-    monkeypatch.setattr(psycopg, "connect", forbidden)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=forbidden))
     with pytest.raises(manage.ManagementError, match="only allowed in development"):
         if command == "init-db":
             manage.init_database(settings)
+        elif command == "migrate-event-person-id":
+            manage.migrate_event_person_id(settings)
         else:
             manage.seed_user(settings, "viewer_1", "Viewer", "viewer")
 
 
 def test_seed_parameterizes_values_and_uses_server_utc(settings, monkeypatch):
     database = DatabaseDouble()
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     display_name = "Viewer'); DROP TABLE users; --"
     manage.seed_user(settings, "viewer_1", display_name, "viewer")
     sql, params, _ = database.calls[-1]
@@ -169,7 +172,7 @@ def test_seed_parameterizes_values_and_uses_server_utc(settings, monkeypatch):
 
 def test_duplicate_user_does_not_upsert_or_leak_driver_error(settings, monkeypatch):
     database = DatabaseDouble(duplicate=True)
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     with pytest.raises(manage.ManagementError, match="already exists") as error:
         manage.seed_user(settings, "viewer_1", "New admin", "admin")
     assert database.rolled_back and not database.committed
@@ -192,7 +195,7 @@ def test_invalid_user_input_is_rejected_before_connecting(
     def forbidden(*args, **kwargs):
         pytest.fail("invalid user parameters must not connect")
 
-    monkeypatch.setattr(psycopg, "connect", forbidden)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=forbidden))
     with pytest.raises(manage.ManagementError):
         manage.seed_user(settings, user_id, display_name, role)
 
@@ -203,7 +206,7 @@ def test_cli_reports_errors_without_a_traceback(settings, monkeypatch, capsys):
     def failure(*args, **kwargs):
         raise psycopg.OperationalError("management-secret private DSN")
 
-    monkeypatch.setattr(psycopg, "connect", failure)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=failure))
     assert manage.main(["init-db"]) == 1
     output = capsys.readouterr()
     assert not output.out
@@ -215,7 +218,7 @@ def test_cli_reports_errors_without_a_traceback(settings, monkeypatch, capsys):
 def test_cli_success_does_not_print_user_details(settings, monkeypatch, capsys):
     monkeypatch.setattr(manage, "Settings", lambda: settings)
     database = DatabaseDouble()
-    monkeypatch.setattr(psycopg, "connect", database.connect)
+    monkeypatch.setattr(manage, "connection_class", lambda _: SimpleNamespace(connect=database.connect))
     assert manage.main(
         [
             "seed-user", "--user-id", "viewer_1", "--display-name", "Private Name",

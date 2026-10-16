@@ -6,7 +6,7 @@
 
 ## 部署与源码基线
 
-本次提交只更新文档和只读查询 SQL，不合入工作区中的 Android、People API、迁移、worker 或部署脚本。`dev` 文档更新基于 `116cef7`，其运行代码基线仍为 `4cc9aa1`；从该源码重新构建不能直接重现下面的独立部署。当前 [dev SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 仍描述 dev 已有契约，不是云端 People 结构的完整快照。
+先前 `df2de62` 只更新部署文档和只读查询 SQL，其运行代码基线为 `4cc9aa1`。本次 person_id 提交在该基线上补充事件字段、独立迁移和既有 Vision 出口；Android、People API、任务迁移、worker 和部署脚本仍未随本次合入，不能从 dev 直接重建完整的独立 People 部署。当前 [dev SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 仍描述 dev 已有契约，不是云端 People 结构的完整快照。
 
 | 项目 | 本次核验的实际状态 |
 | --- | --- |
@@ -115,3 +115,11 @@ sudo bash /opt/partrace-public-ip/configure.sh issue 35.84.190.14 8001
 2. **worker 的服务器运行交付。** A 当前在 Mac CPU 进程持续运行；Mac/进程停止后，API 可继续保存 pending 原片，但不会自行解析。
 3. **Android 真机、系统后台常驻与正式生产鉴权。** 当前验证依赖前台 App 和 SDK 登录，公网 HTTPS 不代表上述事项完成。
 4. **源码整合与完整业务闭环。** People 源码/迁移/部署自动化仍待合入 dev；Agent 云端启用、真实区域事件/证据引用、人工核查和 D10 独立验收，本文不提前标为完成。
+
+## person_id 字段补丁 · 2026-10-17
+
+Aurora 已执行 `004-event-person-id.sql`，增加可空的 A 图库 G 编号；3 条旧事件全部旧字段逐值不变，新列均为 `NULL`。云端当前镜像为 `partrace-vision-api:person-id-20261017`，基于原 People 镜像构建，保留 `shelf_level`、任务流程、loopback 8001 和现有 Nginx/TLS。
+
+独立发布目录 `/opt/partrace-person-id-20261017` 保存补丁与 root 私有的迁移前 events 快照；旧 People 容器保留为 `partrace-people-api-20261017-before-person-id`。新容器 readiness 200，21 个操作的契约含 person_id；公网正常验证证书后 health 200、无凭据 recordings 401、App 既有凭据读取 recordings 200。既有 8000 API 保留，不执行破坏性数据库降级。
+
+本次 dev 合入与该云端补丁共享字段语义，但完整 People 源码整合仍待进行。B 尚缺现场标定，没有真实 B 匹配 G 编号的入库事件；详见[D04 验证](../../openspec/changes/d04-event-person-id/verification.md)。

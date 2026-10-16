@@ -10,6 +10,7 @@ from decimal import Decimal
 from typing import Annotated, Literal, Self
 
 from pydantic import (
+    model_serializer,
     AfterValidator,
     BaseModel,
     ConfigDict,
@@ -141,6 +142,7 @@ class EventInput(StrictModel):
     # 货架编号（如 E3），不表示层级；层级用 shelf_level。未知货架传 null，缺省 E3。
     zone_id: Id | None = "E3"
     track_key: Id | None
+    person_id: Annotated[str, StringConstraints(pattern=r"^G[0-9]{4,99}$", max_length=100)] | None = None
     event_type: EventType
     shelf_level: ShelfLevel | None = None
     observation_status: Literal["observed", "candidate"]
@@ -148,6 +150,15 @@ class EventInput(StrictModel):
     end_offset_ms: OffsetMs
     detection_source: Literal["automatic", "manual", "mock"]
     summary: Annotated[str, StringConstraints(max_length=1000)] | None
+
+    @model_serializer(mode="wrap")
+    def serialize_person_identity(self, handler):
+        # Omitted and explicit null stay equivalent to pre-field manifests.
+        # Known G identities remain part of the immutable import digest.
+        value = handler(self)
+        if value.get("person_id") is None:
+            value.pop("person_id", None)
+        return value
 
     @model_validator(mode="after")
     def ordered_event(self) -> Self:

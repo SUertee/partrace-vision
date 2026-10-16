@@ -12,7 +12,7 @@
 | [OpenAPI](openapi.json) | `0.3-mvp-draft`：19 个后端操作 + 9 个独立 Agent 操作，共 28 个 |
 | [Agent 接口对接文档](AGENT_API.md) | 前端对接：9 个 Agent 接口的鉴权、参数、返回、错误与 SSE 协议 |
 | [v0.3 模拟样例](examples/v0.3/) | 完整/范围外/缺失媒体/重试/错误交接；包裹样例内联于 OpenAPI；无真实业务执行 |
-| [数据库](../database/README.md) · [离线关系图](../database/schema-canvas.html) | 11 表、79 字段；HTML 双击可打开 |
+| [数据库](../database/README.md) · [离线关系图](../database/schema-canvas.html) | 11 表、80 字段；HTML 双击可打开 |
 
 ## 按开发模块交接
 

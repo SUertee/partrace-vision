@@ -258,8 +258,8 @@ class BackendService:
                     ).fetchone()
                     for event in payload["events"]:
                         connection.execute(
-                            "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,shelf_level,observation_status,start_offset_ms,end_offset_ms,detection_source,summary) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "shelf_level", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")),
+                            "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,shelf_level,observation_status,start_offset_ms,end_offset_ms,detection_source,summary,person_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                            (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "shelf_level", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")) + (event.get("person_id"),),
                         )
                     for frame in payload["evidence"]:
                         key = prepared.evidence_keys[frame["evidence_id"]]

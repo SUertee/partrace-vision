@@ -3922,6 +3922,15 @@
                 "type": "null"
               }
             ]
+          },
+          "person_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^G[0-9]{4,99}$",
+            "maxLength": 100,
+            "description": "A图库管理的匿名G编号；B成功匹配时填写，未知或冲突为null。不同于局部track_key及App用户ID，不代表自然人身份。"
           }
         },
         "required": [
@@ -4213,6 +4222,15 @@
             "items": {
               "$ref": "#/components/schemas/Id"
             }
+          },
+          "person_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^G[0-9]{4,99}$",
+            "maxLength": 100,
+            "description": "A图库管理的匿名G编号；B成功匹配时填写，未知或冲突为null。不同于局部track_key及App用户ID，不代表自然人身份。"
           }
         },
         "required": [
@@ -4226,7 +4244,8 @@
           "end_offset_ms",
           "detection_source",
           "summary",
-          "evidence_ids"
+          "evidence_ids",
+          "person_id"
         ],
         "additionalProperties": false,
         "description": "evidence_ids 从 evidence.event_id 派生；不是新的存储列。"
