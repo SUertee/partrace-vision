@@ -1,9 +1,9 @@
 """Validated environment configuration; database credentials stay private."""
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from psycopg import ProgrammingError
 from psycopg.conninfo import conninfo_to_dict
@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     environment: Literal["development", "staging", "production"] = "development"
     database_url: SecretStr = Field(repr=False)
+    database_iam_auth: bool = False
+    database_iam_region: str | None = Field(default=None, pattern=r"^[a-z]{2}-[a-z]+-\d$")
     database_timeout_seconds: int = Field(default=5, ge=1, le=30)
     auth_file: Path = Path(__file__).resolve().parents[2] / ".local-state/auth.json"
     configs_dir: Path = Path(__file__).resolve().parents[2] / ".local-state/configs"
@@ -51,7 +53,7 @@ class Settings(BaseSettings):
     embedding_base_url: str | None = None
     embedding_timeout_seconds: int = Field(default=20, ge=1, le=120)
 
-    @field_validator("agent_model", "agent_base_url", "embedding_model", "embedding_base_url", "embedding_dimensions", mode="before")
+    @field_validator("agent_model", "agent_base_url", "embedding_model", "embedding_base_url", "embedding_dimensions", "database_iam_region", mode="before")
     @classmethod
     def empty_optional_model_setting(cls, value):
         return None if value == "" else value
@@ -83,3 +85,15 @@ class Settings(BaseSettings):
         if not connection.get("host") or not connection.get("dbname"):
             raise ValueError("database URL must specify a host and database")
         return value
+
+    @model_validator(mode="after")
+    def validate_iam_authentication(self) -> Self:
+        """IAM authentication replaces the password, so it needs a user and a region."""
+        if not self.database_iam_auth:
+            return self
+        if self.database_iam_region is None:
+            raise ValueError("IAM database authentication requires a signing region")
+        connection = conninfo_to_dict(self.database_url.get_secret_value())
+        if not connection.get("user"):
+            raise ValueError("IAM database authentication requires a database user")
+        return self

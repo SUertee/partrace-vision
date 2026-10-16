@@ -15,6 +15,7 @@ from backend.ai.gateway import ScopedToolGateway
 from backend.ai.history import AIHistory
 from backend.core.errors import ApiError
 from backend.core.models import Query
+from backend.storage.credentials import connection_class
 
 
 def cursor_secret(path: Path) -> bytes:
@@ -56,7 +57,7 @@ class ExecutorLease:
 
     def acquire(self):
         try:
-            self.connection = psycopg.connect(
+            self.connection = connection_class(self.settings).connect(
                 self.settings.database_url.get_secret_value(), autocommit=True,
                 connect_timeout=self.settings.database_timeout_seconds,
                 application_name="partrace-agent-executor",
