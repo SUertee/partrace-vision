@@ -1,0 +1,224 @@
+{"source_frame_index": 0, "time_ms": 0.0, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 2, "time_ms": 66.722, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 4, "time_ms": 133.433, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 6, "time_ms": 200.156, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 8, "time_ms": 266.878, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 10, "time_ms": 333.589, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 12, "time_ms": 400.311, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 14, "time_ms": 467.033, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 16, "time_ms": 533.756, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 18, "time_ms": 600.467, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 20, "time_ms": 667.189, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 22, "time_ms": 733.911, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 24, "time_ms": 800.622, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 26, "time_ms": 867.344, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 28, "time_ms": 934.067, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 30, "time_ms": 1000.778, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 32, "time_ms": 1067.5, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 34, "time_ms": 1134.222, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 36, "time_ms": 1200.933, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 38, "time_ms": 1267.656, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 40, "time_ms": 1334.378, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 42, "time_ms": 1401.1, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 44, "time_ms": 1467.811, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 46, "time_ms": 1534.533, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 48, "time_ms": 1601.256, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 50, "time_ms": 1667.967, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 52, "time_ms": 1734.689, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 54, "time_ms": 1801.411, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 56, "time_ms": 1868.122, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 58, "time_ms": 1934.844, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 60, "time_ms": 2001.567, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 62, "time_ms": 2068.289, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 64, "time_ms": 2135.0, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 66, "time_ms": 2201.722, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 68, "time_ms": 2268.444, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 70, "time_ms": 2335.156, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 72, "time_ms": 2401.878, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 74, "time_ms": 2468.6, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 76, "time_ms": 2535.311, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 78, "time_ms": 2602.033, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 80, "time_ms": 2668.756, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 82, "time_ms": 2735.478, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 84, "time_ms": 2802.189, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 86, "time_ms": 2868.911, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 88, "time_ms": 2935.633, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 90, "time_ms": 3002.344, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 92, "time_ms": 3069.067, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 94, "time_ms": 3135.789, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 96, "time_ms": 3202.5, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 98, "time_ms": 3269.222, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 100, "time_ms": 3335.944, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 102, "time_ms": 3402.656, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 104, "time_ms": 3469.378, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 106, "time_ms": 3536.1, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 108, "time_ms": 3602.822, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 110, "time_ms": 3669.533, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 112, "time_ms": 3736.256, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 114, "time_ms": 3802.978, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 116, "time_ms": 3869.689, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 118, "time_ms": 3936.411, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 120, "time_ms": 4003.133, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 122, "time_ms": 4069.856, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 124, "time_ms": 4136.567, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 126, "time_ms": 4203.289, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 128, "time_ms": 4270.011, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 130, "time_ms": 4336.722, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 132, "time_ms": 4403.444, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 134, "time_ms": 4470.167, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 136, "time_ms": 4536.878, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 138, "time_ms": 4603.6, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 140, "time_ms": 4670.322, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 142, "time_ms": 4737.044, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 144, "time_ms": 4803.756, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 146, "time_ms": 4870.478, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 148, "time_ms": 4937.2, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 150, "time_ms": 5003.911, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 152, "time_ms": 5070.633, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 154, "time_ms": 5137.356, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 156, "time_ms": 5204.067, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 158, "time_ms": 5270.789, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 160, "time_ms": 5337.511, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 162, "time_ms": 5404.222, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 164, "time_ms": 5470.944, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 166, "time_ms": 5537.667, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 168, "time_ms": 5604.389, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 170, "time_ms": 5671.1, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 172, "time_ms": 5737.822, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 174, "time_ms": 5804.544, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 176, "time_ms": 5871.256, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 178, "time_ms": 5937.978, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 180, "time_ms": 6004.7, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 182, "time_ms": 6071.411, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 184, "time_ms": 6138.133, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 186, "time_ms": 6204.856, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 188, "time_ms": 6271.578, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 190, "time_ms": 6338.289, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 192, "time_ms": 6405.011, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 194, "time_ms": 6471.733, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 196, "time_ms": 6538.444, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 727.86, 44.87, 1260.33], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 198, "time_ms": 6605.167, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 740.54, 60.04, 1268.68], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 200, "time_ms": 6671.889, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 739.81, 78.11, 1278.47], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 202, "time_ms": 6738.6, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 729.42, 94.18, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 204, "time_ms": 6805.322, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 727.96, 107.74, 1279.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 206, "time_ms": 6872.044, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 724.04, 116.83, 1279.95], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 208, "time_ms": 6938.756, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 718.93, 121.72, 1278.56], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 210, "time_ms": 7005.478, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 706.55, 125.48, 1277.35], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 212, "time_ms": 7072.2, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 693.59, 132.1, 1278.91], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 214, "time_ms": 7138.922, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 688.99, 152.75, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 216, "time_ms": 7205.633, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 682.74, 186.7, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 218, "time_ms": 7272.356, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 683.35, 215.94, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 220, "time_ms": 7339.078, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 684.05, 231.15, 1279.95], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 222, "time_ms": 7405.789, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 673.99, 238.42, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 224, "time_ms": 7472.511, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [0.0, 661.24, 241.58, 1279.23], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 226, "time_ms": 7539.233, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [4.76, 650.21, 248.74, 1267.17], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 228, "time_ms": 7605.956, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [40.29, 636.93, 262.13, 1232.76], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 230, "time_ms": 7672.667, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [71.41, 629.14, 283.1, 1220.39], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 232, "time_ms": 7739.389, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [89.54, 623.41, 301.15, 1234.66], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 234, "time_ms": 7806.111, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [104.23, 629.52, 318.23, 1259.1], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 236, "time_ms": 7872.822, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [115.99, 631.63, 336.07, 1268.57], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 238, "time_ms": 7939.544, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [128.37, 634.7, 349.61, 1269.55], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 240, "time_ms": 8006.267, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [139.35, 625.61, 360.1, 1275.97], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 242, "time_ms": 8072.978, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [152.14, 605.56, 370.29, 1278.32], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 244, "time_ms": 8139.7, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [166.76, 583.95, 378.57, 1275.18], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 246, "time_ms": 8206.422, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [181.14, 563.93, 388.68, 1273.79], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 248, "time_ms": 8273.144, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [194.57, 543.02, 403.61, 1276.33], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 250, "time_ms": 8339.856, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [209.15, 531.57, 430.47, 1279.08], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 252, "time_ms": 8406.578, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [226.42, 525.58, 458.62, 1278.37], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 254, "time_ms": 8473.3, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [244.92, 530.21, 494.8, 1279.8], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 256, "time_ms": 8540.011, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [243.4, 540.99, 535.73, 1279.17], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 258, "time_ms": 8606.733, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [263.08, 528.47, 569.67, 1279.67], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 260, "time_ms": 8673.456, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [334.0, 529.26, 618.03, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 262, "time_ms": 8740.167, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [395.82, 510.78, 675.94, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 264, "time_ms": 8806.889, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [444.64, 482.39, 711.35, 1279.98], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 266, "time_ms": 8873.611, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [483.0, 472.74, 720.0, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 268, "time_ms": 8940.322, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t1", "box": [526.13, 486.94, 720.0, 1280.0], "profile_id": "G0004", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 270, "time_ms": 9007.044, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 272, "time_ms": 9073.767, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 274, "time_ms": 9140.489, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 276, "time_ms": 9207.2, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 278, "time_ms": 9273.922, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 280, "time_ms": 9340.644, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 282, "time_ms": 9407.356, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 284, "time_ms": 9474.078, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 286, "time_ms": 9540.8, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 288, "time_ms": 9607.511, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 290, "time_ms": 9674.233, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 292, "time_ms": 9740.956, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 294, "time_ms": 9807.667, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 296, "time_ms": 9874.389, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 298, "time_ms": 9941.111, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 300, "time_ms": 10007.833, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 302, "time_ms": 10074.544, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 304, "time_ms": 10141.267, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 306, "time_ms": 10207.989, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 308, "time_ms": 10274.7, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 310, "time_ms": 10341.422, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 312, "time_ms": 10408.144, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 314, "time_ms": 10474.856, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 316, "time_ms": 10541.578, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 318, "time_ms": 10608.3, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 320, "time_ms": 10675.022, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 322, "time_ms": 10741.733, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 324, "time_ms": 10808.456, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 326, "time_ms": 10875.178, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 328, "time_ms": 10941.889, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 330, "time_ms": 11008.611, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 332, "time_ms": 11075.333, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 334, "time_ms": 11142.056, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 336, "time_ms": 11208.767, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 338, "time_ms": 11275.489, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 340, "time_ms": 11342.211, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 342, "time_ms": 11408.922, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 344, "time_ms": 11475.644, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 346, "time_ms": 11542.367, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [0.0, 690.91, 94.49, 1203.75], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 348, "time_ms": 11609.078, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [0.0, 679.88, 114.25, 1255.25], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 350, "time_ms": 11675.8, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [0.0, 654.74, 142.54, 1279.23], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 352, "time_ms": 11742.522, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [0.96, 630.57, 174.23, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 354, "time_ms": 11809.233, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [2.01, 617.47, 215.0, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 356, "time_ms": 11875.956, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [1.61, 613.57, 258.48, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 358, "time_ms": 11942.678, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [4.36, 606.69, 305.63, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 360, "time_ms": 12009.4, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [35.9, 608.66, 346.97, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 362, "time_ms": 12076.111, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [81.62, 619.4, 387.08, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 364, "time_ms": 12142.833, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [141.27, 610.5, 430.4, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 366, "time_ms": 12209.556, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [206.1, 615.99, 502.21, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 368, "time_ms": 12276.267, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [261.83, 601.95, 539.02, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 370, "time_ms": 12342.989, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [315.94, 587.7, 661.77, 1278.81], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 372, "time_ms": 12409.711, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [365.07, 592.82, 708.15, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 374, "time_ms": 12476.422, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [413.0, 597.67, 720.0, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 376, "time_ms": 12543.144, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [462.33, 609.78, 720.0, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 378, "time_ms": 12609.867, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t3", "box": [542.56, 616.7, 720.0, 1280.0], "profile_id": "G0005", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 380, "time_ms": 12676.589, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 382, "time_ms": 12743.3, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 384, "time_ms": 12810.022, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 386, "time_ms": 12876.744, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 388, "time_ms": 12943.456, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 390, "time_ms": 13010.178, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 392, "time_ms": 13076.9, "timestamp_basis": "decoder_media_pts", "people": []}
+{"source_frame_index": 394, "time_ms": 13143.611, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [0.0, 628.79, 131.79, 1278.49], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 396, "time_ms": 13210.333, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [0.0, 633.3, 184.81, 1279.62], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 398, "time_ms": 13277.056, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [0.0, 632.2, 212.77, 1278.76], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 400, "time_ms": 13343.767, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [0.0, 620.34, 252.6, 1279.68], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 402, "time_ms": 13410.489, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [16.81, 613.66, 290.28, 1279.8], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 404, "time_ms": 13477.211, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [36.62, 609.12, 339.43, 1280.0], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 406, "time_ms": 13543.933, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [65.2, 611.12, 390.77, 1280.0], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 408, "time_ms": 13610.644, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [108.12, 614.79, 445.06, 1280.0], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 410, "time_ms": 13677.367, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [147.71, 617.75, 489.28, 1280.0], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 412, "time_ms": 13744.089, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [206.14, 622.7, 530.26, 1276.02], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 414, "time_ms": 13810.8, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [272.95, 626.22, 579.07, 1274.38], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 416, "time_ms": 13877.522, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [334.1, 626.33, 627.81, 1274.03], "profile_id": "G0006", "archive_status": "existing_source_track"}]}
+{"source_frame_index": 418, "time_ms": 13944.244, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [404.02, 621.49, 678.28, 1271.34], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [309.58, 657.32, 349.29, 762.69], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 420, "time_ms": 14010.956, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [369.61, 616.39, 717.73, 1276.83], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [309.03, 656.54, 346.57, 764.56], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 422, "time_ms": 14077.678, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [393.22, 604.88, 720.0, 1278.9], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [307.46, 656.6, 344.5, 766.19], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 424, "time_ms": 14144.4, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [429.49, 610.57, 720.0, 1279.69], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [306.68, 657.51, 343.37, 767.27], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 426, "time_ms": 14211.122, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [484.69, 732.87, 720.0, 1279.74], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [305.1, 658.71, 342.39, 769.73], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 428, "time_ms": 14277.833, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t5", "box": [550.92, 770.8, 720.0, 1279.99], "profile_id": "G0006", "archive_status": "existing_source_track"}, {"track_id": "A-t6", "box": [302.76, 658.44, 341.1, 771.17], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 430, "time_ms": 14344.556, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [299.72, 656.8, 340.04, 771.32], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 432, "time_ms": 14411.278, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [296.8, 656.69, 338.05, 771.96], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 434, "time_ms": 14477.989, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [293.48, 656.23, 334.97, 773.42], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 436, "time_ms": 14544.711, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [290.45, 658.13, 331.83, 774.54], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 438, "time_ms": 14611.433, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [288.21, 658.94, 330.27, 775.83], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 440, "time_ms": 14678.156, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [285.87, 659.59, 328.14, 776.99], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 442, "time_ms": 14744.867, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [283.66, 659.23, 325.19, 777.52], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 444, "time_ms": 14811.589, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [281.74, 660.75, 322.2, 778.13], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}
+{"source_frame_index": 446, "time_ms": 14878.311, "timestamp_basis": "decoder_media_pts", "people": [{"track_id": "A-t6", "box": [277.53, 659.96, 319.15, 778.77], "profile_id": null, "archive_status": "insufficient_quality_frames"}]}

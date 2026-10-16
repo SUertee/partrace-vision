@@ -1,0 +1,8 @@
+{
+  "architecture": "osnet_x0_5",
+  "training": "MSMT17 combineall",
+  "source_page": "https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO",
+  "source_file": "https://drive.google.com/file/d/1DHgmb6XV4fwG3n-CnCM0zdL9nMsZ9_RF/view",
+  "sha256": "e96cbd20ee9cc3c6dcc0e8f4fbba8c8069d47647a5a96a59ce381fb785c54f68",
+  "bytes": 11071767
+}

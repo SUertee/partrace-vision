@@ -30,6 +30,7 @@ android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esio
 *.log
 .DS_Store
 .vercel/
+./vision/.venv-track/
 
 # Camera recordings and local experiments
 test_data/

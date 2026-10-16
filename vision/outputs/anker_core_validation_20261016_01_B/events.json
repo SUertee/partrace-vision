@@ -1,0 +1,18 @@
+[
+  {
+    "id": "s0001",
+    "person_id": null,
+    "start_ms": 5800,
+    "end_ms": 8633,
+    "action": "shelf_interaction",
+    "shelf_level": 3
+  },
+  {
+    "id": "s0002",
+    "person_id": "G0004",
+    "start_ms": 17333,
+    "end_ms": 22833,
+    "action": "shelf_interaction",
+    "shelf_level": 3
+  }
+]

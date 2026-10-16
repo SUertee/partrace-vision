@@ -1,0 +1,114 @@
+{
+  "model_session": {
+    "person_id": "P001",
+    "region_id": "manual_03",
+    "shelf_level": 3,
+    "start_ms": 5800.0,
+    "start_frame_id": "f000173",
+    "detected_at_ms": 6100.0,
+    "hands": [
+      "left",
+      "right"
+    ],
+    "supporting_observation_count": 82,
+    "trigger": "sustained_whole_shelf_reach",
+    "trigger_is_physical_contact_proof": false,
+    "end_ms": 8633.333,
+    "end_frame_id": "f000258",
+    "closed_at_ms": 10366.667,
+    "close_reason": "person_observation_lost",
+    "boundary_uncertain": true,
+    "id": "s0001",
+    "shelf_level_basis": "first_reach_hand_region_estimate",
+    "shelf_level_is_physical_contact_proof": false
+  },
+  "frames": [
+    {
+      "role": "before",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 5500.0,
+      "frame_id": "f000164",
+      "source_frame_index": 164,
+      "actual_ms": 5500.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/01_before_f000164.png",
+      "model_image_path": "keyframes/s0001/01_before_f000164.jpg",
+      "raw_sha256": "ef6d9bbdc09e86bc55e49cb5b786ecdd33311ea197d1d44468e3d7b711aba7c5",
+      "model_image_sha256": "9e3bbca7109bab29b543677584875ff141b7d866ea930c77cc4642c023e2894b"
+    },
+    {
+      "role": "reach_onset",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 5800.0,
+      "frame_id": "f000173",
+      "source_frame_index": 173,
+      "actual_ms": 5800.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/02_reach_onset_f000173.png",
+      "model_image_path": "keyframes/s0001/02_reach_onset_f000173.jpg",
+      "raw_sha256": "8d63adc0a6cb4cd3e68cce1abdcf526762a813b1806137f0a8c03fa7e6f51a59",
+      "model_image_sha256": "868501169cdb51baccc52cedc6e7c3c13250eaa96cfddcf220f707bf9d85fe5d"
+    },
+    {
+      "role": "reach_peak",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 7200.0,
+      "frame_id": "f000215",
+      "source_frame_index": 215,
+      "actual_ms": 7200.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/03_reach_peak_f000215.png",
+      "model_image_path": "keyframes/s0001/03_reach_peak_f000215.jpg",
+      "raw_sha256": "e8418b2a948a356679ed192ba58194ac351df67ee78cd4cd4bfe005298ce11df",
+      "model_image_sha256": "02f8c38649cad94a992b3f0ef6b1a0d0c3e7aa80703400306560ae1dce14a26b"
+    },
+    {
+      "role": "withdrawal",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 7400.0,
+      "frame_id": "f000221",
+      "source_frame_index": 221,
+      "actual_ms": 7400.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/04_withdrawal_f000221.png",
+      "model_image_path": "keyframes/s0001/04_withdrawal_f000221.jpg",
+      "raw_sha256": "a9fc5470489cc2900c569996abdf28bff0bcbae1355cb2c2df28690f3ab9eebc",
+      "model_image_sha256": "831444bb2bd490bdb08bbe87b375d54424295544c032393a9d2b431579c26fcb"
+    },
+    {
+      "role": "after",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 8933.333,
+      "frame_id": "f000267",
+      "source_frame_index": 267,
+      "actual_ms": 8933.333,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/05_after_f000267.png",
+      "model_image_path": "keyframes/s0001/05_after_f000267.jpg",
+      "raw_sha256": "8d66d99ef86a8f19c4f353bf65b3dbd257b86f67495f1aea9e833b3eae0b484f",
+      "model_image_sha256": "8593b31e31f37e3c7853224cbd515f73c3da2c8313b4befed3866be095420151"
+    }
+  ],
+  "metadata": {
+    "session_id": "s0001",
+    "status": "not_requested",
+    "image_count": 5,
+    "frame_ids": [
+      "f000164",
+      "f000173",
+      "f000215",
+      "f000221",
+      "f000267"
+    ],
+    "model_request_limit": 1,
+    "parcel_evidence": false,
+    "unique_frame_count": 5,
+    "score_calibrated": false
+  },
+  "reference_labels_sent": false
+}

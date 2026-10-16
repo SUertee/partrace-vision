@@ -1,0 +1,149 @@
+{
+  "a_video": {
+    "sampling_fps": 15,
+    "feature_fps": 5,
+    "minimum_track_ms": 500
+  },
+  "a_tracker": {
+    "imgsz": 960,
+    "detection_conf": 0.1,
+    "track_high_thresh": 0.25,
+    "track_low_thresh": 0.1,
+    "new_track_thresh": 0.25,
+    "match_thresh": 0.8,
+    "lost_seconds": 1.2,
+    "cpu_threads": 4
+  },
+  "b_tracker": {
+    "imgsz": 640,
+    "detection_conf": 0.1,
+    "track_high_thresh": 0.25,
+    "track_low_thresh": 0.1,
+    "new_track_thresh": 0.25,
+    "match_thresh": 0.8,
+    "lost_seconds": 1.2,
+    "cpu_threads": 4
+  },
+  "a_quality": {
+    "min_height": 120,
+    "min_width": 32,
+    "min_blur": 18.0,
+    "min_detection_conf": 0.3,
+    "joint_conf": 0.35,
+    "minimum_torso_joints": 2,
+    "max_overlap": 0.35,
+    "minimum_selection_quality": 0.4,
+    "blur_saturation": 150.0,
+    "size_saturation": 0.6,
+    "edge_penalty": 0.65
+  },
+  "b_quality": {
+    "min_height": 80,
+    "min_width": 24,
+    "min_blur": 15.0
+  },
+  "a_keyframes": {
+    "minimum": 3,
+    "maximum": 5,
+    "min_gap_ms": 200,
+    "candidate_bin_ms": 200,
+    "candidate_limit": 48,
+    "consistency_similarity": 0.55,
+    "consistency_fraction": 0.6,
+    "quality_weight": 0.75,
+    "diversity_weight": 0.15,
+    "time_weight": 0.1
+  },
+  "archive_matching": {
+    "reuse_threshold": 0.75,
+    "reuse_margin": 0.1,
+    "frame_threshold": 0.7,
+    "minimum_support": 3,
+    "possible_duplicate_threshold": 0.6,
+    "simultaneous_overlap_ms": 100,
+    "maximum_templates": 5,
+    "top_k_templates": 3
+  },
+  "b_matching": {
+    "feature_fps": 4,
+    "threshold": 0.65,
+    "margin": 0.08,
+    "confirmations": 3,
+    "retain_threshold": 0.55,
+    "max_support_gap_ms": 1000,
+    "reservation_ms": 800,
+    "contradiction_limit": 3,
+    "top_k_templates": 3
+  },
+  "b_session": {
+    "minimum_support": 3,
+    "minimum_coverage": 0.6
+  },
+  "interaction": {
+    "wrist_confidence": 0.35,
+    "enter_ms": 300,
+    "max_start_gap_ms": 150,
+    "same_visit_gap_ms": 5000,
+    "departure_ms": 1000,
+    "missing_ms": 750,
+    "margin_px_at_720": 10,
+    "minimum_reach_motion_px_at_720": 5,
+    "minimum_observations": 3,
+    "departure_distance_px_at_720": 50,
+    "departure_body_width_ratio": 0.8
+  },
+  "hand_geometry": {
+    "joint_confidence": 0.35,
+    "forearm_min_px_at_720": 8,
+    "forearm_max_body_ratio": 0.5,
+    "extension_ratio": 0.4,
+    "uncertainty_min_ratio": 0.25,
+    "uncertainty_max_ratio": 0.55
+  },
+  "reach": {
+    "minimum_samples": 5,
+    "onset_tolerance_ms": 300,
+    "smooth_window_ms": 80,
+    "search_window_ms": 3000,
+    "minimum_approach_px_at_720": 15,
+    "minimum_approach_ms": 150,
+    "retreat_confirm_ms": 200,
+    "retreat_distance_px_at_720": 12,
+    "retreat_smooth_window_ms": 120,
+    "retreat_median_px_at_720": 10,
+    "max_observation_gap_ms": 150,
+    "withdrawal_window_ms": 1600,
+    "withdrawal_min_ms": 300,
+    "withdrawal_distance_px_at_720": 18,
+    "withdrawal_amplitude_ratio": 0.3,
+    "early_hand_tolerance_ms": 500
+  },
+  "layer_vote": {
+    "window_ms": 120,
+    "minimum_support": 3,
+    "minimum_fraction": 0.7
+  },
+  "evidence": {
+    "before_ms": 300,
+    "after_ms": 300
+  },
+  "registration": {
+    "min_inliers": 24,
+    "min_ratio": 0.3,
+    "orb_features": 1800,
+    "match_ratio": 0.72,
+    "ransac_px": 3.5,
+    "min_area_ratio": 0.55,
+    "max_area_ratio": 1.8,
+    "max_shift_ratio": 0.23
+  },
+  "vlm": {
+    "timeout_s": 180,
+    "max_tokens": 2000,
+    "model": "qwen3.8-max",
+    "base_url": "https://maas.qianwenaiapi.com/compatible-mode/v1"
+  },
+  "osnet": {
+    "weights": "models/reid/osnet_x0_5_msmt17.pth"
+  }
+}
