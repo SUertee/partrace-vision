@@ -1,8 +1,10 @@
 # Backend 与 Agent 联动设计
 
-**首版：同一个 Python + FastAPI 应用，两个职责模块，通过 Python 接口注入联动。** Android 只配置一个 API 地址；Backend 管数据与事务，Agent 管计划、模型与执行。内部调用不绕回本机 HTTP，不新增公开路由或数据库表。
+**本地实现：同一个 Python + FastAPI 应用，两个职责模块，通过 Python 接口注入联动。** Android 只配置一个 API 地址；Backend 管权限、数据、事务和运行生命周期，独立 Agent 包管计划、模型与受限工具循环。内部不绕回本机 HTTP，沿用既有公开路由和数据库表。
 
-关联 [M04 事件证据](README.md#m04)、[M05 语义检索](README.md#m05)、[M06 AI 会话](README.md#m06)，工作包为 [D05](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务) 和 [D07](../DEVELOPMENT_PLAN.md#d07--agent-计划只读检索与引用)。字段以 [OpenAPI](../api/openapi.json) 和 [SQL](../database/schema.sql) 为准；内部行为提案见 [OpenSpec](../../openspec/changes/d05-d07-backend-agent-link/proposal.md)，仍待两位主责确认。
+关联 [M04 事件证据](README.md#m04)、[M05 语义检索](README.md#m05)、[M06 AI 会话](README.md#m06)，工作包为 [D05](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务) 和 [D07](../DEVELOPMENT_PLAN.md#d07--agent-计划只读检索与引用)。字段以 [OpenAPI](../api/openapi.json) 和 [SQL](../database/schema.sql) 为准；原内部行为提案见 [OpenSpec](../../openspec/changes/d05-d07-backend-agent-link/proposal.md)，当前实现及验证见 [D07 change](../../openspec/changes/d07-create-agent/verification.md)。安装、私有配置和启动见 [Backend README](../../backend/README.md)，工具与包入口见 [Agent README](../../agent/README.md)。
+
+默认应用挂载 14 个 Backend 数据操作；显式 `PARTRACE_AGENT_ENABLED=true` 后挂载 8 个 Agent 操作，共 22／27。P1 包裹 5 个操作尚未实现。以下是本地实现说明，不表示外部模型、部署或 Android D10 已验收。
 
 ## 谁负责什么
 
@@ -11,24 +13,26 @@
 | 身份与权限 | 认证主体、active／owner／scope、录像和引用归属校验 | 每个请求、工具和答复提交使用 Backend 的权限服务 |
 | 事实与检索 | 录像／事件／帧读取，查询编码、pgvector 同空间检索 | 调用只读工具，解释候选，回查引用；不直连 DB |
 | AI 历史 | 连接与事务，`conversations / messages / runs` 存储与约束 | 发起会话、消息、运行流程；通过受限服务保存 |
-| AI 执行 | 校验与规范化 Query，提供运行状态的原子更新 | 问题转计划、模型调用、任务注册、取消与超时 |
-| 应用组合 | 在工厂显式挂载 Agent router，统一 `/api/v1/agent` 前缀 | router 使用 `/plans`、`/runs` 等相对路径，不重复加前缀 |
+| AI 执行 | 规范化 Query，原子运行状态、任务注册、取消和独占执行器 | `create_agent` 生成计划和答案，限制模型／工具调用与超时 |
+| 应用组合 | 工厂显式挂载 `backend.api.agent`，统一 `/api/v1/agent` 前缀 | 提供可导入的 `partrace-agent` 引擎与 `ToolGateway` 协议 |
 
 Agent 可写自己的 AI 历史；事实工具只能读。事件导入、向量写入、人工核查保存、包裹入出库不交给模型工具，管理员确认仍由 Android → Backend 完成。
 
 ## 最小内部交接接口
 
-以下为待实现的接口粒度与方法名，不是现成包。返回结构复用当前 OpenAPI DTO；错误经统一映射返回现有 ErrorResponse，不在各模块重复定义。
+以下为当前实现入口，返回结构复用 OpenAPI DTO，统一返回现有 ErrorResponse。它们组合在同一应用中，不作为额外公开 API。
 
 | Backend 提供的接口 | Agent 怎么调用 | 必须保证 |
 | --- | --- | --- |
-| `AccessPolicy`／服务端 `AuthContext` | 取得本人身份，验证计划和本次运行范围 | 身份从有效认证解析，不相信请求／模型自报的 user_id；权限变更后重新校验 |
-| `FactReader`：`query_events`、`get_event`、`get_evidence`、录像／配置读取 | 带上下文和固定 Query 查询，回查引用 | 只读；Event 须属于录像／区域并命中窗口，Evidence 属于该 Event，可保留前后真实上下文帧，定位仍在同一录像 |
-| `FactReader.semantic_search_events` | 提交实际 query_text、固定 Query、top_k／min_score | Backend 决定模型／版本／维度并编码；不接客户端向量或任意 SQL；返回索引缺口 |
-| `AIHistoryService`：会话／消息、`start_or_replay_run`、`read_run` | 创建本人历史，提交确认计划，按 run_id 回读 | 身份／时间／model_key 来自服务端；稳定 ID 幂等，不重复启动 |
-| `AIHistoryService`：`complete_run`、`stop_run`、`fail_run` | 提交已核查引用与完整答复，或取消／失败 | 锁定或条件更新 running；完成与唯一 assistant 消息同事务；终态不可覆盖 |
+| `BackendService.authenticate/transaction/normalize` | 验证本人、状态、scope、录像与规范化 Query | 身份来自有效认证，不相信模型自报 user_id；请求、工具和完成提交重新验权 |
+| `ScopedToolGateway`／`ToolGateway` | `search_events/get_event/get_evidence/read_recording` | 只读且固定 Query；Event 须命中录像／区域／窗口，Evidence 属于该 Event，可保留同录像中的前后上下文帧 |
+| `SemanticService`，经 `semantic_search_events` 工具调用 | 固定 query_text、Query、top_k／min_score | Backend 决定编码空间；不接客户端查询向量，不接任意 SQL；返回索引缺口 |
+| `AIHistory` | 本人会话／消息、幂等 `start_run/get_run`、`complete_run/stop_run/fail_run` | 身份／时间／model_key 来自服务端，完成与唯一 assistant 消息同事务，终态不可覆盖 |
+| `AgentRuntime`＋独立 `AgentEngine` | 创建受控后台任务、执行图、停止与故障恢复 | 先持久化 running 再执行，单执行器 lease，资源限额与重启失败恢复 |
 
-Backend 定义小型协议和数据对象，具体仓储／连接仅在 Backend 内部。Agent 依赖协议，不导入数据库实现；`fail_run` 和重启恢复是服务内部操作，不暴露给模型或新增公共 API。
+Agent 包只依赖协议，不导入数据库实现；具体仓储、SQL、连接与凭据留在 Backend。五个工具是 `search_events`、`semantic_search_events`、`get_event`、`get_evidence` 和 `read_recording`；`fail_run`／恢复不是模型工具。查询只返回元数据和已有描述，没有向 VLM 传图，引用有效不等于模型看图或动作验真。
+
+当前代码位置：公开路由在 `backend/api/`，运行、权限 Gateway、历史与模型适配在 `backend/ai/`，事实和向量服务在 `backend/services/`；Agent 引擎与 `prompts.py` 在 `agent/`，工具注册和证据读取校验在 `agent/tools/`。实际目录和启动说明见两模块 README。
 
 ## 从问题到答复
 
@@ -53,7 +57,7 @@ sequenceDiagram
   G-->>A: 状态、完整答复及引用
 ```
 
-G、B 是同一 FastAPI 应用内的模块。模型由 Agent 调用，模型选择及凭据配置仍待确认；鉴权上下文、数据库连接与凭据不进入 prompt。
+G、B 是同一 FastAPI 应用内的模块。模型和文本编码器使用服务端 OpenAI 兼容适配器，配置见 [环境模板](../../backend/.env.example)；密钥只放私有环境，不进入聊天、源码、日志或 prompt。缺模型返回 503，不用 fake 模型或模拟向量回退。
 
 | App 提交 | 服务端派生／验证 |
 | --- | --- |
@@ -72,20 +76,20 @@ draft plan 不落表，App 确认后的计划是执行依据。二次校验检�
 - **完成：** 提交前重新验权，按 FactReader 的事件／上下文帧归属规则验证引用和媒体状态；只有 running 可转 completed，与唯一完整 assistant 消息同事务提交，任一步失败整体回滚。summary 从消息正文读取。
 - **停止：** 原子 running → stopped 后通知执行器取消；迟到结果不能追加答复／引用或改为 completed。若完成已获胜，停止回读当前终态。stopped／failed 的 summary 为空，不保存伪完成消息。
 - **重试：** 同 run ID 仍先验权及比较规范请求，再读旧结果；用户重新执行失败任务使用新 run ID，保留原历史。
-- **重启：** 首版单执行实例启动将遗留 running 标为 failed／service_restarted，不自动续跑。内存任务注册表只管理当前实例，不替代持久化状态；多 worker／多实例不能直接扫全库 running，执行归属／租约另行设计。
+- **重启与执行归属：** 使用 `--workers 1`，专用 PostgreSQL 连接持有 session advisory lease，拒绝同数据库／schema 的第二执行器；取得 lease 后将遗留 running 标为 failed／service_restarted，不自动续跑。内存任务表不替代持久化状态，不支持多实例调度。
+- **短暂 DB 故障：** 失败终结暂时不能写库时，保留内存待终结项并每 5 秒重试；若进程也退出，下次独占执行器启动恢复遗留状态，不恢复模型过程。
+- **资源和游标：** 默认每次模型最多 8 次调用、工具 12 次、总超时 60 秒，并发运行 2 个。首次启用生成 `.local-state/agent-cursor.key`（32 字节、0600），必须持久保留，重建会使旧历史分页游标失效。
 - **权限：** 会话和 user 问题只按 active owner；运行、停止、完成及助手历史按本次录像授权。消息页包含无权助手答复时整页 403，不返回部分正文或静默跳过。
 
-## 下一步按四个交付推进
+## 已有实现与下一步验收
 
 | 顺序 | 主责 | 交付与检查 |
 | --- | --- | --- |
-| 1 · 固定交接 | Harry Xu＋韩广宁 | 确认上述协议、DTO、错误、运行超时与单执行实例；以当前 Query／AgentPlan／AgentRunRequest 为准 |
-| 2 · Backend 服务 | Harry Xu | 先交只读事实及权限服务，再交本人历史、幂等运行和原子终态事务；测试重试、越界、撤权、并发停止与持久化 |
-| 3 · Agent 接入 | 韩广宁 | 将 agent 做成可导入 Python 模块；实现八个 router 操作、计划／模型适配器、受控任务和取消，显式注入 Backend 服务 |
-| 4 · 联调 | 两位主责，李果钦接 App | 先用明确样例适配器核对交接，随后用同一真实事件与帧验证问题→计划→检索→引用→答复→回读，并测试停止及重启失败 |
+| 1 · 本地事实与历史 | Harry Xu | 已有受限服务与真实 PG 测试；保留 [D05 验证](../../openspec/changes/d05-backend-mvp/verification.md)，当前向量及 AI 验证见 D07 |
+| 2 · Agent 图和路由 | 韩广宁＋Harry Xu | 独立包、显式八路由、实际图的 fake 模型、取消／重启及权限边界已用于本地测试 |
+| 3 · 外部模型 | 两位主责 | 私有环境配置真实 LLM 和 Embedding，验证供应商兼容、模型空间、限额、延迟与失败；尚未验收 |
+| 4 · 真实业务与 App | 四人，李果钦接 App | 用同一真实视觉事件与帧验证问题→计划→检索→引用→答复→人工保存→回读；Android／D10 尚未验收 |
 
-第 2、3 步可在接口确认后并行；先交一个问题和一个事件的最小闭环，再扩大输入。依赖锁、统一运行环境与实际启动命令由实现时的模块 README 记录，不提供尚不存在的 Agent 安装命令。
-
-当前 Agent 目录只有说明；本地待提交 Backend 骨架的 `create_app(agent_router=...)`／`register_agent_router` 只提供挂载点，默认应用未接真实 Agent。健康探测与演示 router 测试不是模型、鉴权或业务接通凭据，本次只定义联动，不提交这些并行代码。
+统一在 `backend/` 执行 `uv sync --locked` 安装本地 Agent 依赖，`uv run pytest` 覆盖两模块；具体启动见实现 README。当前真实 PostgreSQL + pgvector 与实际 `create_agent` 图均已用于测试，图使用显式 fake 模型；没有据此宣称外部模型、真实视频业务、部署或完整 D10 成功。详细实际命令和结果以 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)为准。
 
 当前仅有按已知 run_id 读取运行的 API，停止／失败不会生成助手消息；App 重启后不能只靠消息列表发现全部运行。运行列表、SSE、工具步骤历史及多实例恢复另行评审，不计入现有 27 个 API。P1 包裹只读工具在 D10 主闭环后补充。

@@ -1,0 +1,128 @@
+name: partrace-vision
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17-bookworm@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-partrace}
+      POSTGRES_USER: ${POSTGRES_USER:-partrace_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set the database administrator password in .env}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      PARTRACE_DATABASE_USER: ${PARTRACE_DATABASE_USER:-partrace_app}
+      PARTRACE_DATABASE_PASSWORD: ${PARTRACE_DATABASE_PASSWORD:?Set the application database password in .env}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=30
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - password_encryption=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init/10-init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    mem_limit: 256m
+    memswap_limit: 512m
+    pids_limit: 128
+    shm_size: 64m
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "3"
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      PARTRACE_DATABASE_URL: postgresql://${PARTRACE_DATABASE_USER:-partrace_app}:${PARTRACE_DATABASE_PASSWORD:?Set the application database password in .env}@postgres:5432/${POSTGRES_DB:-partrace}
+      PARTRACE_ENVIRONMENT: ${PARTRACE_ENVIRONMENT:-staging}
+      PARTRACE_SCHEMA_PATH: /app/docs/database/schema.sql
+      PARTRACE_AUTH_FILE: /state/auth.json
+      PARTRACE_CONFIGS_DIR: /state/configs
+      PARTRACE_CONFIG_PINS_FILE: /state/config-pins.json
+      PARTRACE_MEDIA_ROOT: /state/media
+      PARTRACE_AGENT_ENABLED: ${PARTRACE_AGENT_ENABLED:-false}
+      PARTRACE_AGENT_CURSOR_SECRET_FILE: /state/agent-cursor.key
+      PARTRACE_AGENT_MODEL: ${PARTRACE_AGENT_MODEL:-}
+      PARTRACE_AGENT_MODEL_VERSION: ${PARTRACE_AGENT_MODEL_VERSION:-v1}
+      PARTRACE_AGENT_API_KEY: ${PARTRACE_AGENT_API_KEY:-}
+      PARTRACE_AGENT_BASE_URL: ${PARTRACE_AGENT_BASE_URL:-}
+      PARTRACE_EMBEDDING_MODEL: ${PARTRACE_EMBEDDING_MODEL:-}
+      PARTRACE_EMBEDDING_MODEL_VERSION: ${PARTRACE_EMBEDDING_MODEL_VERSION:-v1}
+      PARTRACE_EMBEDDING_DIMENSIONS: ${PARTRACE_EMBEDDING_DIMENSIONS:-}
+      PARTRACE_EMBEDDING_API_KEY: ${PARTRACE_EMBEDDING_API_KEY:-}
+      PARTRACE_EMBEDDING_BASE_URL: ${PARTRACE_EMBEDDING_BASE_URL:-}
+    command:
+      - python
+      - -m
+      - uvicorn
+      - backend.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+      - --no-proxy-headers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PARTRACE_API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).close()"
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    # Set these to the owner of the protected local files before starting API.
+    user: "${PARTRACE_UID:-10001}:${PARTRACE_GID:-10001}"
+    volumes:
+      - ../docs/database/schema.sql:/app/docs/database/schema.sql:ro
+      - ../docs/api/openapi.json:/app/docs/api/openapi.json:ro
+      - ../.local-state:/state
+    read_only: true
+    tmpfs:
+      # Multipart parsing spools before the application reads the 64 MiB bundle.
+      # Leave room for two media bundles plus their 2 MiB manifests.
+      - /tmp:rw,noexec,nosuid,size=160m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # tmpfs, multipart bytes, image decoding and the worker share this budget.
+    mem_limit: 512m
+    memswap_limit: 1g
+    pids_limit: 64
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "3"
+
+volumes:
+  postgres_data:
+    name: partrace-vision-postgres-data

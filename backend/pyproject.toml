@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "partrace-backend"
+version = "0.1.0"
+description = "ParTrace Vision PostgreSQL event, evidence and human review API"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.143.1",
+    "uvicorn==0.54.0",
+    "psycopg[binary]==3.3.6",
+    "pydantic-settings==2.16.0",
+    "python-multipart==0.0.22",
+    "pillow==12.1.1",
+    "psycopg-pool==3.3.1",
+    "partrace-agent==0.1.0",
+    "httpx==0.28.1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx==0.28.1",
+    "jsonschema==4.26.0",
+    "pytest==9.1.1",
+]
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+packages = ["backend", "backend.api", "backend.core", "backend.services", "backend.storage", "backend.ai"]
+package-dir = { backend = "." }
+include-package-data = false
+
+[tool.uv.sources]
+partrace-agent = { path = "../agent", editable = true }
+
+[tool.pytest.ini_options]
+markers = ["integration: requires an explicitly isolated PostgreSQL test database"]
+testpaths = ["tests", "../agent/tests"]
+addopts = "-q"

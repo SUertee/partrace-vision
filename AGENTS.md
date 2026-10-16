@@ -24,13 +24,14 @@
 - 跨模块字段变更须在同一 PR 更新模块说明、SQL／OpenAPI、样例和受影响的 OpenSpec；重新导出结构快照、生成 HTML 图并同步离线工作台，说明调用方及兼容方式，检查命令见 `docs/README.md`。
 - Event/Evidence 等 ID 保持稳定。时间使用 ISO 8601 UTC，视频相对时间使用毫秒；SDK 时间换算须验证后记录。
 - 区分成功、覆盖内零事件、无采集覆盖和接口错误；证据失效、重复导入及重复保存按约定处理。
-- 当前 `backend/`、`agent/`、`vision/` 尚无运行实现。首次落地时在模块 README 写清依赖、配置、启动与验证命令，不假设框架或服务已经存在。
+- `backend/` 已有 development 最小数据服务，实际范围、启动和测试凭据见其 README 与 D05 提案；不代表正式认证或 D10 已完成。`agent/`、`vision/` 的实现及实测按各自凭据判断。新增模块时写清真实依赖、配置和启动验证命令。
 
 ## 实现约定
 
 - 首轮围绕固定区域的真实预录素材完成“事件入库 → Android 查询与开帧 → Agent 引用 → 人工保存 → 重启回读”。P1 包裹扫码入出库在 D10 后实现：扫码只查询，管理员确认后写流水，Agent 只读历史。订单关联、跨镜和 Web 查阅后置；SDK 验证单独记录。
 - 沿用各模块已有风格，一次提交围绕一个目的。公共逻辑避免复制；业务实现不放进 `docs/`，临时脚本不代替正式模块。
 - 服务端统一 Python：`backend/` 使用 FastAPI，`agent/` 首版作为独立模块接入同一 API 应用；`vision/` 在独立工作进程执行推理，按共享结果包交接后端。视觉重计算不阻塞 API 请求，模型与媒体存储方案另行确认。
+- Python 源码在 `backend/`、`agent/` 包内按职责组织，不使用 `src/` 或重复的内层包目录。Backend 分为 `api / core / services / storage / ai`，Agent 保留引擎、协议与结构文件，将提示词独立到 `prompts.py`，工具放在 `tools/` 子包；目录说明见各模块 README。启动与公共导入使用 `backend.app`、`backend.manage`、`agent.engine`；发行包名保持 `partrace-backend`、`partrace-agent`。setuptools 显式包含业务子包，新增子包同步打包清单和 Docker 白名单。统一从 `backend/` 执行 `uv sync --locked` 安装两个本地可编辑包；启动使用 `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1`，管理使用 `uv run python -m backend.manage`，无需 `PYTHONPATH` 或 `--app-dir`。
 - 存储使用 PostgreSQL + pgvector，业务与向量同库分表；模型空间与维度仍待确认。数据库查询由后端提供，Agent 不直接连接数据库。
 - Android 使用 Kotlin + Compose。类和 Compose 组件采用 PascalCase，函数及属性采用 camelCase；跨端公共逻辑放 Common，Android 专有实现放对应 Android 源集。
 - 保持官方 Android/Common 两个工程同级及现有引用关系。工具链以 [Android 说明](android/README.md) 为准；升级依赖、迁移工程或改包名须单独说明并验证。

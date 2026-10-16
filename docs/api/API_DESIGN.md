@@ -1,6 +1,6 @@
 # ParTrace Vision 最小 API · 0.3-mvp-draft
 
-**设计草案，未实现、未冻结。** Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，27 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
+**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加八个 Agent 操作，共 22／27。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，27 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
 
 需要开发的业务模块、主责、表读写与 API 交接见 [模块设计](../modules/README.md)。本页维护字段语义、范围与返回约定。
 
@@ -28,9 +28,9 @@
 
 ## 接口清单
 
-`v1` 是外部路由主版本；`0.3-mvp-draft` 是未冻结设计资料与示例版本，响应的 `api_version` 保持后者。统一公开地址设计为 `https://api.example.invalid`，Android 只配置一个 API base URL；后端与 Agent 可分模块实现，内部接入仍待实现。占位地址不代表真实服务、统一入口或网关已部署。
+`v1` 是外部路由主版本；`0.3-mvp-draft` 是未冻结设计资料与示例版本，响应的 `api_version` 保持后者。统一公开地址设计为 `https://api.example.invalid`，Android 只配置一个 API base URL；后端与独立 Agent 包在同一 FastAPI 工厂组合，内部通过受限 Python 接口调用。占位地址不代表已部署服务或网关。
 
-全部外部 API 使用 `/api/v1`；其中后端业务接口共 19 个操作，Agent 8 个，共 27 个当前草案。认证方案仍待实现；Bearer subject 由服务端映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
+全部外部 API 使用 `/api/v1`；其中后端业务接口共 19 个操作，Agent 8 个，共 27 个当前草案。development 已实现受保护摘要凭据到 Bearer subject 的映射及 active／role／scope／资源检查；staging／production 的正式认证仍待配置，本地凭据在这两种环境拒绝使用。subject 映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
 
 | 方法 / 路径 | 用途 |
 |---|---|
@@ -50,7 +50,7 @@
 | `GET /parcels/{parcel_id}/records` | 按 `sequence_no` 递增、稳定分页读取入出库历史 |
 | `POST /parcels/{parcel_id}/records` | 管理员显式确认入库或出库，记录只追加 |
 
-Agent 仍由独立 `agent/` 模块提供，统一命名空间为 `/api/v1/agent`，共 8 个操作：
+独立 `agent/` 包提供 `create_agent` 引擎，Backend 在显式启用后组合历史服务并挂载 `/api/v1/agent` 的既有八个操作：
 
 | 方法 / 路径 | 用途 |
 |---|---|
@@ -64,7 +64,7 @@ Agent 仍由独立 `agent/` 模块提供，统一命名空间为 `/api/v1/agent`
 
 ## ID、来源与时间
 
-`users` 只保存应用用户资料，不保存密码、令牌、SDK 账号或设备凭据。首版账号如何认证/准备仍待确认，不新增注册、登录或管理 CRUD。用户角色和 token 权限分开检查：监控事实、包裹读取以及 AI 计划/运行需要 `data:read`；会话元数据与用户问题只需 Bearer + active owner，`x-required-scope=none` 表示不要求额外事实 scope，仍必须认证。消息列表通过 `x-conditional-required-scope` 在待返回页含助手消息时要求 `data:read` 与该次录像授权，任一无权则整页 403。导入需要 `data:ingest`，人工保存需要 `reviews:write`，包裹建档与入出库需要 `parcels:write`；同时满足用户角色与目标资源授权。Agent 的后端凭据只给 `data:read`，即使代表管理员执行也不能调用写接口；这些权限边界仍待实现，不新增机器用户角色。`GET /user` 返回当前已映射用户的 5 项公开资料；SQL `created_at`（TIMESTAMPTZ）转成 API 同名 `created_at`（ISO 8601 UTC 字符串）。禁用身份返回 403。
+`users` 只保存应用用户资料，不保存密码、令牌、SDK 账号或设备凭据。development 通过受保护的本地凭据与显式 seed-user 命令准备账号，见 [Backend README](../../backend/README.md)；正式认证生命周期仍待配置，不新增注册、登录或管理 CRUD。用户角色和 token 权限分开检查：监控事实、包裹读取以及 AI 计划/运行需要 `data:read`；会话元数据与用户问题只需 Bearer + active owner，`x-required-scope=none` 表示不要求额外事实 scope，仍必须认证。消息列表通过 `x-conditional-required-scope` 在待返回页含助手消息时要求 `data:read` 与该次录像授权，任一无权则整页 403。导入需要 `data:ingest`，人工保存需要 `reviews:write`，包裹建档与入出库需要 `parcels:write`；同时满足用户角色与目标资源授权。Agent Gateway 只暴露要求 `data:read` 的五个事实工具，原始用户凭据不进入 prompt；即使用户是管理员，模型也没有事实写工具。AI 历史由 Backend 限定本人归属后保存。上述本地边界已有实现，P1 包裹权限仍为待实现设计，不新增机器用户角色。`GET /user` 返回当前已映射用户的 5 项公开资料；SQL `created_at`（TIMESTAMPTZ）转成 API 同名 `created_at`（ISO 8601 UTC 字符串）。禁用身份返回 403。
 
 - 表名统一用复数 `snake_case`：`users / recordings / events / review_records`；`evidence` 为不可数名词保持原名。主键/外键用单数 `user_id / reviewer_id / event_id`。
 - 使用稳定 `recording_id / event_id / evidence_id / review_id`。`track_key` 只在一份录制内有效，不是永久人物身份。配置文件封存后不覆盖，ROI 改变用新 `config_version`。
@@ -108,10 +108,10 @@ Agent 仍由独立 `agent/` 模块提供，统一命名空间为 `/api/v1/agent`
 
 ## 文本向量与 Agent 检索
 
-**事件 / 帧 → 算法或 VLM 产出可查描述 → 文本编码 → 元数据过滤后语义检索 → 回读事件与关键帧。** 技术方案 r51 原先把向量后置，本地草案按用户 2026-10-13 要求加入；飞书原文未改；存储选定 PostgreSQL + pgvector，模型 provider 和维度仍待确认，未部署服务。首版全部是描述文本向量，VLM 写描述不意味着图像和文字已经在共同向量空间；描述未写“蓝衣”，文本检索不能从原图补出颜色事实。
+**事件 / 帧 → 算法或 VLM 产出可查描述 → 文本编码 → 元数据过滤后语义检索 → 回读事件与关键帧。** 技术方案 r51 原先把向量后置，本地草案按用户 2026-10-13 要求加入；飞书原文未改；存储选定 PostgreSQL + pgvector，编码适配器使用服务端 OpenAI 兼容配置，真实模型／维度及外部调用仍待验证，未声明服务部署。首版全部是描述文本向量，VLM 写描述不意味着图像和文字已经在共同向量空间；描述未写“蓝衣”，文本检索不能从原图补出颜色事实。
 
 - `POST /event-embeddings` 一次一条：`embedding_id/event_id/evidence_id/source_text/embedding/model_name/model_version/dimensions`。关键帧可空；非空须属于该事件。服务端检查有限、非全零数组、长度与 `dimensions`（1–16000），再规范化为同一 float32 编码；转换后仍须有限且非全零，响应允许 float32 舍入。版本包含编码/预处理配置。`content_sha256` 按规范化描述与真实 Event/Evidence 定位生成，时间也由服务端填；SQL `embedding vector` 对应 API `embedding` 数组，`dimensions` 保留用于校验；尚未选定真实模型，不硬编码向量维度。新描述用新 ID 追加，旧向量不改写。
-- 相同 ID 重试须比较**全部规范请求**，包含规范化后的 float32 向量、模型、维度及引用；相同返回原记录 200，首次 201，不同 409。内容摘要没有包含向量和模型，不能仅比较哈希；不同 ID 重复同事件/帧、模型版本和摘要的同源数据也返回 409 `duplicate_embedding_source`。同模型版本须固定编码配置和维度，否则 422。写入只允许已授权管理员 + `data:ingest`，Agent 的后端凭据仍只有 `data:read`。
+- 相同 ID 重试须比较**全部规范请求**，包含规范化后的 float32 向量、模型、维度及引用；相同返回原记录 200，首次 201，不同 409。内容摘要没有包含向量和模型，不能仅比较哈希；不同 ID 重复同事件/帧、模型版本和摘要的同源数据也返回 409 `duplicate_embedding_source`。同模型版本须固定编码配置和维度，否则 422。写入只允许已授权管理员 + `data:ingest`，Agent 工具只使用 `data:read`，不暴露本写入入口。
 - `POST /events/search` 接 `query_text + filter + top_k(1–50)`，可选 `min_score[-1,1]`；`filter` 沿用单视频区域/偏移或经验证 UTC。**不接受客户端查询向量。** 服务端选定并回显 active 模型名/版本/维度，先权限与区域时间过滤，再在同一编码空间做 pgvector 精确余弦排序；不同空间不混排，首版不建立 ANN 索引。SQL 示例用 `MATERIALIZED` CTE 固定符合范围与模型空间的候选后再计算 `<=>`，避免把普通 `WHERE` 当作物理执行顺序；CTE 不代替服务端鉴权，授权录像范围必须由后端确定。
 - 同 `(event,evidence 或空,model,version,dimensions)` 先选最新成功描述（时间、ID 稳定破同值），再按事件取最高分、排序、阈值和 top_k。返回候选 Event/Evidence/Embedding ID、描述、当前媒体状态和来源；无绑定帧时媒体状态为 `null`。`score` 是文本相似度，**不是动作置信度或事实确认**。
 - 阈值/top_k 前报告 `eligible_event_count/indexed_event_count/missing_event_count`，后者为前两者之差。符合范围但全未索引必须 `unindexed`；部分索引可 `matched / no_matches`，仍报告缺口。范围内无事件可 `no_matches` 并报告录像交集；未配置模型、编码/存储故障返回 503，不模拟成功或伪装零命中。
@@ -119,7 +119,7 @@ Agent 仍由独立 `agent/` 模块提供，统一命名空间为 `/api/v1/agent`
 
 摘要拟议规范为：描述首尾 `strip`；对按键排序的 UTF-8 紧凑 JSON 求 SHA256，内容为 `source_text`、事件的 ID/录像/区域/片段/起止偏移、录像镜头/配置版本，以及关键帧 ID/事件/偏移/框或 `null`；数组顺序保留，媒体当前状态不参与。
 
-新增样例采用 `mock-text-encoder / mock-v1-preprocess-demo`、3 维 `[0.1,0.2,0.3]`，绑定 mock 事件和缺失媒体；相似度是模拟数值，没有真实模型或向量索引。真实查询不使用 mock 事件/模型补齐，模拟空间仅用于明确的 mock 录像评审。部分索引样例使用独立 `rec_mock_partial` 两事件包，仅第一事件有向量，不与单事件导入包混用。JSON Schema 检查不代替实际有限数值、模型空间、定位归属和检索效果验证。
+新增样例采用 `mock-text-encoder / mock-v1-preprocess-demo`、3 维 `[0.1,0.2,0.3]`，绑定 mock 事件和缺失媒体；样例分数为模拟数值，不能作为真实模型或实际数据库执行凭据。真实查询不使用 mock 事件/模型补齐，模拟空间仅用于明确的 mock 录像评审。部分索引样例使用独立 `rec_mock_partial` 两事件包，仅第一事件有向量，不与单事件导入包混用。JSON Schema 检查不代替实际有限数值、模型空间、定位归属和检索效果验证。
 
 ## AI聊天与分析回读
 
@@ -133,7 +133,9 @@ Agent 仍由独立 `agent/` 模块提供，统一命名空间为 `/api/v1/agent`
 - 历史消息先按未经授权过滤的消息序列确定待返回页；user 问题只按 active owner 验证。页中每条 assistant 消息通过 `run_id` 验证同会话 completed 运行及其 `plan.query` 当前录像授权、`data:read` 与引用归属。任一助手消息无权则整页返回 403 `ErrorResponse`，不返回任何正文、部分消息、`next_cursor` 或运行信息；禁止静默过滤或跳过无权消息。全页通过后才返回结果。
 - `runs` 保存输入消息、状态、最终计划、引用、`model_key`、错误、创建及结束时间。本次范围取自 `plan.query`，计划生成、运行创建、状态读取、停止和重试均核对 active owner、`data:read` 与该次录像当前授权。Event 必须来自该次录像并命中查询范围，Evidence 必须属于对应 Event，可保留事件前后的上下文帧；回看重新读取当前媒体状态，媒体缺失不等于权限撤销。`model_key` 是固定模型 + 运行配置版本标识，不含密钥；SQL `created_at / finished_at` 的 TIMESTAMPTZ 映射为 API 同名 UTC 字符串；计划与引用 JSON 在 SQL 中保存为 JSONB。`references_json` 是经过校验的 Event/Evidence 逻辑ID引用，不是真实SQL外键或临时媒体URL。
 - completed终态与完整助手消息在同一事务提交；摘要从该消息正文读，不重复存run。running / stopped / failed只展示状态，`summary=null`，不保存伪完成答复；停止后晚到回调不能再写消息、引用或状态。
-- 服务重启把遗留 running 标为 failed，错误码 `service_restarted`，不自动继续；已有消息、计划和状态可以回读。需要重试时提交新run ID，原失败历史保留。此处是持久化设计，尚未运行服务。
+- 服务重启把遗留 running 标为 failed，错误码 `service_restarted`，不自动继续；已有消息、计划和状态可以回读。需要重试时提交新run ID，原失败历史保留。本地运行及真实 PG 状态事务已实现；Agent 图验证使用显式 fake 模型，外部模型尚未验收。
+
+当前执行器要求 `--workers 1` 并持有 PostgreSQL session advisory lease，不支持多执行实例。默认每运行模型 8 次、工具 12 次、超时 60 秒，并发 2 个；失败终结遇短暂 DB 中断时保留内存待终结项并每 5 秒重试，重启仍按数据库恢复失败状态。首次启用生成的 `.local-state/agent-cursor.key` 为 32 字节、0600，须持久保留以维持历史分页签名；具体环境设置见 [Backend README](../../backend/README.md) 与 [.env.example](../../backend/.env.example)。这些运行约束不新增表、字段或公开 API。
 
 ## 人工保存：一次一个事件
 
@@ -173,7 +175,7 @@ JSON 成功响应与错误均带 `api_version=0.3-mvp-draft`，严格限制未�
 
 [v0.3 模拟样例](examples/v0.3/) 与 OpenAPI 的 `x-fixture-schemas` 一一对应，包裹另使用操作内联样例，只检验形状和交接。没有真实文件、真实设备、包裹操作或可核查 AI 事实；模拟 run 的事实引用为空。Agent 的事实句必须指向有效 Event 和真实可打开 Evidence，缺失媒体只能说明候选/未知。
 
-开发依次做：**固定配置/真实视频 → 最终包导入和重复请求 → 事件/关键帧读取 → 人工保存及重启回读 → 描述向量入库 / 同空间检索 → Agent 只读引用。** 真帧上传/取回、时钟验证、导入失败补偿、跨对象校验、保存重试和 Agent 停止行为仍需实际服务验收。数据库与向量扩展已选 PostgreSQL + pgvector，服务端已选 Python + FastAPI；媒体存储与模型仍待确认，本次静态草案不代表已建生产库或业务完成。
+开发依次做：**固定配置/真实视频 → 最终包导入和重复请求 → 事件/关键帧读取 → 人工保存及重启回读 → 描述向量入库 / 同空间检索 → Agent 只读引用。** 本地已对生成媒体上传、时钟、回读、失败补偿、跨对象校验、幂等及 Agent 停止进行相应测试，详见 [D05](../../openspec/changes/d05-backend-mvp/verification.md) 与 [D07](../../openspec/changes/d07-create-agent/verification.md) 凭据。数据库采用 PostgreSQL + pgvector，服务端为 Python + FastAPI，媒体使用受限本地存储；外部 LLM／Embedding、真实视频视觉业务与 Android D10 尚未验收，没有据此声明生产部署或业务全面完成。
 
 包裹独立按 **建档 / 查询 → Android 二维码生成 / 扫码 → 管理员确认 / 流水 → Agent 只读历史** 推进，不依赖视觉自动登记。用同一单号验证前导零、生成 / 扫描一致、重复扫码不写入、重复请求不追加、入库后出库及再次入库顺序、无效单号、权限与状态冲突、并发序号和服务重启回读；这些均待真实实现验收。
 
