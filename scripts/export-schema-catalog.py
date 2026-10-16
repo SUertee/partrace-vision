@@ -192,8 +192,8 @@ def source_tables(schema_path):
                 raise CatalogError("Cannot identify a declared PostgreSQL column type.")
             columns.append({"name": cname, "type": canonical_type(declared.group())})
         result[name] = {"sql": statement.rstrip(";") + ";", "columns": columns}
-    if set(result) != set(TABLE_META) or sum(len(t["columns"]) for t in result.values()) != 77:
-        raise CatalogError("Source DDL must contain the agreed eleven public tables and 77 columns.")
+    if set(result) != set(TABLE_META) or sum(len(t["columns"]) for t in result.values()) != 78:
+        raise CatalogError("Source DDL must contain the agreed eleven public tables and 78 columns.")
     return result
 
 
@@ -286,6 +286,7 @@ def annotations(catalog, schema_path):
                     {"title": "用户要求最小聊天及 Agent 分析历史", "revision": "2026-10-13 · 9 表、68 字段"},
                     {"title": "用户确认包裹单号与入出库两表", "revision": "2026-10-13 · 11 表、78 字段"},
                     {"title": "用户取消会话固定录像", "revision": "2026-10-13 · 11 表、77 字段；每次运行仍查单段录像"},
+                    {"title": "events 增加可空 shelf_level", "revision": "2026-10-16 · 11 表、78 字段；货架层级自下而上 1–20，未知为 NULL"},
                     {"title": "用户选择 PostgreSQL+pgvector", "revision": "2026-10-13"}],
         "parity": "Loaded public schema read from PostgreSQL pg_catalog in a read-only transaction; constraint/index/trigger/function definitions use pg_get_*; source CREATE TABLE statements attached separately.",
         "disclaimer": "设计草案；真实 PostgreSQL+pgvector 本地结构验证，不代表已部署业务服务或完成数据/检索验收。目录不含业务记录。",
@@ -295,8 +296,8 @@ def annotations(catalog, schema_path):
 
 
 def assert_source_alignment(tables, parsed):
-    if {t["name"] for t in tables} != set(TABLE_META) or sum(len(t["columns"]) for t in tables) != 77:
-        raise CatalogError("Loaded/saved catalog differs from the agreed eleven tables / 77 columns.")
+    if {t["name"] for t in tables} != set(TABLE_META) or sum(len(t["columns"]) for t in tables) != 78:
+        raise CatalogError("Loaded/saved catalog differs from the agreed eleven tables / 78 columns.")
     for table in tables:
         actual = [{"name": c["name"], "type": canonical_type(c.get("database_type", c["type"]))} for c in table["columns"]]
         if actual != parsed[table["name"]]["columns"]:

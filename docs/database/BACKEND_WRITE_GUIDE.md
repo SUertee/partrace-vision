@@ -2,17 +2,17 @@
 
 > 面向：后端开发（Python / FastAPI）
 > 目标库：AWS Aurora PostgreSQL **17.9** + pgvector **0.8.1**，库名 `partrace`
-> 文档版本：2026-10-16 ｜ 数据库状态：**已建好并通过 22 项功能测试** ｜ 后端：**已有 development 本地实现；Aurora IAM 认证已在代码实现（`backend/storage/credentials.py`），真实集群联调尚未验证**
+> 文档版本：2026-10-16 ｜ 数据库状态：**已建好并通过 22 项功能测试** ｜ 后端：**已有 development 本地实现，Aurora IAM 接入尚未实现**
 > 契约基线：表结构、字段与约束以 [schema.sql](schema.sql)（`0.3-mvp-draft`，11 表 / 77 字段）为准。当前目标环境固定为 Aurora PostgreSQL **17.9** + pgvector **0.8.1**（已核对项目实际仅用 `vector` / `vector_dims` / `vector_norm` / `<=>`，功能维度满足，决定不升级），本文连接与报错实测结论均来自该实例。DDL 草案早前在 PostgreSQL 17 / pgvector 0.8.7 隔离环境验证（见 [schema-catalog.json](schema-catalog.json)），仅作历史验证记录，与目标环境版本的差异已确认无功能影响。
 > 范围说明：本文的建库与功能验证不替代后端服务实现、真实媒体、模型编码与业务闭环验收（D10），与 [README.md](README.md#建表检索与验证) 的验证口径一致。
-> 本地实现与运行入口见 [Backend README](../../backend/README.md)：本地使用独立 PostgreSQL／pgvector 和 development 鉴权；Aurora IAM 连接机制已实现（见 1.3），但服务尚未对该实例完成联调验证，不代表已接通。
+> 本地实现与运行入口见 [Backend README](../../backend/README.md)：当前使用独立本地 PostgreSQL／pgvector 和 development 鉴权，本文 Aurora 连接示例仍为待接入方案，不代表服务已接通该实例。
 
 ---
 
 ## 0. 一句话背景
 
 数据库（11 表 / 77 字段 / 13 外键 / 30 索引 / 52 CHECK / 25 触发器）已经建好并在真实 Aurora 上验证通过。
-IAM 认证连接已经在 `backend/storage/credentials.py` 实现；你要做的是按下面第 3、4 节的规则把数据写进去。
+你要做的是写 FastAPI 服务，通过 IAM 认证连上去，按下面第 3、4 节的规则把数据写进去。
 
 **数据库已经用触发器和约束把业务不变量都兜住了** —— 你不用在代码里重复实现"不可变""只追加""幂等去重"这些规则，写错了数据库会直接拒绝并给出明确报错。你要做的是**正确捕获这些报错并映射成 HTTP 状态码**（见第 7 节）。
 
@@ -54,33 +54,49 @@ FATAL:  PAM authentication failed for user "app_test"
 
 但过期规则很反直觉，见 1.4。
 
-### 1.3 连接实现（已在 backend 落地）
+### 1.3 推荐连接代码
 
 服务跑在 EC2 上时，**不需要配置任何 access key** —— 实例角色会自动提供凭据。
 
-IAM 令牌签名已在 `backend/storage/credentials.py` 实现：等价于 `aws rds generate-db-auth-token` 的 SigV4 预签 URL 用**标准库**重写，不引入 boto3，镜像的哈希锁定依赖集保持不变。实例角色的临时凭据通过 IMDSv2 读取，只保存在内存、到期前 5 分钟换新；每个令牌有效期 15 分钟。
-
 ```python
-from backend.core.settings import Settings
-from backend.storage.credentials import connection_class
+# db.py
+import boto3
+import psycopg
+from psycopg_pool import ConnectionPool
 
-settings = Settings()  # PARTRACE_DATABASE_IAM_AUTH=true、PARTRACE_DATABASE_IAM_REGION=us-west-2
-factory = connection_class(settings)          # asynchronous=True 时返回异步连接类
-conn = factory.connect(settings.database_url.get_secret_value())
+HOST   = "database-1.cluster-c74o0swyw1y4.us-west-2.rds.amazonaws.com"
+PORT   = 5432
+DBNAME = "partrace"
+USER   = "postgres"
+REGION = "us-west-2"
+
+_rds = boto3.client("rds", region_name=REGION)
+
+
+def _token() -> str:
+    """用实例角色签名出一个 15 分钟有效的认证令牌。无需 access key。"""
+    return _rds.generate_db_auth_token(
+        DBHostname=HOST, Port=PORT, DBUsername=USER, Region=REGION
+    )
+
+
+def _configure(conn):
+    # 时区固定 UTC，与 schema 的 SET LOCAL TIME ZONE 'UTC' 一致
+    conn.execute("SET TIME ZONE 'UTC'")
+
+
+pool = ConnectionPool(
+    conninfo=f"host={HOST} port={PORT} dbname={DBNAME} user={USER} sslmode=require",
+    password=_token,          # ← 关键：传 callable，不是字符串
+    configure=_configure,
+    min_size=1, max_size=10,
+    max_lifetime=900,         # 15 分钟主动回收，配合令牌有效期
+)
 ```
 
-> **关键点：令牌挂在“新建物理连接”这个时机上。**
-> 实现继承 `psycopg.Connection`／`AsyncConnection` 并重写 `_get_connection_params`，在每次新建物理连接时现签令牌（背景见 `credentials.py` 注释）。连接池因此永远不会重放过期令牌，不需要 `max_lifetime` 回收或刷新定时器。
-> 连接池（`backend/services/facts.py`）、就绪检查（`backend/storage/database.py`）、Agent 执行器（`backend/ai/runtime.py`）和管理命令（`backend/manage.py`）共用同一工厂；`PARTRACE_DATABASE_IAM_AUTH=false`（默认）时工厂返回原生类，密码部署完全不变。
-> 签名正确性由 `backend/tests/test_credentials.py` 锁定：冻结时间戳下与 botocore `SigV4QueryAuth` 的参考签名逐字节一致。取不到实例角色时抛出 `CredentialUnavailable`（`psycopg.OperationalError` 子类），既有就绪探针和请求事务统一按“数据库暂时不可用”处理。
-
-部署时在 EC2 上使用 compose 叠加层（变量见 `infra/.env.example`），只启动 API：
-
-```sh
-docker compose -f infra/compose.yaml -f infra/compose.aurora.yaml up -d --no-deps api
-```
-
-叠加层按 `PARTRACE_AURORA_HOST`／`PARTRACE_AURORA_REGION` 生成无密码、`sslmode=require` 的连接 URL 并强制开启 IAM 认证；捆绑 postgres 服务的变量仍须保留（Compose 会解析整个文件）。
+> **`password=` 传 callable 是这里的关键。**
+> psycopg3 的连接池支持把 `password` 设成函数，**每次新建连接时调用一次**。
+> 这样天然规避令牌过期，不用自己写刷新逻辑。
 
 ### 1.4 令牌过期规则（反直觉，但很重要）
 
@@ -92,11 +108,30 @@ docker compose -f infra/compose.yaml -f infra/compose.aurora.yaml up -d --no-dep
 | 缓存令牌，15 分钟后拿它建新连接 | ❌ `PAM authentication failed` |
 | 每次新建连接时现签令牌（上面的写法） | ✅ 永远正确 |
 
-**所以：不要在应用启动／模块加载时算一次令牌存起来。** 要挂在"建连接时"这个时机上——1.3 的连接类工厂已经按这个原则实现。
+**所以：不要在 `create_engine()` / 模块加载时算一次令牌存起来。** 要挂在"建连接时"这个时机上。
+
+如果不用连接池、用 SQLAlchemy，就挂 `pool` 事件：
+
+```python
+from sqlalchemy import create_engine, event
+
+engine = create_engine(f"postgresql+psycopg://{USER}@{HOST}:{PORT}/{DBNAME}?sslmode=require")
+
+@event.listens_for(engine, "do_connect")
+def _provide_token(dialect, conn_rec, cargs, cparams):
+    cparams["password"] = _token()      # 每次真正建连接时才签
+```
 
 ### 1.5 本地开发怎么办
 
-服务的 IAM 路径只从 EC2 实例元数据（IMDSv2）读取临时凭据，**不读取本地 access key**。因此本地不要以 IAM 方式连 Aurora：本地开发继续使用本地 PostgreSQL／pgvector 容器和密码连接（见 [Backend README](../../backend/README.md) 本地准备），Aurora 联调在带实例角色的 EC2 上按 1.3 的叠加层进行。
+数据库是**公网可达**的（我们从本机直连 5432 验证过），所以本地也能连。
+但本地没有实例角色，需要配 AWS 凭据：
+
+```bash
+aws configure            # 或 export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+```
+
+然后 `boto3.client("rds", ...)` 就能正常签令牌。**注意：本地用的 IAM 身份必须有 `rds-db:connect` 权限**（见 1.6）。
 
 ### 1.6 权限与生产建议
 
@@ -189,15 +224,16 @@ users ──┬─→ recordings ─→ events ─┬─→ evidence ─→ even
 
 > **不可变**：除 `media_status` 外全部字段不可 UPDATE。想改事实必须新建 `recording_id`。
 
-#### `events` — 事件（10 列）
+#### `events` — 事件（11 列）
 
 | 列 | 类型 | 约束 |
 |---|---|---|
 | `event_id` | TEXT | **PK**, NOT NULL |
 | `recording_id` | TEXT | NOT NULL，**FK → recordings** |
-| `zone_id` | TEXT | NOT NULL，非空串 |
+| `zone_id` | TEXT | 可空，缺省 `'E3'`；货架编号（如 E3），不表示层级，非空串；层级用 `shelf_level` |
 | `track_key` | TEXT | 可空（仅在同一 recording 内有效） |
 | `event_type` | TEXT | NOT NULL，∈ `enter_zone` / `dwell` / `shelf_interaction` / `leave_zone` |
+| `shelf_level` | INTEGER | 可空，为 NULL 或 1–20（自下而上编号，校验上限不代表现场层数） |
 | `observation_status` | TEXT | NOT NULL，默认 `candidate`，∈ `observed` / `candidate` |
 | `start_offset_ms` | BIGINT | NOT NULL，≥ 0 |
 | `end_offset_ms` | BIGINT | NOT NULL，≥ `start_offset_ms` |
@@ -596,7 +632,7 @@ with pool.connection() as conn:
 |---|---|
 | Python | EC2 上是 **3.12.3** |
 | `pip` | **未安装**！需先 `sudo apt install -y python3-pip python3-venv` |
-| `boto3` | ✅ 已预装（但服务实现未使用：`backend/storage/credentials.py` 用标准库完成 SigV4 签名，镜像哈希锁定依赖集不变） |
+| `boto3` | ✅ 已预装 |
 | `psycopg` / `psycopg_pool` / `fastapi` / `uvicorn` | ❌ 未装，需在 venv 里装 |
 | `pg_dump` | 客户端 16.15 < 服务端 17.9，**不能用来导出**（版本不匹配）。要用系统目录查询 |
 | 时区 | 所有连接执行 `SET TIME ZONE 'UTC'`；SQL 一律用 `TIMESTAMPTZ` |

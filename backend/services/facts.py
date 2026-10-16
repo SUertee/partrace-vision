@@ -224,23 +224,6 @@ class BackendService:
         if len(rows) > self.settings.max_result_items:
             raise invalid("结果超过部署限额，请缩小查询范围。")
 
-    def verify_clock(self, recording, digests):
-        if recording["started_at"] is None:
-            return
-        try:
-            if self.settings.clock_file is None:
-                raise ValueError("missing calibration")
-            path = self.settings.clock_file
-            if path.is_symlink() or path.stat().st_size > 2 * 1024 * 1024:
-                raise ValueError("invalid calibration")
-            entry = json.loads(path.read_text())["recordings"][recording["recording_id"]]
-            expected = {key: recording[key] for key in ("camera_id", "config_version", "duration_ms", "started_at")}
-            expected["video_sha256"] = digests[recording["file_name"]]
-            if entry != expected:
-                raise ValueError("calibration mismatch")
-        except (OSError, ValueError, KeyError, TypeError):
-            raise ApiError(422, "clock_unverified", "此视频内容没有匹配的服务端时间校准记录。") from None
-
     def import_recording(self, principal, manifest, uploads):
         payload = manifest.model_dump(mode="json")
         recording = payload["recording"]
@@ -248,13 +231,12 @@ class BackendService:
             if not self.allowed(principal, recording):
                 raise ApiError(403, "forbidden", "没有导入此镜头／录像的权限。")
             camera = self.camera(recording)
-            if any(e["zone_id"] not in {z["zone_id"] for z in camera["zones"]} for e in payload["events"]):
+            if any(e["zone_id"] is not None and e["zone_id"] not in {z["zone_id"] for z in camera["zones"]} for e in payload["events"]):
                 raise invalid("事件引用了此配置不存在的区域。")
         self.limit(payload["events"])
         self.limit(payload["evidence"])
         prepared = self.media.prepare(payload, uploads)
         try:
-            self.verify_clock(recording, prepared.digests)
             digest = hashlib.sha256(canonical({"manifest": payload, "files": prepared.digests})).hexdigest()
             replayed = False
             with self.transaction(principal, "data:ingest", admin=True) as (connection, _):
@@ -276,8 +258,8 @@ class BackendService:
                     ).fetchone()
                     for event in payload["events"]:
                         connection.execute(
-                            "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,observation_status,start_offset_ms,end_offset_ms,detection_source,summary) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")),
+                            "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,shelf_level,observation_status,start_offset_ms,end_offset_ms,detection_source,summary) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                            (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "shelf_level", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")),
                         )
                     for frame in payload["evidence"]:
                         key = prepared.evidence_keys[frame["evidence_id"]]

@@ -6,6 +6,7 @@
     "zone_id": "E3",
     "track_key": "track_01",
     "event_type": "shelf_interaction",
+    "shelf_level": 3,
     "observation_status": "candidate",
     "start_offset_ms": 32000,
     "end_offset_ms": 48000,

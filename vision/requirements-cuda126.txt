@@ -1,0 +1,6 @@
+# 本机配置（2026-10-16 实测）：NVIDIA L4（24GB，compute capability 8.9），驱动 580.178.04 / CUDA 13.0
+# 驱动向下兼容 cu126 运行时，与原 Windows 环境 torch 2.6.0 版本保持一致
+--extra-index-url https://download.pytorch.org/whl/cu126
+torch==2.6.0+cu126
+torchvision==0.21.0+cu126
+-r requirements.txt

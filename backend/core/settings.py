@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     config_pins_file: Path = Path(__file__).resolve().parents[2] / ".local-state/config-pins.json"
     media_root: Path = Path(__file__).resolve().parents[2] / ".local-state/media"
     schema_path: Path = Path(__file__).resolve().parents[2] / "docs/database/schema.sql"
-    clock_file: Path | None = None
     ffprobe_path: str = "ffprobe"
     ffmpeg_path: str = "ffmpeg"
     max_upload_bytes: int = Field(default=64 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)

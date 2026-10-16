@@ -86,7 +86,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 | `GET /api/v1/evidence/{evidence_id}` | Backend → Android／Agent | 读关键帧元数据与归属 |
 | `GET /api/v1/evidence/{evidence_id}/media` | Backend → Android／Agent | 验证归属与状态后读实际图片字节 |
 
-**依赖与验收：** D05 提供接口，D08 接页面，真实输入来自 D04。查询仍限定一个 `recording_id + camera_id + zone_id`；视频偏移窗口与 UTC 窗口二选一，UTC 要求验证过的 `started_at`。范围外、范围内未检出、媒体失效和服务错误分别反馈，候选／帧／引用 ID 一致。
+**依赖与验收：** D05 提供接口，D08 接页面，真实输入来自 D04。查询仍限定一个 `recording_id + camera_id + zone_id`；视频偏移窗口与 UTC 窗口二选一，UTC 要求非空 `started_at`。范围外、范围内未检出、媒体失效和服务错误分别反馈，候选／帧／引用 ID 一致。
 
 <a id="m05"></a>
 ## M05 · 事件描述向量与语义检索

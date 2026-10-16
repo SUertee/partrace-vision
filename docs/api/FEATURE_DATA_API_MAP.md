@@ -11,7 +11,7 @@
 | 用户资料 | 当前 `GET /user` | `users`；仍由认证主体映射当前用户，不接收客户端 user_id 读取其他人，也不新增登录、注册或用户管理 |
 | 镜头 / 区域 | 当前 `GET /configs/{config_version}`；建议 `GET /cameras`、`GET /zones` | 读取固定版本配置即可，当前没有设备或区域表 |
 | 视频入库 / 预览 | 当前 `POST /recordings`、`GET /recordings`、`GET /recordings/{recording_id}`；建议 `GET /recordings/{recording_id}/media` | `recordings → events → evidence`；完整包原子写入，源视频读取复用存储键，不需媒体表 |
-| 区域 / 时间检索 | 当前 `GET /events`，跨录像入口待评审 | 联查 `recordings + events + evidence`；当前限定单视频、镜头和区域，偏移／UTC 窗口二选一，UTC 要求已验证 `started_at`；尚未定义全站或跨录像查询 |
+| 区域 / 时间检索 | 当前 `GET /events`，跨录像入口待评审 | 联查 `recordings + events + evidence`；当前限定单视频、镜头和区域，偏移／UTC 窗口二选一，UTC 要求非空 `started_at`；尚未定义全站或跨录像查询 |
 | 事件 / 片段过程 | 当前 `GET /events/{event_id}`；建议 `GET /recordings/{recording_id}/tracks/{track_key}` | 联查同视频、同 `track_key` 的事件与关键帧，不需要轨迹表；只展示实际离散点 |
 | 关键帧 | 当前 `GET /evidence/{evidence_id}`、`GET /evidence/{evidence_id}/media` | `evidence`，经 `events → recordings` 校验归属；只有真实可用才返回字节 |
 | 事件描述文本向量 | 当前 `POST /event-embeddings`、`POST /events/search` | `event_embeddings → events`，可引用同事件 `evidence`；后端先元数据授权过滤，再以 pgvector 同空间精确检索，返回候选供回看 |

@@ -8,7 +8,13 @@ from PIL import Image,ImageDraw,ImageFont
 from .reach import palm_cues,reference_points
 
 
-FONT='C:/Windows/Fonts/msyh.ttc'
+def _find_font():
+    candidates=['C:/Windows/Fonts/msyh.ttc',str(Path(__file__).resolve().parents[2]/'assets'/'fonts'/'NotoSansSC-Regular.otf'),
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf']
+    for path in candidates:
+        if Path(path).exists():return path
+    return candidates[0]
+FONT=_find_font()
 
 
 def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_identity=False):

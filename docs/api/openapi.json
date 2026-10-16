@@ -3758,7 +3758,7 @@
           "end"
         ],
         "additionalProperties": false,
-        "description": "仅在 recording.started_at 已经服务端验证时可用；转换后返回 Query。不能映射到有效非负偏移则 422，未校准则 422 clock_unverified。"
+        "description": "仅在 recording.started_at 非空时可用；转换后返回 Query。不能映射到有效非负偏移则 422，started_at 为空则 422 clock_unverified。"
       },
       "QueryInput": {
         "oneOf": [
@@ -3823,7 +3823,7 @@
           "file_name"
         ],
         "additionalProperties": false,
-        "description": "file_name 对应 multipart 文件 basename；null 表示没有视频字节。started_at 非空必须有服务端可核验的时间基准，不能只信客户端声明。",
+        "description": "file_name 对应 multipart 文件 basename；null 表示没有视频字节。started_at 非空按导入方声明保存并用于 UTC 窗口换算；服务端不校验其与上传时间的关系，声明值不作拍摄时刻证明。",
         "allOf": [
           {
             "if": {
@@ -3854,7 +3854,16 @@
             "$ref": "#/components/schemas/Id"
           },
           "zone_id": {
-            "$ref": "#/components/schemas/Id"
+            "description": "货架编号（如 E3），不表示层级；层级用 shelf_level 表示。未知货架传 null，缺省 E3。",
+            "default": "E3",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "track_key": {
             "anyOf": [
@@ -3868,6 +3877,19 @@
           },
           "event_type": {
             "$ref": "#/components/schemas/EventType"
+          },
+          "shelf_level": {
+            "description": "货架层级，自下而上从最低储物板为第 1 层；1–20 为校验上限，不代表现场层数。未知、不适用或非货架交互事件为 null。",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_status": {
             "type": "string",
@@ -3904,7 +3926,6 @@
         },
         "required": [
           "event_id",
-          "zone_id",
           "track_key",
           "event_type",
           "observation_status",
@@ -4119,7 +4140,15 @@
             "$ref": "#/components/schemas/Id"
           },
           "zone_id": {
-            "$ref": "#/components/schemas/Id"
+            "description": "货架编号（如 E3），不表示层级；层级用 shelf_level 表示。未知货架为 null。",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "track_key": {
             "anyOf": [
@@ -4133,6 +4162,19 @@
           },
           "event_type": {
             "$ref": "#/components/schemas/EventType"
+          },
+          "shelf_level": {
+            "description": "货架层级，自下而上从最低储物板为第 1 层；1–20 为校验上限，不代表现场层数。未知、不适用或非货架交互事件为 null。",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_status": {
             "type": "string",
