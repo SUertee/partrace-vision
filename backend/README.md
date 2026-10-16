@@ -2,7 +2,7 @@
 
 主责 Harry Xu；当前本地实现包括 D05 事件证据与语义检索、D09 人工留档，并可显式组合 D07 Agent。使用 **Python 3.12 + FastAPI + PostgreSQL / pgvector**，图片和录像保存在本地受限目录，数据库保存媒体键。
 
-本页运行说明对应已合入 `dev@4cc9aa1` 的源码；最新进展与本地尚未合入的能力统一见 [项目实际状态](../docs/PROJECT_STATUS.md)。本次只同步文档，People 原片任务、source-first 发布与 Android 新接入的源码继续单独交付。
+本页运行说明对应已合入 `dev@4cc9aa1` 的源码；最新进展与本地尚未合入的能力统一见 [项目实际状态](../docs/PROJECT_STATUS.md)。本次只同步文档，People 原片任务、source-first 发布与 Android 新接入的源码继续单独交付。AWS已独立部署21操作的People API并通过真实A事件验收；具体基线、Aurora查询、HTTPS与回退见[AWS部署记录](../docs/deployment/AWS_PEOPLE_20261017.md)。该部署不代表本页dev源码已包含People扩展。
 
 源码按职责放在 `backend/` 的子包内，外层目录本身是 Python 包；启动入口为 `backend.app`，管理命令为 `backend.manage`。发行包名为 `partrace-backend`。以下命令均从 `backend/` 执行。
 

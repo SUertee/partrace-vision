@@ -35,6 +35,12 @@ Android 工程通过 `../ESIotKit-DemoApp-Common/sample-core` 引用公共模块
 
 Android 真机、D09 人工保存与重启回读、D10 同一真实事件的查询开帧、Agent 引用、人工保存及回读闭环仍未验收。设备画面、原片、私有配置、SDK 设备映射和凭据保留在本地，不随本次文档发布。
 
+## AWS 公网 People 验收
+
+2026-10-17已登录模拟器使用 `https://35.84.190.14` 和独立AWS Bearer，真实门铃A的历史原片与新自动People事件均完成App下载→API source上传→Aurora pending→Vision published/completed→App完成回调。球机B新自动原片已入Aurora排队，等待现场标定；A建档0区域事件/0业务证据不代表无人。此前本机任务保留原目标，未被重定向。新增历史入口跳过已有任务；尚未受理的验证错误源可显式重下，已受理/完成/冲突源不替换。
+
+本轮JDK17构建、lint及13项People测试通过；A worker仍在Mac运行，自动采集依赖App前台及SDK登录。源码尚待合入dev，详情与实际ID见[AWS部署验收](../docs/deployment/AWS_PEOPLE_20261017.md)。
+
 ## 准备本地配置
 
 从仓库根目录执行，Python 3.9 或以上即可：

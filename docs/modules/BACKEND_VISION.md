@@ -1,8 +1,8 @@
 # Backend 与 Vision 联动设计
 
-**视觉算法使用独立 Python 工作进程，先完成视频分析，再通过 Backend 的既有 API 发布完整结果包。** Backend 使用 FastAPI，负责权限、校验、媒体保存和数据库事务；Vision 不直连业务数据库，首版可用批处理程序与导入客户端，无需额外部署 HTTP 服务。
+**视觉算法使用独立 Python 工作进程；dev既有入口接收分析后的完整结果包，独立AWS部署已验证“原片先入库、worker解析后发布”的增量流程。** Backend 使用 FastAPI，负责权限、校验、媒体保存和数据库事务；Vision 不直连业务数据库，首版可用批处理程序与导入客户端，无需额外部署 HTTP 服务。
 
-关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页整理既有交接约定，不新增表、API 或任务调度协议。
+关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页主体整理dev既有交接约定；AWS增量入口、任务表和验收单独记录在[部署说明](../deployment/AWS_PEOPLE_20261017.md)，本文档提交不修改dev契约。
 
 当前 `dev` 已包含完整包导入、事件／关键帧读取及两个向量操作，以及 [Vision A/B 算法与模型](../../vision/README_hua.md)；最新基线还包含 Linux 字体／依赖适配和公开事件 `shelf_level`。本轮文档更新不交付本地新增的原片队列或 API worker，也不改变下述既有离线完整包契约。实现与本地验证的区别见 [项目状态](../PROJECT_STATUS.md)，不代表真实视觉效果、外部编码器或 Android D10 已验收。
 
@@ -32,7 +32,7 @@
 | `evidence` | `evidence_id / event_id / offset_ms / bbox_json / file_name` | 完整包写入，外键关联同包事件 | 私有 `storage_key` 与当前 `media_status`；`media_url` 从读取接口派生 |
 | `event_embeddings` | 向量 ID、事件／可空帧 ID、描述、数值数组、模型／版本／维度 | 事件入库后单条写入；非空 `evidence_id` 必须属于该事件 | `content_sha256 / created_at`；API 数组映射为 pgvector `embedding vector` |
 
-首版没有独立 `tracks`、视觉任务、处理进度或全局覆盖表。同录像的 `track_key` 与实际关键帧派生离散观测点；覆盖只从已完整导入的连续视频范围推导。`review_records` 和 AI 历史表由各自模块维护，Vision 不写入。
+dev基线没有独立 `tracks`、视觉任务、处理进度或全局覆盖表；AWS People扩展已另增持久任务表，见[部署记录](../deployment/AWS_PEOPLE_20261017.md)。同录像的 `track_key` 与实际关键帧派生离散观测点；覆盖只从已完整导入的连续视频范围推导。`review_records` 和 AI 历史表由各自模块维护，Vision 不写入。
 
 ## Backend 提供、Vision 使用的 API
 

@@ -5,6 +5,7 @@
 | 要查看的内容 | 入口 |
 | --- | --- |
 | 截至2026-10-17的实际能力、验证与待合入范围 | [项目状态](PROJECT_STATUS.md) |
+| AWS公网HTTPS、真实People事件与App回调验收 | [部署记录与运行边界](deployment/AWS_PEOPLE_20261017.md) · [Aurora只读查询SQL](database/aurora-people-status.sql) |
 | 全部业务模块及 DB／API 关联 | [模块设计](modules/README.md) |
 | Backend 与 Agent 怎样联动 | [内部接口、执行流程与下一步](modules/BACKEND_AGENT.md) |
 | Backend 与视觉算法怎样交接 | [职责、表、API 与真实证据包](modules/BACKEND_VISION.md) |
@@ -35,6 +36,7 @@ GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示
 docs/
   README.md                  文档入口
   DEVELOPMENT_PLAN.md        分工、依赖与验收
+  deployment/                实际部署、验收及运维边界
   OPENSPEC.md                行为规格与变更流程
   modules/                   全部业务模块及 DB／API 关联
   database/                  数据库设计、SQL、结构快照与关系图

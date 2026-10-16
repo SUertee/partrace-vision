@@ -8,7 +8,7 @@
 
 **服务端统一 Python：Backend 使用 FastAPI，Agent 以独立 Python 包接入同一 API 应用，Vision 使用独立工作进程。** 本地 Backend 已有 14 个数据操作；显式启用 Agent 后再挂载 9 个，共 23／28，P1 包裹 5 个仍待开发。媒体使用受限本地文件存储；外部模型和真实视频业务效果尚未验收。
 
-截至2026-10-17，dev已有数据服务、Agent卡片/SSE和A/B离线算法。本地另已验证Android真实设备、People原片先入库与A解析回调；这些实现源码仍待合入，完整B与D10未验收。详见[实际进展与待验收项](docs/PROJECT_STATUS.md)。
+截至2026-10-17，dev已有数据服务、Agent卡片/SSE和A/B离线算法；独立AWS部署已通过公网HTTPS将真实People原片写入Aurora。03:11核对A已完成5段（4条新自动、1条历史），App完成回调已确认；B自动原片2段待标定。People增量源码仍待合入，A worker当前在Mac CPU运行，App需前台及SDK登录，完整B与D10未验收。见[项目状态](docs/PROJECT_STATUS.md)、[AWS部署与验收](docs/deployment/AWS_PEOPLE_20261017.md)和[Aurora查询SQL](docs/database/aurora-people-status.sql)。
 
 ## 工作台与资料
 

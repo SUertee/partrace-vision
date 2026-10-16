@@ -16,7 +16,11 @@
 
 向量存储采用 PostgreSQL + pgvector 的原生 `vector`，由后端校验与入库；交接仍用 JSON 数值数组，统一模型版本、维度和 float32 编码。
 
-## 本地已验证，待合入 source-first
+## AWS 真实事件验证
+
+2026-10-17独立A worker在Mac CPU运行，经 `https://35.84.190.14` 的受限API领取、下载、续租和发布。Aurora快照A completed 5段（4新自动、1历史），App回调已确认；B自动原片2段pending/queued，缺现场标定和区域映射。Mac或worker停止后原片可继续入库排队，AWS API不会自行推理。公网接通不代表B算法、生产运行或D10验收完成，worker增量源码仍待合入dev。详见[AWS部署与验收](../docs/deployment/AWS_PEOPLE_20261017.md)。
+
+## 此前本地验证，待合入 source-first
 
 以下是 2026-10-17 本地开发工作区的验证记录，**相关 API worker、原片队列、Android 协调器及其 SQL／API 增量尚未随本次文档发布合入 `dev`**。当前 `dev` 的 Backend 仍使用既有离线完整结果包契约；本段不提供克隆后即可运行的 worker 命令。代码交付范围与最新状态统一见 [项目状态](../docs/PROJECT_STATUS.md)。
 
