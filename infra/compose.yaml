@@ -105,13 +105,16 @@ services:
       - ../.local-state:/state
     read_only: true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+      # Multipart parsing spools before the application reads the 64 MiB bundle.
+      # Leave room for two media bundles plus their 2 MiB manifests.
+      - /tmp:rw,noexec,nosuid,size=160m,mode=1777
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
-    mem_limit: 256m
-    memswap_limit: 512m
+    # tmpfs, multipart bytes, image decoding and the worker share this budget.
+    mem_limit: 512m
+    memswap_limit: 1g
     pids_limit: 64
     stop_grace_period: 20s
     logging:

@@ -4,6 +4,7 @@ import copy
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -311,3 +312,91 @@ def test_store_rejects_symlinked_managed_directories(tmp_path):
     (root / "objects").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError):
         MediaStore(root)
+
+
+@pytest.mark.parametrize("damage", ["empty", "truncated", "corrupt", "oversized", "pixels"])
+def test_published_image_damage_is_missing_and_repaired_bytes_are_available(tmp_path, monkeypatch, damage):
+    from PIL import Image
+
+    store = MediaStore(tmp_path / "media", max_bytes=4096, max_pixels=64)
+    bypass_video_decode(monkeypatch, store)
+    original = image_bytes()
+    prepared = store.prepare(manifest(), {"input.mp4": b"decoder-bypassed", "frame.png": original})
+    prepared.commit()
+    key = prepared.evidence_keys["evidence_1"]
+    path = store.resolve(key)
+    assert store.available(key)
+    assert store.read(key) == original
+    before = path.stat()
+    if damage == "empty":
+        content = b""
+    elif damage == "truncated":
+        content = original[:-12]
+    elif damage == "corrupt":
+        content = b"x" * len(original)
+    elif damage == "oversized":
+        content = b"x" * (store.max_bytes + 1)
+    else:
+        output = io.BytesIO()
+        Image.new("RGB", (9, 8)).save(output, format="PNG")
+        content = output.getvalue()
+    path.write_bytes(content)
+    if damage == "corrupt":
+        # Even an equal-size rewrite with a restored mtime must invalidate the
+        # cached result; the inode's ctime changes independently of that value.
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    assert not store.available(key)
+    error = assert_error(404, lambda: store.read(key))
+    assert error.code == "media_missing"
+    assert store.resolve(key) == path  # Keep the durable key and evidence ID.
+    path.write_bytes(original)
+    assert store.available(key)
+    assert store.read(key) == original
+
+
+def test_truncated_stored_jpeg_is_missing(store, monkeypatch):
+    bypass_video_decode(monkeypatch, store)
+    payload = manifest()
+    payload["evidence"][0]["file_name"] = "frame.jpg"
+    prepared = store.prepare(payload, {"input.mp4": b"decoder-bypassed", "frame.jpg": image_bytes("JPEG")})
+    prepared.commit()
+    key = prepared.evidence_keys["evidence_1"]
+    path = store.resolve(key)
+    path.write_bytes(path.read_bytes()[:-20])
+    assert not store.available(key)
+    assert assert_error(404, lambda: store.read(key)).code == "media_missing"
+
+
+def test_unchanged_images_reuse_validation_and_recording_metadata_skips_video_decode(store, monkeypatch):
+    bypass_video_decode(monkeypatch, store)
+    validate = store._validate_image
+    validated = []
+
+    def tracked(content, extension):
+        validated.append(content)
+        validate(content, extension)
+
+    monkeypatch.setattr(store, "_validate_image", tracked)
+    prepared = store.prepare(manifest(), {"input.mp4": b"decoder-bypassed", "frame.png": image_bytes()})
+    prepared.commit()
+    for _ in range(3):
+        assert store.available(prepared.evidence_keys["evidence_1"])
+        assert store.read(prepared.evidence_keys["evidence_1"]) == image_bytes()
+        assert store.available(prepared.recording_storage_key)
+    assert len(validated) == 1  # The successful import already decoded this file.
+
+
+def test_image_validation_cache_has_a_fixed_bound(store, monkeypatch):
+    import backend.storage.media as media_module
+
+    monkeypatch.setattr(media_module, "_IMAGE_VALIDATION_CACHE_SIZE", 2)
+    bypass_video_decode(monkeypatch, store)
+    keys = []
+    for _ in range(3):
+        prepared = store.prepare(manifest(), {"input.mp4": b"decoder-bypassed", "frame.png": image_bytes()})
+        prepared.commit()
+        keys.append(prepared.evidence_keys["evidence_1"])
+    assert len(store._image_validation_cache) == 2
+    assert keys[0] not in store._image_validation_cache
+    assert store.available(keys[0])  # An evicted entry is validated again.
+    assert len(store._image_validation_cache) == 2

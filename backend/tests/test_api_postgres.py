@@ -233,6 +233,26 @@ def test_real_video_and_image_upload_retrieval_and_media_loss(context, tmp_path)
         review = copy.deepcopy(context['review'])
         review['query'].update(end_offset_ms=1000)
         check(client.post('/api/v1/review-records', json=review), 'ReviewResponse',201)
+        oversized_image = io.BytesIO()
+        Image.new('1', (4097, 4096)).save(oversized_image, format='PNG')
+        stored_frame = next((context['settings'].media_root/'objects').rglob('*.png'))
+        # Retention failures after a successful real import must agree across
+        # frame metadata, event/review bundles and the actual media endpoint.
+        for damaged in (b'', image.getvalue()[:-12], b'not a decodable image', oversized_image.getvalue()):
+            stored_frame.write_bytes(damaged)
+            missing = check(client.get('/api/v1/evidence/evd_mock_001'), 'EvidenceResponse')['evidence']
+            assert missing['evidence_id'] == frame['evidence_id']
+            assert missing['media_status'] == 'missing'
+            assert missing['media_url'] is None
+            assert check(client.get(frame['media_url']), 'ErrorResponse',404)['error']['code'] == 'media_missing'
+            for route, schema in [('/api/v1/events/evt_mock_001', 'EventResponse'),
+                                  ('/api/v1/review-records/rev_mock_001', 'ReviewResponse')]:
+                retained = check(client.get(route), schema)['evidence'][0]
+                assert retained['evidence_id'] == frame['evidence_id']
+                assert retained['media_status'] == 'missing'
+            stored_frame.write_bytes(image.getvalue())
+            assert check(client.get('/api/v1/evidence/evd_mock_001'), 'EvidenceResponse')['evidence']['media_status'] == 'available'
+            assert client.get(frame['media_url']).content == image.getvalue()
         for path in (context['settings'].media_root/'objects').rglob('*.png'):
             path.unlink()
         assert check(client.get('/api/v1/evidence/evd_mock_001'), 'EvidenceResponse')['evidence']['media_status'] == 'missing'

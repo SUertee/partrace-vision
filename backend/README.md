@@ -142,6 +142,10 @@ uv run python -m backend.manage --help
 
 真实视频上传需要 **ffprobe + ffmpeg**（本地安装后放 PATH，或设置 `PARTRACE_FFPROBE_PATH`／`PARTRACE_FFMPEG_PATH`）。Dockerfile 提供 FFmpeg 工具。检查 MP4 格式、持续时间和完整解码，PNG／JPEG 使用 Pillow 验证；缺工具返回503，坏媒体返回422，不伪装成功。清单默认限2MiB、媒体合计64MiB、事件和关键帧分别限5000项；超限明确拒绝，读取列表也不静默截断。图片解码只证明文件有效，bbox／对象对应和动作仍是授权 Vision 产物声明，须按真实素材验收。
 
+Compose 为 API 配置 160 MiB 临时盘、512 MiB 内存与 1 GiB 内存加交换空间总额。multipart 解析会先把大文件写入临时盘，再复制为待校验媒体；临时盘预留两份默认媒体包及清单的容量。上传并发目前没有单独限流，调整上传限额或增加并发前须同时评估临时盘、解码内存与宿主资源；这些限额不代表任意并发下都能完成上传。
+
+关键帧元数据、图片读取和 Agent 引用校验共用可用性检查：空文件、损坏图片或超出媒体／像素限额的帧按 `missing` 处理，图片接口返回 404 `media_missing`，历史 ID 与定位仍保留。未改变的图片复用有界文件指纹校验缓存，文件写入或替换后重新校验；录像元数据查询不重新解码 MP4。
+
 默认 `started_at=null`，使用视频偏移。非空 UTC 起点需 `PARTRACE_CLOCK_FILE` 指向管理员校准文件，形状为 `{"recordings":{"recording_id":{"camera_id":"...","config_version":"...","duration_ms":1000,"started_at":"2026-10-16T00:00:00Z","video_sha256":"64位实际视频摘要"}}}`；必须与实际上传字节及清单完全匹配。它是部署可信输入，不能把客户端时间写入该文件来冒充独立校准。
 
 配置与签名放受保护的本地目录；auth摘要文件仅当前用户／root可读、权限0600。`infra/compose.yaml` 挂载 `.local-state`，启动前需把 `PARTRACE_UID`／`PARTRACE_GID` 设置为该目录文件所有者，并按Compose连接地址准备环境；本地host准备脚本生成的数据库URL不可直接当作容器内部URL。不要把本地演示令牌用于公网。

@@ -295,8 +295,19 @@ def test_available_context_frame_can_be_cited_and_missing_history_keeps_referenc
     h["plan"]["query"].update(recording_id="real_test", start_offset_ms=200, end_offset_ms=400)
     running(h)
     references = [{"event_id": "real_event", "evidence_id": "real_frame"}]
+    frame_path = next(h["service"].settings.media_root.rglob("*.png"))
+    oversized_image = io.BytesIO()
+    Image.new("1", (4097, 4096)).save(oversized_image, format="PNG")
+    for damaged in (b"", image.getvalue()[:-12], b"not a decodable image", oversized_image.getvalue()):
+        frame_path.write_bytes(damaged)
+        forbidden(lambda: store.complete_run(h["p"], "run_1", "不能引用损坏的画面。", references), 422)
+        assert store.get_run(h["p"], "run_1")["status"] == "running"
+    frame_path.write_bytes(image.getvalue())
     completed = validates(store.complete_run(h["p"], "run_1", "引用事件后的真实上下文帧。", references), "AgentRunResponse")
     assert completed["references"] == references
+    frame_path.write_bytes(b"later corruption must preserve historical references")
+    assert store.get_run(h["p"], "run_1")["references"] == references
+    assert any(row["role"] == "assistant" for row in store.list_messages(h["p"], "conversation_1")["messages"])
     for frame in h["service"].settings.media_root.rglob("*.png"):
         frame.unlink()
     assert store.get_run(h["p"], "run_1")["references"] == references

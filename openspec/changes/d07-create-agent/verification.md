@@ -104,3 +104,15 @@ PY
 - 提交范围包含 Backend／Agent 实现、目录分层、依赖、测试、CI、infra、相关 D05／D07 提案与实现文档；Android 缓存代码、Android README、展示策略和 `.finesse` 改动继续留在工作区，不纳入本次提交。
 
 - 使用临时 npm 缓存中的固定 OpenSpec 1.14.1 校验：4 个 active change 与 1 个 archived change 均通过；本机全局旧版未用于最终规格凭据。暂存新文件的空白检查发现两处文件末尾多余空行，已移除并重新检查。
+
+
+## PR #14 审查修复 · 2026-10-16
+
+本轮在既有媒体有效性和上传限额约定内修复两个问题，没有新增公开 API、数据库字段或业务状态。
+
+- 关键帧元数据、实际字节读取和 Agent 完成引用统一调用媒体有效性检查。空文件、截断 PNG／JPEG、非空坏图、字节或像素超限图片均视为 `missing`，字节端点返回 404 `media_missing`；事件、核查和已完成 AI 历史仍保留原 ID。恢复合法文件后重新可用。
+- 为避免列表及 Agent 回查重复解码，媒体实例维护带锁、最多 8192 项的文件指纹校验缓存，仅保存 dev／inode／size／mtime_ns／ctime_ns 和校验结果，不保存图片字节。文件变化使缓存失效，MP4 元数据不进行重解码。
+- Compose 原 16 MiB `/tmp` 小于合法 64 MiB multipart 媒体包；修正为 160 MiB 临时盘、API 512 MiB 内存和 1 GiB 内存加交换空间总额，PostgreSQL 原限额保持不变。文档明确上传尚无单独并发限流，增加并发或上传大小需重新评估资源。
+- 使用已有 Alpine 3.20 镜像，无网络、无卷、只读根目录的自动删除容器复现：旧 16 MiB tmpfs 写 20 MiB 会 ENOSPC；新 160 MiB tmpfs 成功同时保存两份 66 MiB 文件（各包含默认媒体包和清单的容量）。这只是容器临时盘容量验证，不是应用镜像构建或部署。
+- 当前合并修复后的独立 PostgreSQL／pgvector 全量回归：**296 passed in 16.73s，0 skipped**；包含实际视频导入后坏图的 HTTP／核查／AI 引用校验、图片修复恢复、缓存失效与上限场景。没有外部模型请求。
+- Compose 使用无敏感占位值渲染，核对 API／PostgreSQL 资源配置通过。OpenSpec 1.14.1 的 4 个 active 和 1 个 archived change、五项离线设计同步检查及 `git diff --check` 全部通过。

@@ -153,7 +153,7 @@ class BackendService:
         if key is None:
             return False
         try:
-            return self.media.resolve(key).is_file()
+            return self.media.available(key)
         except (ApiError, OSError):
             return False
 
