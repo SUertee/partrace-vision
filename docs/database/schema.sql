@@ -1,5 +1,5 @@
 -- ParTrace Vision · 驿站追迹 · 最小数据库设计 0.3-mvp-draft
--- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段；截至 2026-10-17 再计入 runs.cards_json，共 11 表、79 字段。
+-- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段；截至 2026-10-17 再计入 runs.cards_json，共 11 表、79 字段；2026-10-17 events 增加可空 person_id，保存 A 图库的匿名 G 编号，当前共 11 表、80 字段。
 -- PostgreSQL 17 / pgvector 0.8.7 新空库 DDL 草案；不是既有库迁移，也不代表数据库或后端已部署。
 -- SQLite 历史验证稿已完整保存在 archive/schema-sqlite-0.3.sql，不再作为当前生产选型。
 -- 首版输入：固定摄像头/区域的一段完整连续预录视频，以及一份完整分析结果包。
@@ -74,6 +74,7 @@ CREATE TABLE events (
     recording_id TEXT NOT NULL,
     zone_id TEXT DEFAULT 'E3',
     track_key TEXT,
+    person_id TEXT,
     event_type TEXT NOT NULL,
     shelf_level INTEGER,
     observation_status TEXT NOT NULL DEFAULT 'candidate',
@@ -84,6 +85,7 @@ CREATE TABLE events (
     CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),
     CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),
+    CONSTRAINT ck_event_person CHECK (person_id IS NULL OR person_id ~ '^G[0-9]{4,99}$'),
     CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),
     CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),
     CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),

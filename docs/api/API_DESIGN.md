@@ -182,3 +182,9 @@ JSON 成功响应与错误均带 `api_version=0.3-mvp-draft`，严格限制未�
 包裹独立按 **建档 / 查询 → Android 二维码生成 / 扫码 → 管理员确认 / 流水 → Agent 只读历史** 推进，不依赖视觉自动登记。用同一单号验证前导零、生成 / 扫描一致、重复扫码不写入、重复请求不追加、入库后出库及再次入库顺序、无效单号、权限与状态冲突、并发序号和服务重启回读；这些均待真实实现验收。
 
 [v0.2 完整方案及旧样例](archive/0.2.md) 仅作历史参考，不能混用；0.1 `demo-bundle.json` 同样不是当前导入格式。
+
+## 事件 person_id
+
+`EventInput` 新增可省略、可空的 `person_id`，格式为 G 加 4–99 位数字（例如 `G0007`），表示 A 图库管理的匿名档案；`Event` 读取固定返回该键，未知为 `null`。它与录像内的 `track_key` 及 App 用户身份不同。Vision 未匹配、冲突或复核人物不一致时必须传 `null`，不能用局部 P 编号冒充 G。
+
+旧清单省略字段或显式传 `null` 保持旧摘要和重放语义；已知 G 参与不可变摘要，同录像换 G 返回内容冲突。现有数据库先应用 [004 增量迁移](../database/migrations/004-event-person-id.sql)，旧事件不推测回填。格式、发布回读和兼容性见 [D04 验收](../../openspec/changes/d04-event-person-id/verification.md)。

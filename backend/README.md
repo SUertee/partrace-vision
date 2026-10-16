@@ -159,3 +159,9 @@ Compose 为 API 配置 160 MiB 临时盘、512 MiB 内存与 1 GiB 内存加交�
 跨文件系统与数据库无法构成同一事务：服务先原子发布私有媒体，再提交PG，确定失败会清理本次文件；COMMIT连接中断、结果不明时保留可能已关联的媒体，并以相同ID／内容重试核对结果。进程崩溃遗留的未关联暂存文件需运维核对后清理；不会通过公开API列出这些文件。
 
 集成测试须显式设置 `PARTRACE_TEST_DATABASE_URL` 指向名称以 `_tests` 结尾的独立库，预装pgvector，并授予测试账号该测试库建schema权限。每项测试使用随机 `mvp_test_*` schema，仅清理自身。`PARTRACE_TEST_FFPROBE` 可指定真实probe路径；缺工具会跳过真实上传项，不能据此宣称媒体验证已通过。
+
+## events.person_id 增量
+
+事件新增可空的 A 图库 G 编号 `person_id`，保留录像内的局部 `track_key` 和已有 `shelf_level`。输入可省略或传 `null`；读取始终返回该键。旧未知导入的幂等摘要不变，已知 G 编号纳入不可变摘要。
+
+已有 development 库从 `backend/` 执行 `uv run python -m backend.manage migrate-event-person-id`，只增加列和格式约束，保留旧行 `NULL`。SQL、OpenAPI、映射和实测边界见[字段说明](../docs/database/README.md#eventsperson_ida-管理的匿名-g-编号)与[D04 验收](../openspec/changes/d04-event-person-id/verification.md)。

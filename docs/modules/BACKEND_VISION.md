@@ -2,9 +2,9 @@
 
 **视觉算法使用独立 Python 工作进程；dev既有入口接收分析后的完整结果包，独立AWS部署已验证“原片先入库、worker解析后发布”的增量流程。** Backend 使用 FastAPI，负责权限、校验、媒体保存和数据库事务；Vision 不直连业务数据库，首版可用批处理程序与导入客户端，无需额外部署 HTTP 服务。
 
-关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页主体整理dev既有交接约定；AWS增量入口、任务表和验收单独记录在[部署说明](../deployment/AWS_PEOPLE_20261017.md)，本文档提交不修改dev契约。
+关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页主体整理dev既有交接约定；AWS增量入口、任务表和验收单独记录在[部署说明](../deployment/AWS_PEOPLE_20261017.md)，本次新增的 person_id 契约见文末。
 
-当前 `dev` 已包含完整包导入、事件／关键帧读取及两个向量操作，以及 [Vision A/B 算法与模型](../../vision/README_hua.md)；最新基线还包含 Linux 字体／依赖适配和公开事件 `shelf_level`。本轮文档更新不交付本地新增的原片队列或 API worker，也不改变下述既有离线完整包契约。实现与本地验证的区别见 [项目状态](../PROJECT_STATUS.md)，不代表真实视觉效果、外部编码器或 Android D10 已验收。
+当前 `dev` 已包含完整包导入、事件／关键帧读取及两个向量操作，以及 [Vision A/B 算法与模型](../../vision/README_hua.md)；最新基线还包含 Linux 字体／依赖适配和公开事件 `shelf_level`。本次 person_id 变更保留既有离线完整包和 shelf_level，不交付尚待合入的原片队列或 API worker。实现与本地验证的区别见 [项目状态](../PROJECT_STATUS.md)，不代表真实视觉效果、外部编码器或 Android D10 已验收。
 
 ## 谁负责什么
 
@@ -164,3 +164,9 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 | B 配置版本 | v1 保持不可变；现场标定须发布新版本。已保存的旧 v1 原片不会自动使用新版本解析，须先明确迁移策略，不能悄悄改原任务或覆盖旧配置 |
 
 本地协调器限 App 前台且 SDK 已登录。Android 后台常驻、完整 B 真实链路、生产部署和 D10 的同一事件查询／证据／Agent 引用／人工核查闭环均未验收。A 实测未调用外部模型；完整远程 LLM／Embedding 业务效果须单独验收，不能由本次建档链路推断。
+
+## 匿名 G 编号与局部 P 轨迹
+
+`events.person_id` 保存 A 图库管理、B 成功匹配的 G 编号；`events.track_key` 保留录像内的局部 P 轨迹。dev 既有 `session_identity.event_person_id` 出口只接受 `identity.status=matched` 且有效的 G `profile_id`，并检查复核人物与局部轨迹一致；无图库关联、未匹配或冲突一律返回 `null`。六字段事件结构不变，算法内部的局部人物编号继续保留在 session 中。
+
+Backend 同步校验、持久化和回读 `person_id`，旧事件迁移后为 `null`，旧未知导入可安全重试。它不关联 App 用户，也不表示自然人身份；A 建档仍不产生区域动作事件。字段及迁移见[数据库说明](../database/README.md#eventsperson_ida-管理的匿名-g-编号)。本次合入不包含尚未进入 dev 的 People worker、Android 上传与任务路由；独立 AWS 的字段补丁和 B 待标定边界见 [D04 验收](../../openspec/changes/d04-event-person-id/verification.md)。

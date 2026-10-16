@@ -4,14 +4,14 @@
 
 ## 本次发布范围与基线
 
-本次在文档提交 `116cef7` 上继续同步AWS部署记录和只读查询SQL，不包含开发工作区尚未提交的 Android、People 管线、Vision worker 等实现。`dev` 运行代码核对基线仍为 `4cc9aa1`：已有 Backend、Agent 卡片/SSE、A/B 离线算法，以及新合入的 Linux 适配和事件 `shelf_level` 字段。Linux/GPU 实际运行不由本次文档核对证明。当前dev允许声明非空started_at进行UTC换算，但不验证它是真实拍摄时刻；本地SDK仍保留未知起点null。
+本次在文档提交 `116cef7` 上继续同步AWS部署记录和只读查询SQL，不包含开发工作区尚未提交的 Android、People 管线、Vision worker 等实现。在 `df2de62` 基线上，本次合入可空 `events.person_id`、增量迁移和既有 Vision G 编号出口；其余运行代码核对基线为 `4cc9aa1`：已有 Backend、Agent 卡片/SSE、A/B 离线算法，以及新合入的 Linux 适配和事件 `shelf_level` 字段。Linux/GPU 实际运行不由本次文档核对证明。当前dev允许声明非空started_at进行UTC换算，但不验证它是真实拍摄时刻；本地SDK仍保留未知起点null。
 
 | 范围 | dev 已有代码/契约 | 本地开发工作区已验证，源码待合入 |
 | --- | --- | --- |
 | 数据服务 | 14 个 Backend 操作；完整分析包导入、事件/证据、核查、向量 | 另7个 People 持久任务操作，公开 recordings source 模式 |
 | Agent | 9个操作，显式启用后共23/28；卡片落库及运行终态SSE | Android 提问、计划确认、运行/停止/恢复、分页历史和引用界面 |
 | API 草案 | 28=19 Backend（含5个未实现包裹操作）+9 Agent | 35=26 Backend（仍含5个未实现包裹操作）+9 Agent，挂载30 |
-| 数据结构 | 11表79列，含 `runs.cards_json` 与 `events.shelf_level` | 原本地基线导出12表104列，含任务表和publication状态 |
+| 数据结构 | 11表80列，含 `runs.cards_json`、`events.shelf_level` 与可空 `events.person_id` | 原本地基线导出12表104列，含任务表和publication状态 |
 | Android | 官方 KMP/Compose SDK 示例和配置模板 | 三入口界面、真实设备首页、People 管线、Agent 接入及新一轮设计还原 |
 | Vision | A人物建档、B跟踪/货架交互、模型和离线输出 | API worker、租约、结果发布、A图库隔离与恢复 |
 
@@ -23,7 +23,7 @@
 
 2026-10-17 03:11:13 +08:00直接查询Aurora `partrace/public`：**A completed 5段（4新自动、1历史），B queued 2段（新自动）**，原5条非People录像仍在。A的published、completed和App同ID完成回调已核对；B等待现场标定。A worker当前持续运行于Mac CPU，App依赖前台和SDK登录。
 
-云端结构12表/104列包含shelf_level但尚无cards_json，不等于下述原本地104列结构；People源码和迁移尚待合入dev。实际ID、测试范围、异常原片重下、TLS/续期、只读SQL与回退边界见[AWS部署记录](deployment/AWS_PEOPLE_20261017.md)。上次本机13任务快照保留作历史记录，不能代替当前云端查询。
+云端原12表/104列现已增量增加 person_id 为12表/105列，包含shelf_level但尚无cards_json，不等于下述原本地104列结构；People源码和迁移尚待合入dev。实际ID、测试范围、异常原片重下、TLS/续期、只读SQL与回退边界见[AWS部署记录](deployment/AWS_PEOPLE_20261017.md)。上次本机13任务快照保留作历史记录，不能代替当前云端查询。
 
 ## 当前能力与证据
 
@@ -100,3 +100,7 @@ Agent当前基于授权事件元数据、描述和证据引用工作；生成计
 ## 本次 AWS 文档同步
 
 本次仅复核云端容器、IP证书/续期、Aurora带时间状态快照，并核对已有App完成回调凭据；新增部署记录与只读SQL，更新各模块入口。15项PG任务测试、13项Android测试及构建/lint属于实际部署阶段的凭据，本次纯文档提交不重跑或宣称dev业务全量回归。检验本文相对链接、SQL只读执行、五项设计同步和diff；不修改SQL DDL/OpenAPI设计契约，不提交私有凭据或媒体。
+
+## person_id 本次合入范围
+
+Backend 输入、持久化、回读、004 增量迁移、SQL/OpenAPI/样例和结构图同步新增可空 A 图库 G 编号。Vision 的既有事件出口只输出成功匹配的有效 G，保留局部 P 轨迹，未知/冲突为 null。Aurora 已迁移，3 条旧事件全部保留，新字段均为空；B 的真实匹配尚未验收。[D04 验证](../openspec/changes/d04-event-person-id/verification.md)区分早前独立部署测试与本次 dev 提交回归。

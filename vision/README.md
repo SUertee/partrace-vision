@@ -31,3 +31,9 @@
 - **真实 B：** 本地最终核对时有 12 条 B 原片处于 queued，是该时间点的持久任务快照，不代表解析完成。当前球机画面缺匹配的现场货架标定及区域映射，不能套用仓库其他场景的标定。既有 v1 配置保持不可变；新标定须发布新配置版本，旧 v1 原片不会自动改用新版本，需要另行确定迁移策略。
 
 本地链路仅在 App 前台且 SDK 已登录时运行；Android 系统后台常驻、完整 B 真实算法链、生产部署以及 D10 的同一事件检索／引用／人工核查闭环均未验收。本轮 A 未调用外部模型；完整远程 LLM／Embedding 业务效果另行验收。
+
+## B 事件的 person_id
+
+`station_vision.reid.session_identity.event_person_id` 仅输出成功匹配的 A 图库 G 编号，未知、冲突、非法编号或复核人物不一致时为 `null`。局部 P 编号保留在 session 中，并由导入适配器写到 `track_key`；不能作为公开的 G 身份。现有六字段事件结构与 `shelf_level` 保留，A 建档不凭空生成区域事件。
+
+Backend 对 `EventInput.person_id` 再校验并持久化，字段及已有库迁移见[数据库说明](../docs/database/README.md#eventsperson_ida-管理的匿名-g-编号)。People worker 和 Android 任务链路仍属于独立部署、待合入 dev；本次字段提交不表示 B 标定或真实 G 匹配已经验收。

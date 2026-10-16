@@ -28,7 +28,8 @@
       "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。",
       "evidence_ids": [
         "evd_mock_001"
-      ]
+      ],
+      "person_id": null
     }
   ]
 }

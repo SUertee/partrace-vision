@@ -9,6 +9,7 @@ from typing import Sequence
 
 from pydantic import ValidationError
 import psycopg
+from psycopg import sql
 
 from backend.core.settings import Settings
 from backend.storage.credentials import connection_class
@@ -137,10 +138,29 @@ def seed_user(settings: Settings, user_id: str, display_name: str, role: str) ->
         ) from None
 
 
+def migrate_event_person_id(settings: Settings) -> None:
+    """Add anonymous A-gallery references; existing immutable facts remain null."""
+    _require_development(settings)
+    migration = _schema_body(Path(settings.schema_path).parent / "migrations/004-event-person-id.sql")
+    try:
+        with _connect(settings) as connection:
+            with connection.transaction():
+                connection.execute("SELECT pg_catalog.pg_advisory_xact_lock(%s)", (_INITIALIZATION_LOCK,))
+                connection.execute(sql.SQL("SET LOCAL search_path TO {},public,pg_catalog").format(sql.Identifier(settings.database_schema)))
+                if connection.execute("SELECT to_regclass(%s)", (f"{settings.database_schema}.events",)).fetchone()[0] is None:
+                    raise ManagementError("existing events schema is required; nothing was changed")
+                if connection.execute("SELECT 1 FROM information_schema.columns WHERE table_schema=%s AND table_name='events' AND column_name='person_id'", (settings.database_schema,)).fetchone():
+                    raise ManagementError("person_id already exists; existing structure and data were not changed")
+                connection.execute(migration, prepare=False)
+    except psycopg.Error:
+        raise ManagementError("event-person-id migration failed and was rolled back; existing data was preserved") from None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init-db", help="initialize only an empty development database")
+    commands.add_parser("migrate-event-person-id", help="add nullable A gallery identity")
     seed = commands.add_parser("seed-user", help="insert a first development user")
     seed.add_argument("--user-id", required=True)
     seed.add_argument("--display-name", required=True)
@@ -151,6 +171,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "init-db":
             count = init_database(settings)
             print(f"Initialized development schema: {count} tables.")
+        elif args.command == "migrate-event-person-id":
+            migrate_event_person_id(settings)
+            print("Event person_id migration applied; existing facts preserved.")
         else:
             seed_user(settings, args.user_id, args.display_name, args.role)
             print("Development user created.")

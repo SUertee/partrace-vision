@@ -35,4 +35,9 @@ JOIN public.recording_jobs AS j ON j.job_id = r.recording_id
 WHERE r.camera_id IN ('cam_doorbell_a', 'cam_sphere_b')
 ORDER BY j.created_at DESC;
 
+-- Unknown/unmatched people remain NULL; local tracks never substitute for G IDs.
+SELECT event_id, recording_id, track_key, person_id
+FROM public.events
+ORDER BY recording_id, start_offset_ms, event_id;
+
 COMMIT;

@@ -1,7 +1,7 @@
 # 最小数据库设计
 
 本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
-**PostgreSQL + pgvector · 0.3-mvp-draft · 11 张表、79 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，development服务与本地PG已使用，生产部署和完整业务效果未验收。
+**PostgreSQL + pgvector · 0.3-mvp-draft · 11 张表、80 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，development服务与本地PG已使用，生产部署和完整业务效果未验收。
 
 关系图按五个数据模块分组：**视频素材**（`recordings`）、**事件与检索**（`events / evidence / event_embeddings`）、**AI 会话与运行**（`conversations / messages / runs`）、**账号与核查**（`users / review_records`）、**包裹与入出库**（`parcels / parcel_records`）。这是业务数据的分组；接口可跨模块读写，团队分工见开发计划。
 
@@ -152,3 +152,23 @@ python3 scripts/sync-workbench-schema.py --check
 导出器读取真实 PostgreSQL 系统目录，包含字段、默认值、外键、索引、CHECK、触发器及其函数；不读取业务记录。SQL 改动后必须重新加载空库并导出。离线 `export-schema-catalog.py --check` 只检查已保存目录的来源哈希、定义完整性及注释一致；带数据库连接的 `--check` 才比较实际数据库目录。HTML 和工作台的检查验证生成文件与目录/API 的一致性。
 
 本地建表与约束验证不能替代生产部署、真实媒体、模型编码、性能或业务闭环验收；当前没有运行后端、真实模型或 ANN 索引。
+
+## events.person_id：A 管理的匿名 G 编号
+
+| 字段 | 含义 | 示例 | 未知值 |
+| --- | --- | --- | --- |
+| `person_id` | A 图库管理、B 成功匹配的匿名 G 编号 | `G0007` | SQL `NULL` / JSON `null` |
+| `track_key` | 同一录像内的局部轨迹，独立于 G 编号 | `P003` | `null` |
+
+`person_id` 为可空 `TEXT`，格式为 G 加 4–99 位数字，最长 100 字符；不关联 App 的 `users`，不表示自然人身份。Vision 仅在 `identity.status=matched`、`profile_id` 有效且复核人物与局部轨迹一致时输出 G；无关联、冲突和未匹配均为 `null`，局部 P 编号不能替代 G。A 建档不凭空生成区域事件。
+
+已有库使用 [004 增量迁移](migrations/004-event-person-id.sql)：
+
+```sh
+cd backend
+uv run python -m backend.manage migrate-event-person-id
+```
+
+只新增可空列与格式约束，不猜测回填旧事件，不改变事实不可变约束；字段已存在时拒绝重复执行。不要对已有库重新运行 `init-db`。旧导入可省略 `person_id` 或传 `null`，两者在清单摘要中等价，保留旧导入幂等；已匹配 G 会参与摘要，不可覆盖为其他编号。
+
+2026-10-17 已对本地运行库和 Aurora `partrace/public` 执行该迁移。Aurora 3 条旧事件全部旧字段逐值不变，新列均为 `NULL`。B 尚缺现场标定，目前没有真实 B 匹配 G 编号的业务事件。见[实现与部署验收记录](../../openspec/changes/d04-event-person-id/verification.md)。

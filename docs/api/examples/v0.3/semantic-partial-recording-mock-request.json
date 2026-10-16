@@ -20,7 +20,8 @@
       "start_offset_ms": 32000,
       "end_offset_ms": 48000,
       "detection_source": "mock",
-      "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。"
+      "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。",
+      "person_id": null
     },
     {
       "event_id": "evt_partial_002",
@@ -32,7 +33,8 @@
       "start_offset_ms": 70000,
       "end_offset_ms": 75000,
       "detection_source": "mock",
-      "summary": "模拟第二个事件尚未创建文本向量。"
+      "summary": "模拟第二个事件尚未创建文本向量。",
+      "person_id": null
     }
   ],
   "evidence": [
