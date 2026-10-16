@@ -8,17 +8,18 @@ import time
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw
 
 from .cache import digest
 from ..multiframe_review.client import CompatibleClient,parse_response
 from .detector import SessionSettings,detect_sessions,five_frames
 from .observer import observe,save_json
 from .review import PROMPT,messages,validate,model_session
-from .visualization import draw_frame,save_image,export_video,report,model_sheet,reach_diagnostic,FONT
+from .visualization import draw_frame,save_image,export_video,report,model_sheet,reach_diagnostic
 from .evaluation import evaluate
 from ..reid.session_identity import resolve_session_identities,event_person_id
 from ..runtime_parameters import DEFAULT_CONFIG,defaults,load_parameters,validate_parameters
+from ..fonts import load_font
 
 
 def extract(source,rows,sessions,output,parcel_evidence=False):
@@ -53,7 +54,7 @@ def extract(source,rows,sessions,output,parcel_evidence=False):
                  'context_truncated':any(f['truncated'] for f in frames)}
         folder=output/'keyframes'/s['id']
         save_json(folder/'manifest.json',{'session':s,'sampling_quality':quality,'frames':frames})
-        sheet=Image.new('RGB',(5*240,460),'#151c28');draw=ImageDraw.Draw(sheet);font=ImageFont.truetype(FONT,17)
+        sheet=Image.new('RGB',(5*240,460),'#151c28');draw=ImageDraw.Draw(sheet);font=load_font(17)
         for i,f in enumerate(frames):
             img=Image.open(output/f['raw_path']).convert('RGB');img.thumbnail((240,420))
             sheet.paste(img,(i*240+(240-img.width)//2,40))

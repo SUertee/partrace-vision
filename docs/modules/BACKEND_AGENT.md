@@ -4,7 +4,9 @@
 
 关联 [M04 事件证据](README.md#m04)、[M05 语义检索](README.md#m05)、[M06 AI 会话](README.md#m06)，工作包为 [D05](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务) 和 [D07](../DEVELOPMENT_PLAN.md#d07--agent-计划只读检索与引用)。字段以 [OpenAPI](../api/openapi.json) 和 [SQL](../database/schema.sql) 为准；原内部行为提案见 [OpenSpec](../../openspec/changes/d05-d07-backend-agent-link/proposal.md)，当前实现及验证见 [D07 change](../../openspec/changes/d07-create-agent/verification.md)。安装、私有配置和启动见 [Backend README](../../backend/README.md)，工具与包入口见 [Agent README](../../agent/README.md)。
 
-当前已合入 `dev@4cc9aa1` 的应用默认挂载 14 个 Backend 数据操作；显式 `PARTRACE_AGENT_ENABLED=true` 后挂载 9 个 Agent 操作，共实现 23／28。P1 包裹 5 个契约操作尚未实现。People 原片任务与 source-first 是本地已验证、尚未合入的扩展，增加七个 Backend 操作后为 30／35；本次只同步文档。两种源码范围、Android 联调和未验收项统一见 [项目实际状态](../PROJECT_STATUS.md)。
+默认应用挂载 21 个 Backend 数据／原片任务操作；显式 `PARTRACE_AGENT_ENABLED=true` 后挂载 9 个 Agent 操作，共 30／35。P1 包裹 5 个操作尚未实现。以下是本地实现说明，不表示外部模型、部署或 Android D10 已验收。
+
+**2026-10-17 局部实测补充：** Android 已接可编辑计划、运行／停止／恢复和服务端分页历史，当前客户端采用 2 秒轮询，未订阅 SSE。使用明确标注的模拟录像时，真实模型计划成功，但运行出现 `agent_execution_failed`／`agent_timeout`；Embedding 配置缺失，语义工具返回 503，尚无实际失败运行的工具轨迹证明根因。真实区域事件的引用、人工保存与重启回读仍待 D10；这组历史结果不是本次 Skill 迭代的外部模型验证。详见 [Android Agent 验证](../../openspec/changes/d07-android-agent/verification.md)。
 
 ## 谁负责什么
 
@@ -33,6 +35,14 @@ Agent 可写自己的 AI 历史；事实工具只能读。事件导入、向量�
 Agent 包只依赖协议，不导入数据库实现；具体仓储、SQL、连接与凭据留在 Backend。五个工具是 `search_events`、`semantic_search_events`、`get_event`、`get_evidence` 和 `read_recording`；`fail_run`／恢复不是模型工具。查询只返回元数据和已有描述，没有向 VLM 传图，引用有效不等于模型看图或动作验真。
 
 当前代码位置：公开路由在 `backend/api/`，运行、权限 Gateway、历史与模型适配在 `backend/ai/`，事实和向量服务在 `backend/services/`；Agent 引擎与 `prompts.py` 在 `agent/`，工具注册和证据读取校验在 `agent/tools/`。实际目录和启动说明见两模块 README。
+
+### 内置 Skill 调用补充（2026-10-17）
+
+Agent 通过 `load_skill` 按名称加载三个内置流程：`event-evidence-review`、`semantic-event-search`、`recording-provenance`。目录仅在执行提示词中提供名称与用途，指引在 `agent/tools/skills.py` 固定注册；加载不查询事实、不访问文件、不赋予权限，计入原有工具预算。随后仍经五个只读工具、固定 Query 与证据账本获取事实，公开 API／SQL／卡片字段不变。
+
+语义工具对已验权的 `503/model_unavailable` 返回明确 unavailable，允许模型改用相同范围的普通事件查询；前后重新验权，其他权限、存储与未知错误仍终止。故障结果不冒充无匹配或未索引，最终摘要确定性披露服务缺口。直接语义 HTTP 接口保持 503；已有外部模型失败记录仍是历史事实，本次不据此认定或修复其完整根因。部分索引覆盖即使命中候选也显示既有缺口卡。
+
+本次离线验证 280 项通过、108 项数据库集成测试未选择，实际图使用显式 fake 模型；外部模型 skill 选择、真实数据库和 Android D10 未重测。详见 [Skill 迭代验证](../../openspec/changes/archive/2026-10-17-d07-agent-skills/verification.md)。
 
 ## 从问题到答复
 
@@ -86,10 +96,10 @@ draft plan 不落表，App 确认后的计划是执行依据。二次校验检�
 | 顺序 | 主责 | 交付与检查 |
 | --- | --- | --- |
 | 1 · 本地事实与历史 | Harry Xu | 已有受限服务与真实 PG 测试；保留 [D05 验证](../../openspec/changes/d05-backend-mvp/verification.md)，当前向量及 AI 验证见 D07 |
-| 2 · Agent 图和路由 | 韩广宁＋Harry Xu | 独立包、九个操作（含卡片与 SSE）、实际图的 fake 模型、取消／重启及权限边界已用于本地测试 |
-| 3 · 外部模型 | 两位主责 | 本地真实模型计划已返回，完整运行出现失败／超时；Embedding 尚未配置，供应商兼容、模型空间与完整引用链仍待验收，见 [项目实际状态](../PROJECT_STATUS.md) |
+| 2 · Agent 图和路由 | 韩广宁＋Harry Xu | 独立包、显式九路由（含 SSE）、实际图的 fake 模型、取消／重启及权限边界已用于本地测试 |
+| 3 · 外部模型 | 两位主责 | 真实 Chat 模型生成计划已有凭据，执行仍失败／超时；Embedding 未配置，完整运行、模型空间与效果尚未验收 |
 | 4 · 真实业务与 App | 四人，李果钦接 App | 用同一真实视觉事件与帧验证问题→计划→检索→引用→答复→人工保存→回读；Android／D10 尚未验收 |
 
-统一在 `backend/` 执行 `uv sync --locked` 安装本地 Agent 依赖，`uv run pytest` 覆盖两模块；具体启动见实现 README。真实 PostgreSQL + pgvector 与实际 `create_agent` 图均已用于测试，图使用显式 fake 模型；这些测试不替代真实视频业务、部署或完整 D10。当前本地实测和代码合入范围见 [项目实际状态](../PROJECT_STATUS.md)，历史实际命令与结果保留在 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)。
+统一在 `backend/` 执行 `uv sync --locked` 安装本地 Agent 依赖，`uv run pytest` 覆盖两模块；具体启动见实现 README。当前真实 PostgreSQL + pgvector 与实际 `create_agent` 图均已用于测试，图使用显式 fake 模型；没有据此宣称外部模型、真实视频业务、部署或完整 D10 成功。详细实际命令和结果以 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)为准。
 
-当前 `dev` 可按已知 run_id 读取运行，或经 `GET /api/v1/agent/runs/{run_id}/events` 订阅 SSE 终态推送（快照先行、提交后推送、completed 落库卡片包、stopped/failed 合成状态卡），停止／失败不会生成助手消息。此 SSE 属于 Agent 运行，不承担 Vision 解析完成回调；本地 Android Agent 接入使用轮询。App 重启后不能只靠消息列表发现全部运行。运行列表、工具步骤历史及多实例恢复另行评审，不计入当前 `dev` 的 28 个 API。P1 包裹只读工具在 D10 主闭环后补充。
+当前可按已知 run_id 读取运行或经 `GET /runs/{run_id}/events` 订阅 SSE 终态推送（快照先行、提交后推送、completed 落库卡片包、stopped/failed 合成状态卡），停止／失败不会生成助手消息；App 重启后不能只靠消息列表发现全部运行。运行列表、工具步骤历史及多实例恢复另行评审，不计入现有 35 个 API。P1 包裹只读工具在 D10 主闭环后补充。

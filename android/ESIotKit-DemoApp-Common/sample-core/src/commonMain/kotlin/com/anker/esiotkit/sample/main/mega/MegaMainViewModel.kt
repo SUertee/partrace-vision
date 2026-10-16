@@ -39,7 +39,7 @@ class MegaMainViewModel : BaseScreenModel() {
     val houseList by MegaHouseManager.houseList.collectAsState()
     MegaMainUiState(
       loading = loading,
-      deviceList = sortDeviceList(deviceList),
+      deviceList = sortSdkDeviceList(deviceList),
       houseId = houseId,
       houseList = houseList
     )
@@ -58,11 +58,16 @@ class MegaMainViewModel : BaseScreenModel() {
       if (InfoCache.loginType == LoginType.BUSINESS) {
         val result = MegaDeviceManager.refreshDeviceList().await()
         appLogger.i("MegaMainViewModel/refreshDevice/business: code=${result.code}, size=${result.data?.size}")
+        if (!result.isSuccess) error = "设备列表加载失败，请重试。"
       } else {
         val currentHouseId = MegaHouseManager.houseId.value
         if (currentHouseId.isEmpty()) {
           appLogger.i("MegaMainViewModel/refreshDevice/house: houseId empty, refreshing house list first")
-          MegaHouseManager.refreshHouseList().await()
+          val result = MegaHouseManager.refreshHouseList().await()
+          if (!result.isSuccess) {
+            error = "站点列表加载失败，请重试。"
+            return@launchWithLoading
+          }
         }
         val houseId = MegaHouseManager.houseId.value
           .ifEmpty { MegaHouseManager.houseList.value.firstOrNull()?.houseId ?: "" }
@@ -71,7 +76,8 @@ class MegaMainViewModel : BaseScreenModel() {
           return@launchWithLoading
         }
         appLogger.i("MegaMainViewModel/refreshDevice/house: fetching devices for houseId=$houseId")
-        MegaHouseManager.refreshHouseDeviceListBy(houseId).await()
+        val result = MegaHouseManager.refreshHouseDeviceListBy(houseId).await()
+        if (!result.isSuccess) error = "设备列表加载失败，请重试。"
         appLogger.i("MegaMainViewModel/refreshDevice/house: done, houseDeviceList.size=${MegaHouseManager.houseDeviceList.value.size}")
       }
     }
@@ -92,9 +98,23 @@ class MegaMainViewModel : BaseScreenModel() {
   fun refreshDevice() {
     launchWithLoading("refreshDevice") {
       if (InfoCache.loginType == LoginType.BUSINESS) {
-        MegaDeviceManager.refreshDeviceList().await()
+        val result = MegaDeviceManager.refreshDeviceList().await()
+        if (!result.isSuccess) error = "设备列表加载失败，请重试。"
       } else {
-        MegaHouseManager.refreshHouseDeviceListBy(uiState.value.houseId).await()
+        val houseId = uiState.value.houseId
+        if (houseId.isEmpty()) {
+          val result = MegaHouseManager.refreshHouseList().await()
+          if (!result.isSuccess) {
+            error = "站点列表加载失败，请重试。"
+            return@launchWithLoading
+          }
+        }
+        val selectedHouseId = houseId.ifEmpty {
+          MegaHouseManager.houseId.value.ifEmpty { MegaHouseManager.houseList.value.firstOrNull()?.houseId ?: "" }
+        }
+        if (selectedHouseId.isEmpty()) return@launchWithLoading
+        val result = MegaHouseManager.refreshHouseDeviceListBy(selectedHouseId).await()
+        if (!result.isSuccess) error = "设备列表加载失败，请重试。"
       }
     }
   }
@@ -105,31 +125,30 @@ class MegaMainViewModel : BaseScreenModel() {
     }
   }
 
-  private fun sortDeviceList(deviceList: List<MegaDevice>): List<MegaDevice> {
-    // 优化：使用 O(n) 复杂度的单次遍历 + map 分组，而不是 O(n²) 的嵌套 filter
-    if (deviceList.isEmpty()) return emptyList()
+}
 
-    // 按 parentSn 分组子设备
-    val childrenByParent = deviceList
-      .filter { it.deviceSn != it.parentSn }
-      .groupBy { it.parentSn }
+/** Keep cameras grouped below their parent while retaining devices from partial SDK responses. */
+internal fun sortSdkDeviceList(deviceList: List<MegaDevice>): List<MegaDevice> {
+  if (deviceList.isEmpty()) return emptyList()
 
-    // 获取并排序父设备
-    val parents = deviceList
-      .filter { it.deviceSn == it.parentSn }
-      .sortedByDescending { it.iotDevice.bindTime }
+  val childrenByParent = deviceList
+    .filter { it.deviceSn != it.parentSn }
+    .groupBy { it.parentSn }
+  val parents = deviceList
+    .filter { it.deviceSn == it.parentSn }
+    .sortedByDescending { it.iotDevice.bindTime }
 
-    // 构建结果列表
-    val result = mutableListOf<MegaDevice>()
-    parents.forEach { parent ->
-      result.add(parent)
-      // 添加该父设备的子设备（已按 bindTime 排序）
-      childrenByParent[parent.deviceSn]
-        ?.sortedByDescending { it.iotDevice.bindTime }
-        ?.let { result.addAll(it) }
-    }
-    return result
+  val result = mutableListOf<MegaDevice>()
+  parents.forEach { parent ->
+    result.add(parent)
+    childrenByParent[parent.deviceSn]
+      ?.sortedByDescending { it.iotDevice.bindTime }
+      ?.let { result.addAll(it) }
   }
+  // A parent may be absent from a partial SDK response; keep its cameras visible.
+  val addedSns = result.mapTo(mutableSetOf()) { it.deviceSn }
+  result.addAll(deviceList.filter { it.deviceSn !in addedSns })
+  return result
 }
 
 data class MegaMainUiState(
@@ -138,4 +157,3 @@ data class MegaMainUiState(
   val houseId: String,
   val houseList: List<HouseInfo>
 )
-

@@ -14,7 +14,8 @@ import com.anker.esiotkit.support.log.appLogger
 fun DeviceAsyncImage(
   parentSn: String,
   imagePath: String,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  onLoadError: () -> Unit = {}
 ) {
   val context = LocalPlatformContext.current
   val model = if (imagePath.startsWith("/")) {
@@ -39,6 +40,7 @@ fun DeviceAsyncImage(
     },
     onError = { error ->
       appLogger.e("[IMG-CACHE]", "Failed: path=$imagePath, sn=$parentSn, error=${error.result.throwable?.message}")
+      onLoadError()
     }
   )
 }

@@ -1,11 +1,20 @@
 # ParTrace Vision 设计文档
 
-当前为待评审的设计草案：**PostgreSQL + pgvector、11 张表 / 80 个字段、28 个 API 操作**。接口统一使用 `/api/v1`；扫码入出库为 P1 拓展，在首轮视频核查闭环之后开发。
+本次源码整合范围和重新执行的检查见[2026-10-17 开发整合版](releases/DEVELOPMENT_20261017.md)。
+
+设计契约持续评审，当前快照为 **PostgreSQL + pgvector、12 张表 / 106 个字段（含 People 原片任务）、35 个 API 操作**。接口统一使用 `/api/v1`；已有本地实现与分项验证，契约计数不等于功能或业务验收完成。扫码入出库为 P1 拓展，在首轮视频核查闭环之后开发。
+
+## 2026-10-17 实现与验证概览
+
+- Backend 默认实现 21 个业务操作（原有 14 个、People 原片任务 7 个）；显式启用 Agent 后增加 9 个，共 30／35，P1 包裹 5 个尚未实现。服务端 SSE 与终态卡片包已实现，Android 当前每 2 秒轮询；People／Vision 完成使用任务终态回读。
+- People 原片先经 `POST /api/v1/recordings` 的 `mode=source` 原子写入 pending 录像与 queued 任务，Vision 完成后原子发布事实。A 门铃真实历史原片已在本机跑通下载、上传、CPU 建档、完成回读；A 的事件／证据为空不表示无人。B 原片已持久排队，仍等待现场标定与区域映射；最新 App 任务快照为 1 completed、12 queued、0 failed。详见 [People 管线验证](../openspec/changes/d06-people-recording-pipeline/verification.md)。
+- Android Agent 已接入计划确认、状态、停止与服务端历史；真实外部聊天模型已返回计划，实际执行分别以 `agent_execution_failed`、`agent_timeout` 失败，尚无成功答复／引用的真实事件闭环。当前 Embedding 缺配置，语义服务明确返回 503；这不是已证明的运行失败根因。详见 [Android Agent 验证](../openspec/changes/d07-android-agent/verification.md)。
+- 已留存验证记录包括 Backend／Agent 338 项、Vision 101 项通过，People 相关 Android 15 项及 Agent 目标 8 项、构建与 lint 通过；这几组检查各有范围，不合计成统一验收数。本次文档核对未重跑业务测试。真实 B 业务效果、完整 Agent 分析、部署与 D10 同事件端到端仍待验收。
+
+OpenAPI 当前另有 91 个组件 schema、54 个 v0.3 JSON fixture；这些是契约与样例数量，不代表真实模型、摄像头或生产服务已验证。各模块的启动、测试命令与实际边界以其 README 和上述凭据为准。
 
 | 要查看的内容 | 入口 |
 | --- | --- |
-| 截至2026-10-17的实际能力、验证与待合入范围 | [项目状态](PROJECT_STATUS.md) |
-| AWS公网HTTPS、真实People事件与App回调验收 | [部署记录与运行边界](deployment/AWS_PEOPLE_20261017.md) · [Aurora只读查询SQL](database/aurora-people-status.sql) |
 | 全部业务模块及 DB／API 关联 | [模块设计](modules/README.md) |
 | Backend 与 Agent 怎样联动 | [内部接口、执行流程与下一步](modules/BACKEND_AGENT.md) |
 | Backend 与视觉算法怎样交接 | [职责、表、API 与真实证据包](modules/BACKEND_VISION.md) |
@@ -13,7 +22,7 @@
 | 数据库表、字段与关系 | [数据库说明](database/README.md) · [建表 SQL](database/schema.sql) · [检索 SQL 示例](database/semantic-search.sql) |
 | API、参数与返回 | [API 设计](api/API_DESIGN.md) · [OpenAPI](api/openapi.json) · [模拟样例](api/examples/v0.3/) |
 | 功能如何对应表和 API | [功能对照](api/FEATURE_DATA_API_MAP.md) |
-| P1 二维码与入出库 | [包裹设计](database/PARCEL_DESIGN.md) |
+| P1 二维码与入出库 | [Vision 文档中的扫码流程与分工](modules/BACKEND_VISION.md#parcel) · [包裹数据设计](database/PARCEL_DESIGN.md) |
 | 行为规格与变更流程 | [OpenSpec 说明](OPENSPEC.md) · [活跃 D01 提案](../openspec/changes/d01-shared-contracts/proposal.md) |
 | 图与交互原型 | [在线工作台](https://yizhan-trace-workbench.vercel.app/) · [离线工作台](workbench/index.html) · [数据库图](database/schema-canvas.html) · [API 图](api/api-canvas.html) |
 
@@ -36,7 +45,6 @@ GitHub 可以直接阅读 Markdown、SQL 和 JSON。HTML 文件在 GitHub 显示
 docs/
   README.md                  文档入口
   DEVELOPMENT_PLAN.md        分工、依赖与验收
-  deployment/                实际部署、验收及运维边界
   OPENSPEC.md                行为规格与变更流程
   modules/                   全部业务模块及 DB／API 关联
   database/                  数据库设计、SQL、结构快照与关系图

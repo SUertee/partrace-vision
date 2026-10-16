@@ -209,6 +209,41 @@ class RecordingManifest(StrictModel):
         return self
 
 
+def _sdk_event_id(value: str) -> str:
+    if not value.strip() or any(ord(character) < 32 or 127 <= ord(character) <= 159 for character in value):
+        raise ValueError("SDK event IDs must contain non-whitespace text and no control characters")
+    # Native SDK identifiers are opaque source data, never URL/path identifiers.
+    return value
+
+
+SdkEventId = Annotated[
+    str, StringConstraints(strict=True, min_length=1, max_length=200), AfterValidator(_sdk_event_id),
+]
+
+
+class RecordingJobInput(StrictModel):
+    job_id: Id
+    camera_id: Id
+    config_version: Id
+    sdk_event_id: SdkEventId
+    event_type: Literal["people"] = "people"
+    duration_ms: DurationMs
+    # Source metadata only. It must never become a calibrated recording started_at.
+    sdk_timestamp_ms: OffsetMs | None = None
+
+
+class RecordingJobClaim(StrictModel):
+    worker_id: Id
+
+
+class RecordingJobFailure(StrictModel):
+    code: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,79}$")]
+
+
+class EmptyRequest(StrictModel):
+    pass
+
+
 class ReviewCreateRequest(StrictModel):
     review_id: Id
     event_id: Id

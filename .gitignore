@@ -4,6 +4,8 @@
 !.env.example
 local.properties
 local-secrets.properties
+android/ESIotKit-DemoApp-Common/sample-core/src/androidMain/assets/partrace-agent.json
+android/ESIotKit-DemoApp-Common/sample-core/src/androidDebug/assets/partrace-agent.json
 *.jks
 *.keystore
 google-services.json

@@ -1,0 +1,36 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "job": {
+    "job_id": "sdk_0123456789abcdef",
+    "camera_id": "cam_sdk_01",
+    "config_version": "site_v1",
+    "sdk_event_id": "native-event-001",
+    "event_type": "people",
+    "duration_ms": 12000,
+    "sdk_timestamp_ms": null,
+    "recording_id": "sdk_0123456789abcdef",
+    "status": "queued",
+    "attempts": 0,
+    "created_at": "2026-10-16T10:00:00Z",
+    "updated_at": "2026-10-16T10:00:00Z",
+    "started_at": null,
+    "finished_at": null,
+    "lease_expires_at": null,
+    "error_code": null,
+    "event_count": null,
+    "evidence_count": null
+  },
+  "replayed": false,
+  "recording": {
+    "recording_id": "sdk_0123456789abcdef",
+    "camera_id": "cam_sdk_01",
+    "config_version": "site_v1",
+    "source_mode": "sdk",
+    "started_at": null,
+    "duration_ms": 12000,
+    "manifest_sha256": null,
+    "media_status": "available",
+    "created_at": "2026-10-16T10:00:00Z",
+    "publication_status": "pending"
+  }
+}

@@ -10,7 +10,7 @@ import time
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw
 
 from ..models import PoseTracker
 from ..video import VideoSource
@@ -18,15 +18,7 @@ from .encoder import OSNetEncoder
 from .keyframes import enrollment_candidate,select_keyframes
 from .profile_store import ProfileStore,atomic_json,digest,read_archive
 from ..runtime_parameters import DEFAULT_CONFIG,load_parameters
-
-
-def _find_font():
-    candidates=['C:/Windows/Fonts/msyh.ttc',str(Path(__file__).resolve().parents[2]/'assets'/'fonts'/'NotoSansSC-Regular.otf'),
-        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf']
-    for path in candidates:
-        if Path(path).exists():return path
-    return candidates[0]
-FONT=_find_font()
+from ..fonts import load_font
 
 
 def bounded_candidates(items,candidate,maximum=48,bin_ms=200):
@@ -69,7 +61,7 @@ def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_v
                     s['raw_frame_path']=str(framepath);s['raw_frame_sha256']=digest(framepath);checked+=1
             if not render_video or index not in indexed:continue
             row=indexed[index];scale=min(1.,960/raw.shape[0]);view=cv2.resize(raw,(round(raw.shape[1]*scale),round(raw.shape[0]*scale)))
-            canvas=Image.fromarray(cv2.cvtColor(view,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas);font=ImageFont.truetype(FONT,18)
+            canvas=Image.fromarray(cv2.cvtColor(view,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas);font=load_font(18)
             draw.text((8,8),f'A录像 {row["time_ms"]/1000:.3f}s / f{index:06d}（采样预览）',font=font,fill='white',stroke_width=2,stroke_fill='black')
             for p in row['people']:
                 box=[x*scale for x in p['box']];pid=p.get('profile_id');color='#62da93' if pid else '#f4bb55'
@@ -88,7 +80,7 @@ def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_v
 
 
 def report(output,results,summary):
-    sections=[];font=ImageFont.truetype(FONT,16)
+    sections=[];font=load_font(16)
     archive=output.parents[1]/'data'/'person_enrollment'
     index={p.name:p for p in archive.rglob('*.png')} if archive.is_dir() else {}
     def resolve_crop(path):
@@ -107,7 +99,7 @@ def report(output,results,summary):
     (output/'comparison.html').write_text(page,encoding='utf-8')
 
 
-def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',max_seconds=0,runtime_config=DEFAULT_CONFIG):
+def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',max_seconds=0,runtime_config=DEFAULT_CONFIG,profile_root=None):
     started=time.perf_counter();source=Path(source).resolve()
     if not source.is_file():raise FileNotFoundError(source)
     if output.exists():raise FileExistsError('Choose a new A RunName')
@@ -121,7 +113,8 @@ def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',ma
     video=VideoSource(source,a['sampling_fps'],end_s=max_seconds if max_seconds>0 else None)
     output.mkdir(parents=True);atomic_json(output/'runtime_parameters.json',parameters)
     encoder=OSNetEncoder(root,device,weights=parameters['osnet']['weights'])
-    store=ProfileStore(root,encoder.sha256,archive_dir,settings=parameters['archive_matching'])
+    # Queue workers can isolate the registry AND archive from an existing offline gallery.
+    store=ProfileStore(profile_root or root,encoder.sha256,archive_dir,settings=parameters['archive_matching'])
     tracker=PoseTracker(root,{'device':device,'tracker_type':'botsort',**parameters['a_tracker']},a['sampling_fps'])
     tracks={};rows=[];feature_times={};counts=Counter()
     try:

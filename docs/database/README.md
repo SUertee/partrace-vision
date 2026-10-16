@@ -1,15 +1,15 @@
 # 最小数据库设计
 
-本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
-**PostgreSQL + pgvector · 0.3-mvp-draft · 11 张表、80 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，development服务与本地PG已使用，生产部署和完整业务效果未验收。
+**PostgreSQL + pgvector · 0.3-mvp-draft · 12 张表、106 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，已提供本地 Backend；真实部署和业务效果另行验收。
 
 关系图按五个数据模块分组：**视频素材**（`recordings`）、**事件与检索**（`events / evidence / event_embeddings`）、**AI 会话与运行**（`conversations / messages / runs`）、**账号与核查**（`users / review_records`）、**包裹与入出库**（`parcels / parcel_records`）。这是业务数据的分组；接口可跨模块读写，团队分工见开发计划。
 
 | 表 | 字段数 | 保存什么 | 主要开发模块 |
 | --- | ---: | --- | --- |
 | `users` | 5 | App 用户名称、角色、启用状态和创建时间 | [M02 账号](../modules/README.md#m02)；AI／核查／入出库身份归属 |
-| `recordings` | 10 | 视频来源、摄像头配置、时间起点、时长与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
-| `events` | 11 | 区域事件、视频内匿名片段、发生时间与候选说明 | [M03 产出／入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
+| `recording_jobs` | 25 | SDK People 原片、持久租约、解析完成或失败；未完成不计录像覆盖 | [People 管线](../modules/BACKEND_VISION.md#people-pipeline) |
+| `recordings` | 11 | 视频来源、摄像头配置、时间起点、时长、文件状态与待发布/已发布阶段 | [M03 入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
+| `events` | 10 | 区域事件、视频内匿名片段、发生时间与候选说明 | [M03 产出／入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
 | `evidence` | 6 | 事件的关键帧、视频偏移、可选检测框与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 证据回看](../modules/README.md#m04) |
 | `event_embeddings` | 10 | 事件描述文本向量、模型版本和关联关键帧 | [M05 语义检索](../modules/README.md#m05) |
 | `review_records` | 7 | 原查询、所查事件、人工结论、说明、操作人与保存时间 | [M07 人工核查](../modules/README.md#m07)、[M08 首页](../modules/README.md#m08) |
@@ -82,7 +82,7 @@ SQL 保证单号唯一、真实包裹与用户外键、正序号及同包裹序�
 | --- | --- |
 | `conversations` | `conversation_id`、`user_id`、`created_at` |
 | `messages` | `message_id`、`conversation_id`、`role`、`content`、`run_id`、`created_at` |
-| `runs` | `run_id`、`conversation_id`、`input_message_id`、`status`、`plan_json`、`references_json`、`model_key`、`error_json`、`created_at`、`finished_at`、`cards_json` |
+| `runs` | `run_id`、`conversation_id`、`input_message_id`、`status`、`plan_json`、`references_json`、`cards_json`、`model_key`、`error_json`、`created_at`、`finished_at`、`cards_json` |
 
 一位用户可以开启多个会话；会话不固定录像。同一会话有多条消息和多次运行，每次运行仍查询一段录像，不同运行可以选择不同录像。用户消息的 `run_id` 为空；每次完成的运行最多写入一条助手答复，答复正文只存 `messages.content`。
 
@@ -120,7 +120,7 @@ OpsClaw 依据本机该版本的 `opsclaw/db/models.py` 与 `opsclaw/core/chat/s
 ## 首版规则
 
 - **输入先收窄：** 只导入连续视频的完整分析包；失败整包回滚。摄像头、区域与 ROI 放不可覆盖的配置文件，录像保存 `camera_id + config_version`。SDK 原生事件与离散帧包先留在验证支线。
-- **时间只存一套：** dev对非空 `started_at` 按导入方声明保存和换算，声明不证明拍摄时刻；事件和帧只存视频偏移毫秒。未知起点应留null，仍可按偏移回看；真实日期取证另须核对时钟基准。
+- **时间只存一套：** 录像有已验证的 UTC 起点时才填 `started_at`；事件和帧只存视频偏移毫秒。未知 UTC 仍可按视频偏移回看，不参与确定的日期查询。
 - **结果不覆盖：** 每个 `recording_id` 对应一份最终分析。同 ID、同清单内容重试返回原结果；不同内容返回冲突。重算或重新校时新增 `recording_id`，旧事件和关键帧保持不变。
 - **路线来自实际点：** `track_key` 只在一段视频中有效；跟踪丢失后换 key。按关键帧的时间与检测框显示离散观测点，点间保持未知，不当作连续路径或人物身份。
 - **核查只追加：** 一条记录只查一个事件，自动引用该事件的全部固定关键帧；`query_json` 仅保存录像、摄像头、区域和起止偏移五项条件。结论为 `confirmed / dismissed / uncertain`，人工结论不改变原始候选事件。重试沿用 `review_id`，服务端比较已保存的规范化请求；不同内容返回冲突。
@@ -135,7 +135,7 @@ OpsClaw 依据本机该版本的 `opsclaw/db/models.py` 与 `opsclaw/core/chat/s
 
 [schema.sql](schema.sql) 用于新建空库，不是现有生产库迁移。它启用 `vector` 扩展并一次性创建表、索引与约束函数；不执行删除或覆盖已有表。开发环境需有安装 pgvector 的 PostgreSQL，本次验证采用 PostgreSQL 17 / pgvector 0.8.7。
 
-[semantic-search.sql](semantic-search.sql) 是只读 `PREPARE` 示例：后端先检查用户身份、录像权限、范围和模型配置；`MATERIALIZED` CTE 限定候选录像与模型空间，再做精确余弦排序，选每个来源最新描述并按事件去重。它不代替鉴权、向量生成或 `matched/no_matches/unindexed` 统计，已有development API实现，真实编码配置和效果仍待验收。
+[semantic-search.sql](semantic-search.sql) 是只读 `PREPARE` 示例：后端先检查用户身份、录像权限、范围和模型配置；`MATERIALIZED` CTE 限定候选录像与模型空间，再做精确余弦排序，选每个来源最新描述并按事件去重。它不代替鉴权、向量生成或 `matched/no_matches/unindexed` 统计，尚无运行 API 服务。
 
 可在自己创建的隔离开发容器中验证（`partrace-check` 是示例容器名）：
 
@@ -153,22 +153,22 @@ python3 scripts/sync-workbench-schema.py --check
 
 本地建表与约束验证不能替代生产部署、真实媒体、模型编码、性能或业务闭环验收；当前没有运行后端、真实模型或 ANN 索引。
 
+
+## People 原片先入库的增量迁移
+
+SDK 原片接收时同事务写 `recordings(publication_status=pending, manifest_sha256=NULL)` 与 `recording_jobs`；完成解析时同事务发布 events/evidence、填最终摘要、pending 一次转 published 并完成任务。旧录像默认 published，发布后仍不可覆盖。失败/排队状态只保存在任务表，pending 不参与事实覆盖、语义或 Agent 查询。
+
+现有本地 development 库已有 recording_jobs 后执行 `uv run python -m backend.manage migrate-source-recordings`，应用 [002-source-recordings.sql](migrations/002-source-recordings.sql)，为未发布旧任务补 pending 行，保留录像键、任务状态与尝试次数。不要重新 init-db。正式迁移仍须在运维流程中执行；此管理命令不扩展生产鉴权。
+
 ## events.person_id：A 管理的匿名 G 编号
 
-| 字段 | 含义 | 示例 | 未知值 |
+| 字段 | A 机位含义 | B 机位入库值 | 未知值 |
 | --- | --- | --- | --- |
-| `person_id` | A 图库管理、B 成功匹配的匿名 G 编号 | `G0007` | SQL `NULL` / JSON `null` |
-| `track_key` | 同一录像内的局部轨迹，独立于 G 编号 | `P003` | `null` |
+| `person_id` | A 图库管理的匿名 G 编号，例如 `G0007` | 成功匹配的同一 G 编号 | SQL `NULL` / JSON `null` |
+| `track_key` | 同一录像内的局部轨迹 | B 本地 P 轨迹，例如 `P003` | `null` |
 
-`person_id` 为可空 `TEXT`，格式为 G 加 4–99 位数字，最长 100 字符；不关联 App 的 `users`，不表示自然人身份。Vision 仅在 `identity.status=matched`、`profile_id` 有效且复核人物与局部轨迹一致时输出 G；无关联、冲突和未匹配均为 `null`，局部 P 编号不能替代 G。A 建档不凭空生成区域事件。
+`person_id` 为可空 `TEXT`，格式为 G 加 4–99 位数字，最长 100 字符；不关联 App 的 `users`，不表示自然人身份。A 建档仍不凭空生成区域事件；B 只有 `identity.status=matched`、`profile_id` 有效且复核人物与局部轨迹一致时才写入 G 编号，冲突或未匹配保持 `null`。旧事件不猜测回填，已发布事实仍不可覆盖。
 
-已有库使用 [004 增量迁移](migrations/004-event-person-id.sql)：
+已有库使用 [004 增量迁移](migrations/004-event-person-id.sql)和显式命令 `uv run python -m backend.manage migrate-event-person-id`；不要重新运行 `init-db`。旧导入可省略 `person_id` 或传 `null`，两种未知在摘要中等价，保留原导入幂等；匹配的 G 编号会进入不可变结果摘要。
 
-```sh
-cd backend
-uv run python -m backend.manage migrate-event-person-id
-```
-
-只新增可空列与格式约束，不猜测回填旧事件，不改变事实不可变约束；字段已存在时拒绝重复执行。不要对已有库重新运行 `init-db`。旧导入可省略 `person_id` 或传 `null`，两者在清单摘要中等价，保留旧导入幂等；已匹配 G 会参与摘要，不可覆盖为其他编号。
-
-2026-10-17 已对本地运行库和 Aurora `partrace/public` 执行该迁移。Aurora 3 条旧事件全部旧字段逐值不变，新列均为 `NULL`。B 尚缺现场标定，目前没有真实 B 匹配 G 编号的业务事件。见[实现与部署验收记录](../../openspec/changes/d04-event-person-id/verification.md)。
+2026-10-17 已对本地运行库和 Aurora `partrace/public` 执行该迁移。Aurora 原有 3 条事件的全部旧字段逐值不变，`person_id` 均为 `NULL`；公网 People API 已接受该字段。B 尚缺现场标定，当前没有真实 B 匹配 G 编号的业务事件。迁移及接口验证见 [验收记录](../../openspec/changes/d04-event-person-id/verification.md)。

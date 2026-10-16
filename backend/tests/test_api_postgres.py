@@ -126,7 +126,7 @@ def test_data_loop_replay_and_service_restart(context):
         assert restarted.post('/api/v1/events/search', json={}).status_code == 422
         assert restarted.get('/api/v1/parcels').status_code == 404
         spec = restarted.get('/openapi.json').json()
-        assert sum(len(v) for v in spec['paths'].values()) == 14
+        assert sum(len(v) for v in spec['paths'].values()) == 21
 
 
 def test_auth_role_scope_resource_and_revocation(context):

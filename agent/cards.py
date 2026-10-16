@@ -130,7 +130,7 @@ def _semantic_gap_card(read: dict) -> CoverageGapCard | None:
     status = read["search_status"]
     counts = read["coverage"]
     eligible, indexed = counts["eligible_event_count"], counts["indexed_event_count"]
-    if status == "unindexed":
+    if status == "unindexed" or counts["missing_event_count"] > 0:
         return CoverageGapCard(
             title="检索覆盖缺口", gap="unindexed",
             detail=f"本次范围内共有 {eligible} 个事件，其中 {indexed} 个已建立语义索引；"

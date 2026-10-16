@@ -1,10 +1,10 @@
 # Backend 与 Vision 联动设计
 
-**视觉算法使用独立 Python 工作进程；dev既有入口接收分析后的完整结果包，独立AWS部署已验证“原片先入库、worker解析后发布”的增量流程。** Backend 使用 FastAPI，负责权限、校验、媒体保存和数据库事务；Vision 不直连业务数据库，首版可用批处理程序与导入客户端，无需额外部署 HTTP 服务。
+**SDK People 事件触发后，App 先通过 API 保存原片并写入 `recordings(pending)`；独立 Vision worker 解析、发布结果，App 收到完成状态回调。** 既有离线完整包导入仍保留。 Backend 使用 FastAPI，负责权限、校验、媒体保存和数据库事务；Vision 不直连业务数据库，首版可用批处理程序与导入客户端，无需额外部署 HTTP 服务。
 
-关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页主体整理dev既有交接约定；AWS增量入口、任务表和验收单独记录在[部署说明](../deployment/AWS_PEOPLE_20261017.md)，本次新增的 person_id 契约见文末。
+关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。本页也收录 [M10 · P1 Parcel 扫码与入出库](#parcel) 的流程、分工和与视觉事件的交接边界。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页保留既有完整包交接，并新增 [People 录像任务](#people-pipeline) 的表、API 与调度协议。
 
-当前 `dev` 已包含完整包导入、事件／关键帧读取及两个向量操作，以及 [Vision A/B 算法与模型](../../vision/README_hua.md)；最新基线还包含 Linux 字体／依赖适配和公开事件 `shelf_level`。本次 person_id 变更保留既有离线完整包和 shelf_level，不交付尚待合入的原片队列或 API worker。实现与本地验证的区别见 [项目状态](../PROJECT_STATUS.md)，不代表真实视觉效果、外部编码器或 Android D10 已验收。
+截至本次本地核对，Backend 开发工作区已有完整包导入、事件／关键帧读取及两个向量操作，对应实现与验证记录随各自开发提交另行交付；最新 dev 已包含 [Vision A/B 算法](../../vision/README_hua.md) 及模型；新增 API worker 将真实原片交给既有算法。本次发布交接文档，不代表真实视觉效果、外部编码器或 Android D10 已验收。
 
 ## 谁负责什么
 
@@ -27,12 +27,12 @@
 | --- | --- | --- | --- |
 | 版本化配置文件 | 使用已发布的 `config_version / camera_id / zone_id`，按其 ROI 处理 | 读取配置并校验镜头、区域归属；不新增 `cameras / zones` 表 | 已发布配置不可覆盖，ROI 调整使用新版本 |
 | `users` | 使用授权导入作业的 Bearer 凭据，不在清单自报操作人 | 读取当前用户状态、管理员角色及权限；导入不写用户表 | 身份与资源授权由 Backend 验证 |
-| `recordings` | 稳定 `recording_id`、镜头／配置、来源、起始时间或 `null`、时长、视频文件名 | 完整包写入；作为事件、检索范围的父记录 | `manifest_sha256 / storage_key / media_status / created_at`；客户端 `file_name` 不作为 SQL 列保存 |
-| `events` | `event_id / zone_id`（货架编号，可空缺省 `E3`）/ `track_key`、事件类型、货架层级（可空）、观测状态、起止偏移、产生方式与摘要 | 完整包写入，`recording_id` 从清单父记录关联；查询时联读录像和帧 | 已发布事实不可覆盖；无需单独事件写入 API |
+| `recordings` | 稳定 `recording_id`、镜头／配置、来源、起始时间或 `null`、时长、视频文件名 | 原片先写 pending，完整解析后一次发布；仅 published 用于事件/覆盖 | `publication_status / manifest_sha256 / storage_key / media_status / created_at`；pending 摘要为 null，视频字节保存在私有媒体存储 |
+| `events` | `event_id / zone_id / track_key / person_id`、事件类型、观测状态、起止偏移、产生方式与摘要 | 完整包写入，`recording_id` 从清单父记录关联；查询时联读录像和帧 | 已发布事实不可覆盖；无需单独事件写入 API |
 | `evidence` | `evidence_id / event_id / offset_ms / bbox_json / file_name` | 完整包写入，外键关联同包事件 | 私有 `storage_key` 与当前 `media_status`；`media_url` 从读取接口派生 |
 | `event_embeddings` | 向量 ID、事件／可空帧 ID、描述、数值数组、模型／版本／维度 | 事件入库后单条写入；非空 `evidence_id` 必须属于该事件 | `content_sha256 / created_at`；API 数组映射为 pgvector `embedding vector` |
 
-dev基线没有独立 `tracks`、视觉任务、处理进度或全局覆盖表；AWS People扩展已另增持久任务表，见[部署记录](../deployment/AWS_PEOPLE_20261017.md)。同录像的 `track_key` 与实际关键帧派生离散观测点；覆盖只从已完整导入的连续视频范围推导。`review_records` 和 AI 历史表由各自模块维护，Vision 不写入。
+新增 `recording_jobs` 保存原片任务、租约与解析状态；仍没有独立 `tracks` 或全局覆盖表。同录像的 `track_key` 与实际关键帧派生离散观测点；覆盖只从已完整导入的连续视频范围推导。`review_records` 和 AI 历史表由各自模块维护，Vision 不写入。
 
 ## Backend 提供、Vision 使用的 API
 
@@ -41,7 +41,7 @@ dev基线没有独立 `tracks`、视觉任务、处理进度或全局覆盖表�
 | 方法与路径 | 调用方／时机 | 请求与结果要点 | 表／数据 |
 | --- | --- | --- | --- |
 | `GET /api/v1/configs/{config_version}` | Vision，分析前 | 获取固定镜头、区域与 ROI；未知版本明确报错 | 读版本化配置文件 |
-| `POST /api/v1/recordings` | Vision 授权导入作业，分析完成后 | 真实输入使用 multipart：一个 JSON `manifest` 加重复 `files`；首次成功 201，相同内容重放 200 | 原子写 `recordings / events / evidence`；保存媒体 |
+| `POST /api/v1/recordings` | Android 原片入库；Vision 离线完整包导入 | `mode=source`：任务 manifest + 一个 files/source.mp4，新建202，重放200；缺省 result：完整清单 + files，新建201，重放200 | source 同事务写 pending `recordings / recording_jobs`；result 原子发布 `recordings / events / evidence` |
 | `POST /api/v1/event-embeddings` | Vision 授权编码／导入作业，事件发布后 | JSON，一次一条描述文本向量；首次 201，相同规范请求重放 200 | 写 `event_embeddings`，读事件／帧／录像验证归属 |
 
 以下复用 Android／Agent 已使用的只读 API，供真实产物回读验收，不增加视觉专用路由。
@@ -56,7 +56,7 @@ dev基线没有独立 `tracks`、视觉任务、处理进度或全局覆盖表�
 | `GET /api/v1/evidence/{evidence_id}/media` | 打开实际图片字节，与源视频同时间帧对照 | 读授权媒体文件；缺失返回 404 `media_missing` |
 | `POST /api/v1/events/search` | 用描述相关问题核对候选、引用及向量索引缺口 | 联读 `event_embeddings / events / evidence / recordings` |
 
-查询条件固定一份 `recording_id + camera_id + zone_id`，再选视频偏移 `start_offset_ms / end_offset_ms` 或按导入方声明的非空 `started_at` 换算的 UTC `start / end`；声明起点不证明真实拍摄时间，实际时钟验证仍待验收。两组时间不能混用，规范偏移窗口为 `0 <= start < end` 的半开区间 `[start,end)`。语义搜索提交 `query_text + filter + top_k`（1–50），可选 `min_score`（-1–1），Backend 选择并回显模型空间，不接客户端查询向量。
+查询条件固定一份 `recording_id + camera_id + zone_id`，再选视频偏移 `start_offset_ms / end_offset_ms` 或经过校准的 UTC `start / end`；两组时间不能混用，规范偏移窗口为 `0 <= start < end` 的半开区间 `[start,end)`。语义搜索提交 `query_text + filter + top_k`（1–50），可选 `min_score`（-1–1），Backend 选择并回显模型空间，不接客户端查询向量。
 
 ## 从源视频到可查询事实
 
@@ -82,7 +82,7 @@ sequenceDiagram
   B-->>C: 稳定ID、范围与媒体状态、实际图片
 ```
 
-这里的 `POST /recordings` 是最终结果导入入口，没有“先上传原片触发推理”的行为，也不返回视觉 job ID。耗时推理、处理中状态与失败日志留在 Vision 作业；当前没有视觉任务创建、进度轮询、取消或回调 API。向量单独写入，不与录像包处于同一事务；向量导入失败时保留已发布事件，重试对应向量并检查索引缺口。
+上图描述兼容的离线完整包模式（省略 mode 或 mode=result）。SDK People 原片采用下文 source 模式：先入库待解析录像，再交给独立 worker；API 请求线程不执行模型推理。任务租约与完成回报继续复用 `recording-jobs` 七操作。向量单独写入，不与录像包处于同一事务；向量导入失败时保留已发布事件，重试对应向量并检查索引缺口。
 
 ## 完整包与媒体怎么交接
 
@@ -92,7 +92,7 @@ sequenceDiagram
 | --- | --- | --- |
 | 来源 | 真实预录使用 `source_mode=prerecorded`；事件标 `automatic` 或 `manual`；模拟用 `mock + mock` | 不允许真实／模拟来源混用；`sdk` 仅接已适配的连续视频，不接官方原生事件或离散缩略图集 |
 | 文件 | 真实视频为 MP4，帧为 PNG／JPEG；每个非空 `file_name` 是唯一 basename，与上传 part 一一对应 | 校验格式、解码、时长、大小与文件集合；拒绝本地路径、URL 和客户端存储键 |
-| 时间 | `duration_ms`、事件／帧偏移均为毫秒；未知真实起始时间用 `started_at=null` | 校验 `0 <= event.start <= event.end <= duration`、`0 <= frame.offset <= duration`；非空 `started_at` 按导入方声明保存并用于 UTC 换算，不作拍摄时刻证明 |
+| 时间 | `duration_ms`、事件／帧偏移均为毫秒；未知真实起始时间用 `started_at=null` | 校验 `0 <= event.start <= event.end <= duration`、`0 <= frame.offset <= duration`；非空 UTC 起点需匹配服务端独立校准记录 |
 | 事件 | 仅 `enter_zone / dwell / shelf_interaction / leave_zone`，另标 `observed / candidate`；不清楚的动作保留候选 | 保存来源与状态，不把货架交互升级为拿货、身份、运单或责任判断 |
 | 匿名片段与帧 | `track_key` 仅在同一录像有效，断裂后换 key；`bbox_json` 为可空归一化 `[x,y,w,h]` | 检查框的数值范围；对象对应与动作真实性仍需素材验收，媒体可解码不等于已验证语义 |
 | 上下文 | 关键帧可在事件前后，但必须来自同一视频且关联同包事件 | 校验引用与偏移范围；不自动验证帧确由源视频抽取，这一点由 Vision／人工核对；不补出帧间连续路线或跨镜身份 |
@@ -111,7 +111,7 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 
 环境变量由授权操作者在私有环境设置；不在仓库或日志记录凭据。无媒体 `application/json` 仅用于模拟包，见 [mock 导入请求](../api/examples/v0.3/recording-import-mock-request.json)，其视频／帧 `file_name` 和 `started_at` 为 `null`，媒体状态为 `missing`。不能用该样例证明真实帧上传成功。
 
-本地默认限额为清单 2 MiB、媒体合计 64 MiB、事件与关键帧各 5000 项，实际以 Backend 部署配置为准，超限明确报错。真实上传依赖 ffprobe／ffmpeg；工具准备和受限媒体目录见 [Backend README](../../backend/README.md)。UTC 换算使用导入方声明的起点，真实时钟及拍摄时刻仍需单独验证。文件系统与数据库不能形成同一事务：明确失败时补偿清理；提交结果不明时保留可能关联的媒体，由相同 ID／内容重试核对，不能盲目换 ID 重复导入。
+本地默认限额为清单 2 MiB、媒体合计 64 MiB、事件与关键帧各 5000 项，实际以 Backend 部署配置为准，超限明确报错。真实上传依赖 ffprobe／ffmpeg；工具准备、受限媒体目录和 非空 UTC 按导入方声明保存，不证明拍摄起点；SDK People 保留 null，具体边界见 [Backend README](../../backend/README.md)。文件系统与数据库不能形成同一事务：明确失败时补偿清理；提交结果不明时保留可能关联的媒体，由相同 ID／内容重试核对，不能盲目换 ID 重复导入。
 
 ## 描述与向量怎么交接
 
@@ -133,7 +133,7 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 | --- | --- |
 | 录像范围内无命中 | `query_status=no_detections`；仅表示已导入范围未检出，不证明无人经过 |
 | 超出这份视频范围 | `query_status=outside_recording`；部分相交看 `recording_range.relation=partial`，范围外保持未知 |
-| 未发布或无效输入 | 缺记录返回 404，校验失败返回 422；不能解释为无采集覆盖；录像无 `started_at` 而使用 UTC 窗口返回 422 `clock_unverified` |
+| 未发布或无效输入 | 缺记录返回 404，校验失败返回 422；不能解释为无采集覆盖；未校准 UTC 返回 422 `clock_unverified` |
 | 文件缺失 | 元数据保留 ID、定位与 `media_status=missing`，图片字节读取返回 404 `media_missing` |
 | 向量未齐或无匹配 | 有待索引事件但全部未索引时为 `search_status=unindexed`；部分索引仍可 `matched / no_matches`，须如实报告 `coverage` 中的事件总数、已索引数和 `missing_event_count`；不把缺向量解释为无事件 |
 | 权限／服务错误 | 无有效身份 401，无权限 403；工具或模型不可用可返回 503，数据库等故障明确报错，不转换成空结果 |
@@ -147,26 +147,119 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 | 4 · M05 检索 | 徐泽华＋Harry Xu | 真实同空间向量写入与重复请求可核对；正向问题、无匹配、部分／完全未索引、编码器失败分别记录；失败后可补写缺项 |
 | 5 · D10 闭环 | 四人共同 | 同一真实事件完成 Android 查询／开帧、Agent 引用、人工保存、App 与服务重启回读；自动结果与人工标注分别报告 |
 
-已有算法入口、参数、模型／依赖和检查方式见 [Vision 运行说明](../../vision/README_hua.md)，模块范围见 [Vision README](../../vision/README.md)。本页不把协议样例、后端生成媒体测试或文档核对算作真实算法效果验收。本轮未在 Linux 环境重新实测已有适配；源视频回放、跨镜身份确认和持续直播分析另行评审。
+算法程序、运行参数、模型／依赖版本和检查命令在实现后维护到 [Vision README](../../vision/README.md)。算法与 worker 检查命令见 Vision README；协议样例、后端生成媒体测试和文档核对不算真实算法效果验收。源视频回放、跨镜身份关联和持续直播分析另行评审。
 
-## 本地已验证，待合入 source-first
+<a id="parcel"></a>
+## P1 · Parcel 扫码与入出库
 
-以下记录来自 2026-10-17 本地开发工作区。**原片任务、独立 API worker、Android 前台协调器和对应 SQL／API 增量尚未随本次文档发布合入 `dev`**；当前分支仍按上文接收已完成分析的完整结果包。本段记录已发生的本地验证，不宣称当前 `dev` 已提供 source 模式、任务租约或完成回调接口，也不新增可直接执行的部署步骤。代码交付及后续验收以 [项目状态](../PROJECT_STATUS.md) 为准。
+对应 [M10 包裹模块](README.md#m10)，在 **D10 主闭环验收后**实施。当前 `parcels / parcel_records` 两表和五个包裹 API 已纳入设计，扫码业务及五接口仍待实现。这里集中维护扫码流程、模块分工与联调验收；字段和状态规则参见 [包裹数据设计](../database/PARCEL_DESIGN.md) 与 [API 约定](../api/API_DESIGN.md#二维码包裹与入出库)。
 
-本地验证的顺序为：SDK People 事件 → App 下载完整录像 → API 保存待解析录像与持久任务 → Vision 经受限 API 领取／续租／提交 → PostgreSQL 同事务发布完整事实及 completed → App 回读后发出完成提示。媒体字节由私有文件存储保存，数据库保存引用；Vision 不访问业务数据库。原生 People 不等同于 `shelf_interaction` 或拿取动作。
+**管理员建档 → Backend 返回单号 → Android 生成二维码 → 扫码精确查询 → 管理员确认入库／出库 → Backend 保存流水 → Android／Agent 回读历史。**
 
-| 本地验证项 | 已确认结果与边界 |
+二维码只包含文本单号 `parcel_no`，保留前导零和大小写。重复扫码只查询，不自动建档或写流水；未建档、无效单号和接口故障分别反馈。
+
+### 分工与数据
+
+| 模块／主责 | 开发内容与交接 |
 | --- | --- |
-| A 真实历史录像 | 门铃 A 的一条手动历史 HUMAN 录像为 30.466 秒，真实 CPU 算法运行 44.902 秒，产生 5 条匿名局部轨迹和 10 张内部选帧；已走通 App 下载、API 上传、Backend 发布与 App 完成提示。未验证自然人身份，SDK 时间未独立校准，录像起点仍为 `null` |
-| A 业务事实 | A 仅执行建档，业务事件／证据为 0／0；内部选帧不等于已发布业务证据，不能把零计数解读为无人经过，也不据此确认区域动作 |
-| 图库与完成回调 | 任务 staging 只在 Backend 确认同一 job／attempt 已 completed 后才推广到已提交图库；App completed 只保证 PostgreSQL 事实提交，A 图库 CURRENT 在其后推广，不承诺 B 已读取新档案。两者不是跨系统原子事务，中断后需受权核对恢复 |
-| B 排队快照 | 本地最终核对时 12 条真实 B 原片为 queued，属于该时间点快照。现场货架标定和区域映射尚缺，没有完成真实 B 解析，不使用不匹配的旧场景标定或空结果伪装成功 |
-| B 配置版本 | v1 保持不可变；现场标定须发布新版本。已保存的旧 v1 原片不会自动使用新版本解析，须先明确迁移策略，不能悄悄改原任务或覆盖旧配置 |
+| Android · 李果钦 | 二维码生成、相机权限与扫码解码；按原文本单号查询，展示状态与历史；管理员显式确认后提交建档或入出库请求 |
+| Backend · Harry Xu | 提供五个包裹 API；读写 `parcels / parcel_records`，校验权限与状态，在事务中分配序号、追加流水并处理重试；操作人关联 `users` |
+| Agent · 韩广宁 | 通过三个 GET 只读查询包裹与历史；不提供建档、入库或出库写工具 |
+| Vision · 徐泽华 | 提供既有区域事件与真实关键帧，供管理员核查候选画面；视觉算法不登记包裹或修改入出库流水 |
 
-本地协调器限 App 前台且 SDK 已登录。Android 后台常驻、完整 B 真实链路、生产部署和 D10 的同一事件查询／证据／Agent 引用／人工核查闭环均未验收。A 实测未调用外部模型；完整远程 LLM／Embedding 业务效果须单独验收，不能由本次建档链路推断。
+二维码由单号生成，不新增二维码表或保存二维码图片。包裹状态与当前位置从最大 `sequence_no` 的流水派生：无流水为 `pending`，入库后为 `in_stock`，出库后为 `outbound` 且当前位置为空，历史货架保留。
 
-## 匿名 G 编号与局部 P 轨迹
+### 五个既有包裹 API
 
-`events.person_id` 保存 A 图库管理、B 成功匹配的 G 编号；`events.track_key` 保留录像内的局部 P 轨迹。dev 既有 `session_identity.event_person_id` 出口只接受 `identity.status=matched` 且有效的 G `profile_id`，并检查复核人物与局部轨迹一致；无图库关联、未匹配或冲突一律返回 `null`。六字段事件结构不变，算法内部的局部人物编号继续保留在 session 中。
+以下接口均由 Backend 提供。两项 POST 需要 `active admin + parcels:write`；三个 GET 需要 `data:read` 与资源授权。这里使用包裹权限约定，视觉结果导入的 `data:ingest` 不适用于包裹写入。
 
-Backend 同步校验、持久化和回读 `person_id`，旧事件迁移后为 `null`，旧未知导入可安全重试。它不关联 App 用户，也不表示自然人身份；A 建档仍不产生区域动作事件。字段及迁移见[数据库说明](../database/README.md#eventsperson_ida-管理的匿名-g-编号)。本次合入不包含尚未进入 dev 的 People worker、Android 上传与任务路由；独立 AWS 的字段补丁和 B 待标定边界见 [D04 验收](../../openspec/changes/d04-event-person-id/verification.md)。
+| 方法与路径 | 调用方／时机 | 数据与结果 |
+| --- | --- | --- |
+| `POST /api/v1/parcels` | Android，管理员确认建档 | 写 `parcels`；接稳定 `parcel_id` 和可选单号，省略单号由后端生成；建档不写入库流水 |
+| `GET /api/v1/parcels?parcel_no=...` | Android 扫码／手输；Agent 只读查询 | 文本精确匹配，返回包裹与派生状态；未建档返回 `not_registered`，不自动创建 |
+| `GET /api/v1/parcels/{parcel_id}` | Android／Agent，读取详情 | 读取包裹、当前状态与位置 |
+| `GET /api/v1/parcels/{parcel_id}/records` | Android／Agent，读取历史 | 按 `sequence_no` 递增分页读取 `parcel_records` |
+| `POST /api/v1/parcels/{parcel_id}/records` | Android，管理员确认入／出库 | 接稳定 `record_id + action`；入库另传有效且已授权的 `zone_id`，出库不传位置，由后端保留最近入库区域 |
+
+操作人、登记 UTC 时间和流水序号由 Backend 设置。首次必须入库；在库再次入库、未入库或已出库再次出库返回状态冲突，出库后可再次入库。同一确认请求重试优先返回原记录，不因状态已改变而重复执行；同 ID 不同内容或操作人返回冲突。首版流水只追加，不支持移库、历史编辑或离线补录。
+
+### 与视觉事件怎样交接
+
+扫码确认的是包裹登记信息。管理员可按货架／区域和经校准的时间查询既有事件与关键帧；录像 UTC 起点未知时使用视频偏移人工核对，不能自动按登记时间关联。同一时间或同货架不能证明画面中的动作属于该包裹。
+
+`parcel_records` 与原始视觉事件独立保存，不在 `events` 增加 `parcel_id` 或自动建立对应关系。后续若需保存管理员确认的包裹—事件关联，再评审关联表及确认依据。
+
+### 开发顺序与验收
+
+按 **建档／查询 → 二维码生成／扫码 → 管理员确认／流水 → Agent 只读历史** 推进，不作为 D03–D10 的前置。
+
+- 同一单号生成与扫描一致，前导零和大小写保留；无效单号、未建档、权限不足与服务错误可区分。
+- 重复扫码不写流水；稳定 ID 的请求重试不重复建档或追加，内容冲突明确返回。
+- 入库 → 出库 → 再次入库的状态、货架和递增序号可核对；并发操作、非法状态和无效区域有实际验证。
+- App 与服务重启后可回读同一包裹及有序历史；Agent 只读，候选画面不被当作自动包裹关联。
+
+以上为待开发验收要求，文档归类与模拟样例不代表扫码业务已完成。
+
+
+<a id="people-pipeline"></a>
+## SDK People 原片 → Vision → App 状态
+
+对应 [D06 People 管线提案](../../openspec/changes/d06-people-recording-pipeline/proposal.md)。用户所称 `recoding` 指 **`recordings`**。2026-10-17 按用户确认改为：原片先写入该表的 pending 行，并同事务排队 `recording_jobs`；Vision 完成后同事务写事件/证据、填最终摘要并将录像改为 published、任务改为 completed。pending 不代表已分析、零事件或有效覆盖。
+
+```mermaid
+sequenceDiagram
+  participant C as 摄像头与Android
+  participant B as Backend API
+  participant D as PostgreSQL与私有媒体
+  participant V as Vision worker
+  C->>C: People事件结束，下载并验证真实录像
+  C->>B: POST recordings (mode=source)
+  B->>D: 原片引用 + recordings pending + queued任务
+  B-->>C: 202 recording + job（重放200）
+  V->>B: 领取任务、续租、下载原片
+  V->>V: A人物建档 / B货架交互解析
+  V->>B: complete (最终manifest + 真实帧)
+  B->>D: 单事务发布facts + published + completed
+  B-->>V: 已提交的完成结果
+  C->>B: GET recording-jobs/{job_id}
+  B-->>C: completed / failed 持久状态
+  C->>C: 保存状态并触发App完成回调
+```
+
+原片提交示例（source.json 为 `RecordingJobInput`，文件是实际 SDK 连续 MP4）：
+
+```sh
+curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
+  -H "Authorization: Bearer $PARTRACE_INGEST_TOKEN" \
+  -F 'mode=source' \
+  -F 'manifest=@source.json;type=application/json' \
+  -F 'files=@clip.mp4;filename=source.mp4;type=video/mp4'
+```
+
+`GET /recordings/{id}` 可回读 pending 元数据；默认 `GET /recordings` 仅列 published。事件、语义与 Agent 事实查询遇到 pending 返回 `409 recording_not_ready`，优先于区域、UTC 和覆盖判断。旧 result 请求仍可直接发布完整包，但不能抢占任务保留的 pending ID。
+
+Android 前台从所有已映射的真实设备发现 HUMAN/People 原生事件，初次启用建立时间基线，不全量上传历史。摄像头还在录制或文件下载失败时保留下载阶段，只有 SDK 完成回调且文件/时长验证通过才上传。设备和原生事件组合生成稳定任务 ID，重启和重试沿用；FACE 单独检测不当作 People。任务保存在 App 私有不备份目录。后台持续监听和系统推送不属于当前前台实现。
+
+| API | 调用方 | 含义 |
+| --- | --- | --- |
+| `POST /api/v1/recordings` | Android | multipart `mode=source + manifest + files`，files 恰好一个 source.mp4；原子保存 pending 录像和 queued 任务，新建202，同内容200，异内容409；返回 recording + job |
+| `POST /api/v1/recording-jobs` | 旧客户端 | 兼容 manifest + video；调用同一原片服务，同事务写 pending 录像，保留 job 返回包 |
+| `GET /api/v1/recording-jobs/{job_id}` | Android | 回读 `queued / processing / completed / failed`；上传完成与解析完成分开 |
+| `POST /api/v1/recording-jobs/claim` | Vision worker | 按权限领取排队任务或过期租约；并发 worker 不重复领取同一有效租约 |
+| `GET /api/v1/recording-jobs/{job_id}/media` | Vision worker | 使用 Bearer 及当前 `X-Lease-Token` 下载真实 MP4 |
+| `POST /api/v1/recording-jobs/{job_id}/heartbeat` | Vision worker | 推理期间续期；失去租约停止提交结果 |
+| `POST /api/v1/recording-jobs/{job_id}/complete` | Vision worker | 上传既有结果 manifest 和真实关键帧；复用原片，事实发布与任务 completed 同事务 |
+| `POST /api/v1/recording-jobs/{job_id}/fail` | Vision worker | 回报受限错误码；失败不发布半包或伪造成功 |
+
+录入需要 active 管理员与 `data:ingest`；状态读取需要 `data:read`；worker 需要 `vision:work`，完整发布还需 `data:ingest`，全部按镜头及可选录像 ID 授权。租约只向领取者返回随机值，数据库只存摘要。SDK 时间保留为 `sdk_timestamp_ms`；不是独立校准的录像起点，最终 `recordings.started_at=null`。
+
+现有 A/B 算法由 [worker](../../vision/README.md) 显式适配。A 建档不伪造区域动作；B 必须配置该机位的货架标定/区域映射，只发布原算法候选。原公开六字段事件格式保持不变，后端适配使用真实视频偏移与原始帧，匿名轨迹不升级为自然人身份。算法依赖、模型、机位角色或标定缺失须明确报错。
+
+已有数据库使用 [增量迁移](../database/migrations/)；先有任务迁移，再执行 `migrate-source-recordings` 为既有未发布任务补 pending 行，保留已发布录像与任务状态/尝试次数；禁止重新 init-db 覆盖数据。媒体只存私有文件/对象存储，PostgreSQL 保存元数据、任务状态和引用，不存录像字节。最终状态由 App 回读持久任务后写入 StateFlow 并触发完成事件，运行中的 UI 可据此通知业务代码。此完成表示 PostgreSQL 事实事务已提交；A 本地图库 CURRENT 随后推广，不能据此承诺 B 已读取新档案。最新 dev 的 Agent run SSE 只通知 Agent 运行终态，不用于 Vision 完成。
+
+
+2026-10-17 本地实测：门铃 A 的一条真实历史 People 录像已完整通过 App 下载、API 上传、真实 CPU 算法、最终 recordings 发布及 App 完成回调；球机 B 的五条自动发现 People 原片已上传排队，现场标定尚缺。A 内部选帧与人物建档不等同于业务区域事件/证据。B 的 v1 空区域配置保持不可变；新标定须发布新版本，旧 v1 原片不能声称会自动跟随新版本解析，需要显式迁移策略。完整凭据和边界见提案验证记录。
+
+### A图库 G 编号与 B 局部 P 轨迹
+
+B adapter保留track_key=局部P编号；新增events.person_id只采用identity.status=matched的有效A图库profile_id（G编号）。未匹配、冲突、无图库关联或复核人物不一致保持null，不用P编号冒充G。A建档不产生区域动作事件，G档案与内部选帧仍由图库管理。G编号只表示匿名外观关联，不代表人脸/自然人身份，也不关联App用户。Backend校验格式、持久化和返回，迁移保留旧行null；详见[字段约定](../database/README.md#eventsperson_ida-管理的匿名-g-编号)。

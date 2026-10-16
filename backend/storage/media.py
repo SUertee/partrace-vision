@@ -148,7 +148,7 @@ class MediaStore:
             if directory.is_symlink() or not directory.is_dir():
                 raise OSError("Unsafe media directory")
 
-    def prepare(self, manifest: dict, uploads: dict[str, bytes]) -> PreparedMedia:
+    def prepare(self, manifest: dict, uploads: dict[str, bytes], *, source_media: tuple[str, str] | None = None) -> PreparedMedia:
         """Validate all input, hash actual bytes, and leave a private staged bundle.
 
         The multipart parser must reject duplicate parts before constructing its
@@ -161,6 +161,8 @@ class MediaStore:
         source_mode = recording["source_mode"]
         evidence_keys = {item["evidence_id"]: None for item in evidence}
         if source_mode == "mock":
+            if source_media is not None:
+                raise _invalid("Mock imports cannot reuse real media.")
             if (
                 uploads
                 or recording["file_name"] is not None
@@ -189,7 +191,20 @@ class MediaStore:
             raise _invalid("Every media filename must be referenced exactly once.")
         for name in uploads:
             _basename(name)
-        if set(declared) != set(uploads):
+        reused_path = None
+        if source_media is not None:
+            if source_mode != "sdk" or video_name != "source.mp4":
+                raise _invalid("SDK job completion must use source.mp4.")
+            reused_path = self.resolve(source_media[0])
+            try:
+                with reused_path.open("rb") as stream:
+                    digest = hashlib.file_digest(stream, "sha256").hexdigest()
+                if digest != source_media[1] or reused_path.stat().st_size == 0:
+                    raise OSError("Source changed")
+            except OSError:
+                raise ApiError(404, "media_missing", "The original recording is unavailable.") from None
+        expected = set(declared) - ({video_name} if source_media is not None else set())
+        if expected != set(uploads):
             raise _invalid("Uploaded media must match every declared filename with no extra files.")
         total = 0
         for content in uploads.values():
@@ -209,6 +224,10 @@ class MediaStore:
             keys: dict[str, str] = {}
             paths: dict[str, Path] = {}
             digests: dict[str, str] = {}
+            if source_media is not None:
+                keys[video_name] = source_media[0]
+                paths[video_name] = reused_path
+                digests[video_name] = source_media[1]
             for name, content in uploads.items():
                 private_name = uuid4().hex + Path(name).suffix.lower()
                 path = staged / private_name

@@ -62,7 +62,6 @@ import com.anker.esiotkit.core.support.constants.ThingIdentifier
 import com.anker.esiotkit.domain_thing.model.device.MegaDevice
 import com.anker.esiotkit.core.device.MegaDeviceManager
 import com.anker.esiotkit.sample.data.ProductInfoManager
-import com.anker.esiotkit.sample.main.mega.MegaMainScreen
 import com.anker.esiotkit.sample.main.mega.device_settings.audio_settings.AudioSettingsScreen
 import com.anker.esiotkit.sample.main.mega.device_settings.general.GeneralScreen
 import com.anker.esiotkit.sample.main.mega.device_settings.notification.NotificationScreen
@@ -160,7 +159,7 @@ class MegaDeviceSettingsScreen(
             showOnlineContent,
             onRestartDevice = viewModel::restartDeviceNew,
             onRemoveDevice = {
-              viewModel.removeDeviceNew(onSuccess = { navigator.popUntil { it is MegaMainScreen } })
+              viewModel.removeDeviceNew(onSuccess = { navigator.popUntilRoot() })
             },
             onNavigateToVideoSettings = {
               navigator.push(VideoSettingsScreen(viewModel = viewModel.videoSettings))
@@ -207,7 +206,7 @@ class MegaDeviceSettingsScreen(
             isOnline,
             onRestartDevice = viewModel::restartDeviceNew,
             onRemoveDevice = {
-              viewModel.removeDeviceNew(onSuccess = { navigator.popUntil { it is MegaMainScreen } })
+              viewModel.removeDeviceNew(onSuccess = { navigator.popUntilRoot() })
             },
             onNavigateToGeneralSettings = {
               navigator.push(GeneralScreen(viewModel = viewModel.generalSettings))

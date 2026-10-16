@@ -2,6 +2,7 @@
 
 from starlette.concurrency import run_in_threadpool
 
+from agent.contracts import ToolUnavailable
 from backend.core.errors import ApiError
 from backend.core.models import Query
 from backend.services.facts import envelope, one
@@ -43,7 +44,18 @@ class ScopedToolGateway:
         fixed = self._scope(query)
         if self._query_text is not None and query_text != self._query_text:
             raise ApiError(403, "forbidden", "语义工具不能修改已确认的检索文本。")
-        result = await self.semantic.search(await run_in_threadpool(self.principal), query_text, fixed, top_k, min_score)
+        p = await run_in_threadpool(self._validate_scope)
+        if self.semantic is None:
+            raise ToolUnavailable()
+        try:
+            result = await self.semantic.search(p, query_text, fixed, top_k, min_score)
+        except ApiError as error:
+            if error.status_code != 503 or error.code != "model_unavailable":
+                raise
+            # Optional-model outages can fall back to ordinary scoped reads, but
+            # an expired grant still takes precedence over any recoverable error.
+            await run_in_threadpool(self._validate_scope)
+            raise ToolUnavailable() from None
         # A provider call may have taken time; revoked grants must not expose results.
         await run_in_threadpool(self._validate_scope)
         return result

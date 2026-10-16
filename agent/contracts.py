@@ -3,6 +3,13 @@
 from typing import Any, Protocol
 
 
+class ToolUnavailable(RuntimeError):
+    """A host-confirmed optional dependency outage; never carries provider details."""
+
+    def __init__(self) -> None:
+        super().__init__("model_unavailable")
+
+
 class ToolGateway(Protocol):
     """Host reauthenticates every call; the model never receives identity or a DB."""
 

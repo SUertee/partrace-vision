@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "device": "cpu",
+  "runtime_config": "configs/vision_runtime.json",
+  "artifacts_root": "outputs/worker_jobs",
+  "cameras": {
+    "cam_doorbell_a": {
+      "role": "enrollment",
+      "config_version": "station_sdk_v1",
+      "enrollment_root": "data/worker_state"
+    },
+    "cam_sphere_b": {
+      "role": "shelf",
+      "config_version": "station_sdk_v1",
+      "calibration": null,
+      "calibration_camera_id": null,
+      "gallery": null,
+      "gallery_root": null,
+      "session_zone_id": "replace_with_backend_whole_shelf_zone_id",
+      "region_to_zone": {}
+    }
+  }
+}

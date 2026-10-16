@@ -239,6 +239,8 @@ if (buildAndroid) {
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].java.srcDirs("src/androidMain/kotlin")
+    // Local development API credentials must never enter release assets.
+    sourceSets["debug"].assets.srcDir("src/androidDebug/assets")
 
     defaultConfig {
       minSdk = libs.versions.minSdk.get().toInt()

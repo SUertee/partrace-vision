@@ -133,10 +133,12 @@ class BackendService:
             principal.recording_ids is None or recording["recording_id"] in principal.recording_ids
         )
 
-    def recording(self, connection, recording_id, principal):
+    def recording(self, connection, recording_id, principal, *, require_published=True):
         row = one(connection, "SELECT * FROM recordings WHERE recording_id=%s", (recording_id,), "recording_not_found")
         if not self.allowed(principal, row):
             raise ApiError(403, "forbidden", "没有访问此录像的权限。")
+        if require_published and row["publication_status"] != "published":
+            raise ApiError(409, "recording_not_ready", "录像原片已接收，分析结果尚未发布。")
         return row
 
     def camera(self, recording):
@@ -240,33 +242,7 @@ class BackendService:
             digest = hashlib.sha256(canonical({"manifest": payload, "files": prepared.digests})).hexdigest()
             replayed = False
             with self.transaction(principal, "data:ingest", admin=True) as (connection, _):
-                connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("recording:" + recording["recording_id"],))
-                old = connection.execute("SELECT * FROM recordings WHERE recording_id=%s", (recording["recording_id"],)).fetchone()
-                if old:
-                    if old["manifest_sha256"] != digest:
-                        raise ApiError(409, "idempotency_conflict", "此录像 ID 已发布不同内容，请使用新 ID。")
-                    result = envelope(recording=self.public_recording(old),
-                                      event_count=connection.execute("SELECT count(*) n FROM events WHERE recording_id=%s", (recording["recording_id"],)).fetchone()["n"],
-                                      evidence_count=connection.execute("SELECT count(*) n FROM evidence f JOIN events e USING(event_id) WHERE e.recording_id=%s", (recording["recording_id"],)).fetchone()["n"], replayed=True)
-                    replayed = True
-                else:
-                    row = connection.execute(
-                        "INSERT INTO recordings(recording_id,camera_id,config_version,source_mode,started_at,duration_ms,manifest_sha256,storage_key,media_status,created_at) "
-                        "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *",
-                        tuple(recording[k] for k in ("recording_id", "camera_id", "config_version", "source_mode", "started_at", "duration_ms")) +
-                        (digest, prepared.recording_storage_key, "available" if prepared.recording_storage_key else "missing", now()),
-                    ).fetchone()
-                    for event in payload["events"]:
-                        connection.execute(
-                            "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,shelf_level,observation_status,start_offset_ms,end_offset_ms,detection_source,summary,person_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "shelf_level", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")) + (event.get("person_id"),),
-                        )
-                    for frame in payload["evidence"]:
-                        key = prepared.evidence_keys[frame["evidence_id"]]
-                        connection.execute("INSERT INTO evidence(evidence_id,event_id,offset_ms,bbox_json,storage_key,media_status) VALUES(%s,%s,%s,%s,%s,%s)",
-                                           (frame["evidence_id"], frame["event_id"], frame["offset_ms"], Jsonb(frame["bbox_json"]) if frame["bbox_json"] is not None else None, key, "available" if key else "missing"))
-                    prepared.commit()
-                    result = envelope(recording=self.public_recording(row), event_count=len(payload["events"]), evidence_count=len(payload["evidence"]), replayed=False)
+                result, replayed = self.publish_recording(connection, principal, payload, prepared, digest)
             if replayed:
                 prepared.rollback()
             return result, 200 if replayed else 201
@@ -281,6 +257,51 @@ class BackendService:
         except Exception:
             prepared.rollback()
             raise
+
+    def publish_recording(self, connection, principal, payload, prepared, digest, *, job_id=None):
+        """Publish facts using the caller's transaction, including a job terminal transition."""
+        recording = payload["recording"]
+        connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ("recording:" + recording["recording_id"],))
+        if job_id is None:
+            # Keep legacy complete-package imports compatible without allowing them
+            # to take the identity reserved by a pending SDK upload.
+            if connection.execute("SELECT 1 FROM recording_jobs WHERE job_id=%s", (recording["recording_id"],)).fetchone():
+                raise ApiError(409, "recording_reserved", "此录像 ID 已由原片处理任务保留。")
+        old = connection.execute("SELECT * FROM recordings WHERE recording_id=%s", (recording["recording_id"],)).fetchone()
+        if old and old["publication_status"] == "published":
+            if old["manifest_sha256"] != digest:
+                raise ApiError(409, "idempotency_conflict", "此录像 ID 已发布不同内容，请使用新 ID。")
+            return envelope(recording=self.public_recording(old),
+                            event_count=connection.execute("SELECT count(*) n FROM events WHERE recording_id=%s", (recording["recording_id"],)).fetchone()["n"],
+                            evidence_count=connection.execute("SELECT count(*) n FROM evidence f JOIN events e USING(event_id) WHERE e.recording_id=%s", (recording["recording_id"],)).fetchone()["n"], replayed=True), True
+        if old:
+            if (job_id != recording["recording_id"] or old["storage_key"] != prepared.recording_storage_key
+                    or any(old[key] != recording[key] for key in ("camera_id", "config_version", "source_mode", "started_at", "duration_ms"))):
+                raise ApiError(409, "idempotency_conflict", "分析结果与已接收原片不一致。")
+            row = connection.execute(
+                "UPDATE recordings SET publication_status='published',manifest_sha256=%s WHERE recording_id=%s RETURNING *",
+                (digest, recording["recording_id"]),
+            ).fetchone()
+        else:
+            if job_id is not None:
+                raise ApiError(409, "recording_not_ready", "原片元数据缺失，请先完成服务端迁移。")
+            row = connection.execute(
+                "INSERT INTO recordings(recording_id,camera_id,config_version,source_mode,started_at,duration_ms,manifest_sha256,storage_key,media_status,created_at) "
+                "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *",
+                tuple(recording[k] for k in ("recording_id", "camera_id", "config_version", "source_mode", "started_at", "duration_ms")) +
+                (digest, prepared.recording_storage_key, "available" if prepared.recording_storage_key else "missing", now()),
+            ).fetchone()
+        for event in payload["events"]:
+            connection.execute(
+                "INSERT INTO events(event_id,recording_id,zone_id,track_key,event_type,shelf_level,observation_status,start_offset_ms,end_offset_ms,detection_source,summary,person_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (event["event_id"], recording["recording_id"]) + tuple(event[k] for k in ("zone_id", "track_key", "event_type", "shelf_level", "observation_status", "start_offset_ms", "end_offset_ms", "detection_source", "summary")) + (event.get("person_id"),),
+            )
+        for frame in payload["evidence"]:
+            key = prepared.evidence_keys[frame["evidence_id"]]
+            connection.execute("INSERT INTO evidence(evidence_id,event_id,offset_ms,bbox_json,storage_key,media_status) VALUES(%s,%s,%s,%s,%s,%s)",
+                               (frame["evidence_id"], frame["event_id"], frame["offset_ms"], Jsonb(frame["bbox_json"]) if frame["bbox_json"] is not None else None, key, "available" if key else "missing"))
+        prepared.commit()
+        return envelope(recording=self.public_recording(row), event_count=len(payload["events"]), evidence_count=len(payload["evidence"]), replayed=False), False
 
     def review_bundle(self, connection, row, principal):
         event = self.event_bundle(connection, row["event_id"], principal)

@@ -177,7 +177,7 @@ def test_all_nine_agent_operations_follow_authored_contract(context):
             assert [message["role"] for message in messages["messages"]].count("assistant") == 1
             spec = client.get("/openapi.json").json()
             assert sum(len(value) for path, value in spec["paths"].items() if path.startswith(PREFIX + "/")) == 9
-            assert sum(len(value) for value in spec["paths"].values()) == 23
+            assert sum(len(value) for value in spec["paths"].values()) == 30
             assert set(engine.reads) == {"events", "recording", "event", "evidence"}
         # A model outage must not make an already persisted result disappear or
         # schedule the same run again after restarting the application.

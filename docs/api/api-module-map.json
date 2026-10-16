@@ -1,6 +1,6 @@
 {
   "version": "0.3-module-review",
-  "scope_note": "模块/API分工与当前0.3草案对应；11表79字段、28个current_draft包含已实现development操作和待开发包裹操作，5个proposed不是已存在的接口。提供方指建议代码归属，调用方指初步接入分工。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入已实现，生产部署待验收。 AI会话不固定录像，会话及user问题仅active owner；计划/运行每次仍单视频，assistant经关联run验权；消息页任一无权助手答复使整页403，无正文或部分结果。",
+  "scope_note": "模块/API分工与当前0.3草案对应；12表104字段、35个current_draft；实现范围见 Backend 与 Agent README，5个proposed不是已存在的接口。提供方指建议代码归属，调用方指初步接入分工。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入待实现。 AI会话不固定录像，会话及user问题仅active owner；计划/运行每次仍单视频，assistant经关联run验权；消息页任一无权助手答复使整页403，无正文或部分结果。 2026-10-16新增People任务7操作，总35操作；实现和真实验证各见模块README。",
   "sources": [
     "docs/api/openapi.json",
     "docs/api/API_DESIGN.md",
@@ -131,6 +131,21 @@
         "ai_conversations"
       ],
       "deliverable": "从现有事实派生概况与简报，/overview需另行确认。"
+    },
+    {
+      "id": "people_pipeline",
+      "order": 7,
+      "label": "People录像与Vision",
+      "current_operation_count": 7,
+      "owners": [
+        "android",
+        "backend",
+        "vision"
+      ],
+      "depends_on": [
+        "events_evidence"
+      ],
+      "deliverable": "真实People连续录像上传、独占解析、完整结果发布及App完成回传。"
     }
   ],
   "operations": [
@@ -265,19 +280,22 @@
       "status": "current_draft",
       "provider": "backend",
       "callers": [
+        "android",
         "vision"
       ],
       "stage": "events_evidence",
-      "summary": "原子导入视频事件与关键帧",
+      "summary": "原片先写 pending 录像并排队；兼容已分析整包原子发布",
       "read_tables": [
         "recordings",
         "events",
-        "evidence"
+        "evidence",
+        "recording_jobs"
       ],
       "write_tables": [
         "recordings",
         "events",
-        "evidence"
+        "evidence",
+        "recording_jobs"
       ]
     },
     {
@@ -689,6 +707,143 @@
       "status": "current_draft",
       "provider": "backend",
       "stage": "parcel_workflow"
+    },
+    {
+      "id": "submit_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "people_pipeline",
+      "summary": "兼容原片入口，同事务保存 pending 录像与任务",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings"
+      ]
+    },
+    {
+      "id": "get_recording_job",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "people_pipeline",
+      "summary": "读取原片上传与Vision解析状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "claim_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/claim",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "领取独占Vision解析租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "get_recording_job_media",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}/media",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "读取当前租约的真实原片",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "heartbeat_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/heartbeat",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "续期当前Vision租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "complete_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/complete",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "原子发布Vision完整结果并回传完成",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings",
+        "events",
+        "evidence"
+      ]
+    },
+    {
+      "id": "fail_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/fail",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "记录解析失败状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
     }
   ],
   "proposed": [
@@ -704,7 +859,7 @@
       "read_tables": [],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入28个当前操作。"
+      "note": "未定义请求/返回，不计入35个当前操作。"
     },
     {
       "method": "GET",
@@ -718,7 +873,7 @@
       "read_tables": [],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入28个当前操作。"
+      "note": "未定义请求/返回，不计入35个当前操作。"
     },
     {
       "method": "GET",
@@ -738,7 +893,7 @@
       ],
       "write_tables": [],
       "stage": "homepage",
-      "note": "未定义请求/返回，不计入28个当前操作。"
+      "note": "未定义请求/返回，不计入35个当前操作。"
     },
     {
       "method": "GET",
@@ -756,7 +911,7 @@
       ],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入28个当前操作。"
+      "note": "未定义请求/返回，不计入35个当前操作。"
     },
     {
       "method": "GET",
@@ -772,7 +927,7 @@
       ],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入28个当前操作。"
+      "note": "未定义请求/返回，不计入35个当前操作。"
     }
   ],
   "integration_edges": [
@@ -800,13 +955,23 @@
       "from": "agent",
       "to": "backend",
       "label": "只读 search_events / semantic_search_events / get_event / get_evidence / get_parcel / get_parcel_records"
+    },
+    {
+      "from": "android",
+      "to": "backend",
+      "label": "People完整原片 → recording-jobs → 上传/解析状态"
+    },
+    {
+      "from": "vision",
+      "to": "backend",
+      "label": "claim/media/heartbeat → complete/fail"
     }
   ],
   "parallel_work": "范围/共享样例确定后，Android骨架、视觉素材、后端接口、Agent服务入口可并行；阶段顺序用于真实闭环验收，不要求四人串行等待。 包裹业务可在共享契约确认后独立准备：建档/查询 → Android二维码生成/扫码 → 管理员确认/流水 → Agent只读历史，不依赖视觉事件自动登记。",
   "sdk_branch": {
     "owner": "Harry Xu",
-    "status": "independent_unverified",
-    "note": "官方设备连接、直播、原生事件与回放验证是独立支线，不计入团队28个API，不阻塞预录视频闭环。"
+    "status": "people_pipeline_integration",
+    "note": "真实SDK People录像通过7个任务API进入独立Vision worker，最终结果仍按完整包发布。设备、算法和端到端结果分开验收。"
   },
   "implementation_boundaries": [
     "Android主要调用团队backend/agent API；vision产出数据并导入，不必为每个模块建HTTP服务。",
@@ -820,6 +985,6 @@
   "approval": {
     "status": "reviewed_proposal",
     "date": "2026-10-13",
-    "note": "本轮已审核的模块归属、联调阶段及包裹5接口纳入现有API页面；HTTP契约以OpenAPI为准，28操作均尚未实现。"
+    "note": "本轮已审核的模块归属、联调阶段及包裹5接口纳入现有API页面；HTTP契约以OpenAPI为准，35操作中的本地实现范围见模块 README。"
   }
 }

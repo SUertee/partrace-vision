@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "schema_sha256": "0644115c258d7e141b4daee78e17353270cb64d4a034a42ef53d9361f8c1df07",
+    "schema_sha256": "2d4dceac132532a3ee0980e711ef2bfb10176508887900993d27cbe06c8abe1e",
     "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
     "postgres_version_num": 170011,
     "pgvector_version": "0.8.7",
@@ -8,10 +8,10 @@
       "method": "live_postgresql_system_catalog",
       "transport": "docker_exec_psql",
       "schema": "public",
-      "verified_at": "2026-10-16T19:42:39.941544Z",
-      "schema_sha256": "0644115c258d7e141b4daee78e17353270cb64d4a034a42ef53d9361f8c1df07",
+      "verified_at": "2026-10-16T21:08:16.833302Z",
+      "schema_sha256": "2d4dceac132532a3ee0980e711ef2bfb10176508887900993d27cbe06c8abe1e",
       "catalog_query_sha256": "7521a508d6962a8c941bc80788c3f943f3ef71d2976e2a84403299916a34863d",
-      "structure_sha256": "f250317a2273fbd3cd9e25a4a358f67c513a91dd4ed447b73bc08e2bd83b0ccd",
+      "structure_sha256": "dfc346e0f6823624873e3f3390847e6fbc8e571c6d17c5f2bd042a9ae8b81903",
       "includes_records": false,
       "source_alignment": "Source table/column order and declared types checked against loaded catalog; DDL loading is a separate operation."
     },
@@ -48,25 +48,21 @@
         "revision": "2026-10-13 · 11 表、77 字段；每次运行仍查单段录像"
       },
       {
-        "title": "events 增加可空 shelf_level",
-        "revision": "2026-10-16 · 11 表、78 字段；货架层级自下而上 1–20，未知为 NULL"
-      },
-      {
-        "title": "计入 Agent 运行卡片",
-        "revision": "2026-10-17 · 当时 dev 11 表、79 字段；runs.cards_json 保存已完成卡片"
-      },
-      {
-        "title": "事件匿名档案编号",
-        "revision": "2026-10-17 · 当前 dev 11 表、80 字段；events.person_id 为可空 A 图库 G 编号"
-      },
-      {
         "title": "用户选择 PostgreSQL+pgvector",
         "revision": "2026-10-13"
+      },
+      {
+        "title": "People 原片任务与 Agent 结构化卡片合并",
+        "revision": "2026-10-17 · 当时 12 表、104 字段"
+      },
+      {
+        "title": "本次开发整合版",
+        "revision": "2026-10-17 · 当前 12 表、106 字段，保留 shelf_level、person_id、cards_json 与 People 任务"
       }
     ],
     "parity": "Loaded public schema read from PostgreSQL pg_catalog in a read-only transaction; constraint/index/trigger/function definitions use pg_get_*; source CREATE TABLE statements attached separately.",
     "disclaimer": "设计草案；真实 PostgreSQL+pgvector 本地结构验证，不代表已部署业务服务或完成数据/检索验收。目录不含业务记录。",
-    "annotations_sha256": "f1647175c9a6e2f4594829c8a1f0dfb1fd0d5090491dfe3eb33b9743f1923bb5"
+    "annotations_sha256": "94e8ae0be2e93e9d6953a502ca4ae8e7b58591d58ac339bbad52a908dbf13c74"
   },
   "tables": [
     {
@@ -317,7 +313,7 @@
           "foreign_key": false,
           "unique": false,
           "unique_groups": [],
-          "nullable": false,
+          "nullable": true,
           "default": null,
           "references": [],
           "identity": "",
@@ -364,6 +360,21 @@
           "unique_groups": [],
           "nullable": false,
           "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "publication_status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'published'::text",
           "references": [],
           "identity": "",
           "generated": ""
@@ -448,14 +459,20 @@
         },
         {
           "name": "ck_recording_manifest",
-          "expression": "(manifest_sha256 ~ '^[0-9a-f]{64}$'::text)",
-          "sql": "CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'::text)",
+          "expression": "(((publication_status = 'published'::text) AND (manifest_sha256 IS NOT NULL) AND (manifest_sha256 ~ '^[0-9a-f]{64}$'::text)) OR ((publication_status = 'pending'::text) AND (manifest_sha256 IS NULL)))",
+          "sql": "CHECK (publication_status = 'published'::text AND manifest_sha256 IS NOT NULL AND manifest_sha256 ~ '^[0-9a-f]{64}$'::text OR publication_status = 'pending'::text AND manifest_sha256 IS NULL)",
           "validated": true
         },
         {
           "name": "ck_recording_media",
           "expression": "(media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
           "sql": "CHECK (media_status = ANY (ARRAY['available'::text, 'missing'::text]))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_publication",
+          "expression": "((publication_status = ANY (ARRAY['pending'::text, 'published'::text])) AND ((publication_status <> 'pending'::text) OR ((source_mode = 'sdk'::text) AND (started_at IS NULL) AND (storage_key IS NOT NULL))))",
+          "sql": "CHECK ((publication_status = ANY (ARRAY['pending'::text, 'published'::text])) AND (publication_status <> 'pending'::text OR source_mode = 'sdk'::text AND started_at IS NULL AND storage_key IS NOT NULL))",
           "validated": true
         },
         {
@@ -479,7 +496,7 @@
       ],
       "triggers": [
         {
-          "sql": "CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable();\n\nCREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
+          "sql": "CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable();\n\nCREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.storage_key, OLD.created_at) OR\n        (ROW(NEW.publication_status, NEW.manifest_sha256) IS DISTINCT FROM ROW(OLD.publication_status, OLD.manifest_sha256)\n         AND NOT (OLD.publication_status = 'pending' AND NEW.publication_status = 'published' AND NEW.manifest_sha256 IS NOT NULL)) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n;",
           "name": "recording_facts_immutable",
           "event": "BEFORE UPDATE",
           "enabled": "O",
@@ -487,7 +504,7 @@
           "deferrable": false,
           "function_name": "partrace_recording_facts_immutable()",
           "initially_deferred": false,
-          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
+          "function_definition": "CREATE OR REPLACE FUNCTION public.partrace_recording_facts_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n    IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,\n        NEW.storage_key, NEW.created_at)\n        IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,\n        OLD.storage_key, OLD.created_at) OR\n        (ROW(NEW.publication_status, NEW.manifest_sha256) IS DISTINCT FROM ROW(OLD.publication_status, OLD.manifest_sha256)\n         AND NOT (OLD.publication_status = 'pending' AND NEW.publication_status = 'published' AND NEW.manifest_sha256 IS NOT NULL)) THEN\n        RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';\n    END IF;\n    RETURN NEW;\nEND;\n$function$\n",
           "trigger_definition": "CREATE TRIGGER recording_facts_immutable BEFORE UPDATE ON recordings FOR EACH ROW EXECUTE FUNCTION partrace_recording_facts_immutable()"
         },
         {
@@ -504,10 +521,633 @@
         }
       ],
       "row_count": null,
-      "create_sql": "CREATE TABLE recordings (\n    recording_id TEXT PRIMARY KEY NOT NULL,\n    camera_id TEXT NOT NULL,\n    config_version TEXT NOT NULL,\n    source_mode TEXT NOT NULL,\n    started_at TIMESTAMPTZ,\n    duration_ms BIGINT NOT NULL,\n    manifest_sha256 TEXT NOT NULL,\n    storage_key TEXT,\n    media_status TEXT NOT NULL DEFAULT 'missing',\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT ck_recording_config CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0),\n    CONSTRAINT ck_recording_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),\n    CONSTRAINT ck_recording_time CHECK (started_at IS NULL OR (isfinite(started_at) AND started_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')),\n    CONSTRAINT ck_recording_duration CHECK (duration_ms > 0),\n    CONSTRAINT ck_recording_manifest CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'),\n    CONSTRAINT ck_recording_media CHECK (media_status IN ('available', 'missing')),\n    CONSTRAINT ck_recording_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL)),\n    CONSTRAINT ck_recording_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
+      "create_sql": "CREATE TABLE recordings (\n    recording_id TEXT PRIMARY KEY NOT NULL,\n    camera_id TEXT NOT NULL,\n    config_version TEXT NOT NULL,\n    source_mode TEXT NOT NULL,\n    started_at TIMESTAMPTZ,\n    duration_ms BIGINT NOT NULL,\n    manifest_sha256 TEXT,\n    storage_key TEXT,\n    media_status TEXT NOT NULL DEFAULT 'missing',\n    created_at TIMESTAMPTZ NOT NULL,\n    publication_status TEXT NOT NULL DEFAULT 'published',\n    CONSTRAINT ck_recording_config CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0),\n    CONSTRAINT ck_recording_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),\n    CONSTRAINT ck_recording_time CHECK (started_at IS NULL OR (isfinite(started_at) AND started_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')),\n    CONSTRAINT ck_recording_duration CHECK (duration_ms > 0),\n    CONSTRAINT ck_recording_manifest CHECK ((publication_status = 'published' AND manifest_sha256 IS NOT NULL AND manifest_sha256 ~ '^[0-9a-f]{64}$') OR (publication_status = 'pending' AND manifest_sha256 IS NULL)),\n    CONSTRAINT ck_recording_publication CHECK (publication_status IN ('pending', 'published') AND (publication_status <> 'pending' OR (source_mode = 'sdk' AND started_at IS NULL AND storage_key IS NOT NULL))),\n    CONSTRAINT ck_recording_media CHECK (media_status IN ('available', 'missing')),\n    CONSTRAINT ck_recording_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL)),\n    CONSTRAINT ck_recording_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
       "label": "视频",
       "domain": "media",
-      "description": "一段固定摄像头连续视频与一份完整分析；保留来源、时间起点、配置版本及媒体状态。",
+      "description": "一段固定摄像头连续视频；原片先写 pending，解析后一次发布 published。保留来源、时间起点、配置版本及媒体状态；pending 不计事实覆盖。",
+      "source_file": "docs/database/schema.sql"
+    },
+    {
+      "id": "recording_jobs",
+      "name": "recording_jobs",
+      "columns": [
+        {
+          "name": "job_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": true,
+          "pk_position": 1,
+          "foreign_key": false,
+          "unique": true,
+          "unique_groups": [
+            "recording_jobs_pkey"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "camera_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_recording_job_sdk_event"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "config_version",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "sdk_event_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [
+            "uq_recording_job_sdk_event"
+          ],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_type",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'people'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "duration_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "sdk_timestamp_ms",
+          "type": "BIGINT",
+          "database_type": "bigint",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "recording_jobs_created_by_fkey",
+              "table": "users",
+              "column": "user_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "video_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "request_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "storage_key",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "'queued'::text",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "attempts",
+          "type": "INTEGER",
+          "database_type": "integer",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": "0",
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "worker_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "worker_user_id",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": true,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [
+            {
+              "relationship_id": "recording_jobs_worker_user_id_fkey",
+              "table": "users",
+              "column": "user_id",
+              "composite": false
+            }
+          ],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "lease_token_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "lease_expires_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "result_sha256",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "error_code",
+          "type": "TEXT",
+          "database_type": "text",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "event_count",
+          "type": "INTEGER",
+          "database_type": "integer",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "evidence_count",
+          "type": "INTEGER",
+          "database_type": "integer",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "finished_at",
+          "type": "TIMESTAMPTZ",
+          "database_type": "timestamp with time zone",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": "recording_jobs_created_by_fkey",
+          "constraint_name": "recording_jobs_created_by_fkey",
+          "from_table": "recording_jobs",
+          "from_columns": [
+            "created_by"
+          ],
+          "to_table": "users",
+          "to_columns": [
+            "user_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (created_by) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        },
+        {
+          "id": "recording_jobs_worker_user_id_fkey",
+          "constraint_name": "recording_jobs_worker_user_id_fkey",
+          "from_table": "recording_jobs",
+          "from_columns": [
+            "worker_user_id"
+          ],
+          "to_table": "users",
+          "to_columns": [
+            "user_id"
+          ],
+          "on_update": "RESTRICT",
+          "on_delete": "RESTRICT",
+          "match": "SIMPLE",
+          "kind": "sql_fk",
+          "declared_in_draft": true,
+          "deferrable": false,
+          "initially_deferred": false,
+          "validated": true,
+          "sql": "FOREIGN KEY (worker_user_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+        }
+      ],
+      "indices": [
+        {
+          "sql": "CREATE INDEX idx_recording_jobs_camera ON public.recording_jobs USING btree (camera_id, created_at)",
+          "name": "idx_recording_jobs_camera",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "camera_id",
+            "created_at"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "camera_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE INDEX idx_recording_jobs_claim ON public.recording_jobs USING btree (status, lease_expires_at, created_at, job_id)",
+          "name": "idx_recording_jobs_claim",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "c",
+          "unique": false,
+          "columns": [
+            "status",
+            "lease_expires_at",
+            "created_at",
+            "job_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "status",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "lease_expires_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "created_at",
+              "collation": null,
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "job_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX recording_jobs_pkey ON public.recording_jobs USING btree (job_id)",
+          "name": "recording_jobs_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "pk",
+          "unique": true,
+          "columns": [
+            "job_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "job_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX uq_recording_job_sdk_event ON public.recording_jobs USING btree (camera_id, sdk_event_id)",
+          "name": "uq_recording_job_sdk_event",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "origin": "u",
+          "unique": true,
+          "columns": [
+            "camera_id",
+            "sdk_event_id"
+          ],
+          "partial": false,
+          "predicate": null,
+          "column_details": [
+            {
+              "name": "camera_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            },
+            {
+              "name": "sdk_event_id",
+              "collation": "default",
+              "descending": false,
+              "expression": null
+            }
+          ],
+          "included_columns": [],
+          "nulls_not_distinct": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "ck_recording_job_hashes",
+          "expression": "((video_sha256 ~ '^[0-9a-f]{64}$'::text) AND (request_sha256 ~ '^[0-9a-f]{64}$'::text) AND ((result_sha256 IS NULL) OR (result_sha256 ~ '^[0-9a-f]{64}$'::text)) AND ((lease_token_sha256 IS NULL) OR (lease_token_sha256 ~ '^[0-9a-f]{64}$'::text)))",
+          "sql": "CHECK (video_sha256 ~ '^[0-9a-f]{64}$'::text AND request_sha256 ~ '^[0-9a-f]{64}$'::text AND (result_sha256 IS NULL OR result_sha256 ~ '^[0-9a-f]{64}$'::text) AND (lease_token_sha256 IS NULL OR lease_token_sha256 ~ '^[0-9a-f]{64}$'::text))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_job_lease",
+          "expression": "(((status = 'processing'::text) = (lease_expires_at IS NOT NULL)) AND ((status = 'queued'::text) OR ((worker_id IS NOT NULL) AND (worker_user_id IS NOT NULL) AND (lease_token_sha256 IS NOT NULL))))",
+          "sql": "CHECK ((status = 'processing'::text) = (lease_expires_at IS NOT NULL) AND (status = 'queued'::text OR worker_id IS NOT NULL AND worker_user_id IS NOT NULL AND lease_token_sha256 IS NOT NULL))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_job_metadata",
+          "expression": "((length(TRIM(BOTH FROM camera_id)) > 0) AND (length(TRIM(BOTH FROM config_version)) > 0) AND (length(TRIM(BOTH FROM sdk_event_id)) > 0) AND (event_type = 'people'::text) AND (duration_ms > 0) AND ((sdk_timestamp_ms IS NULL) OR (sdk_timestamp_ms >= 0)))",
+          "sql": "CHECK (length(TRIM(BOTH FROM camera_id)) > 0 AND length(TRIM(BOTH FROM config_version)) > 0 AND length(TRIM(BOTH FROM sdk_event_id)) > 0 AND event_type = 'people'::text AND duration_ms > 0 AND (sdk_timestamp_ms IS NULL OR sdk_timestamp_ms >= 0))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_job_result",
+          "expression": "(((status = ANY (ARRAY['completed'::text, 'failed'::text])) = (finished_at IS NOT NULL)) AND ((status <> 'completed'::text) OR ((result_sha256 IS NOT NULL) AND (event_count >= 0) AND (evidence_count >= 0) AND (error_code IS NULL))) AND ((status <> 'failed'::text) OR (error_code IS NOT NULL)))",
+          "sql": "CHECK ((status = ANY (ARRAY['completed'::text, 'failed'::text])) = (finished_at IS NOT NULL) AND (status <> 'completed'::text OR result_sha256 IS NOT NULL AND event_count >= 0 AND evidence_count >= 0 AND error_code IS NULL) AND (status <> 'failed'::text OR error_code IS NOT NULL))",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_job_status",
+          "expression": "((status = ANY (ARRAY['queued'::text, 'processing'::text, 'completed'::text, 'failed'::text])) AND (attempts >= 0))",
+          "sql": "CHECK ((status = ANY (ARRAY['queued'::text, 'processing'::text, 'completed'::text, 'failed'::text])) AND attempts >= 0)",
+          "validated": true
+        },
+        {
+          "name": "ck_recording_job_time",
+          "expression": "(isfinite(created_at) AND (created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone) AND isfinite(updated_at) AND (updated_at >= created_at) AND ((started_at IS NULL) OR (isfinite(started_at) AND (started_at >= created_at))) AND ((finished_at IS NULL) OR (isfinite(finished_at) AND (finished_at >= created_at))) AND ((lease_expires_at IS NULL) OR isfinite(lease_expires_at)))",
+          "sql": "CHECK (isfinite(created_at) AND created_at >= '1970-01-01 00:00:00+00'::timestamp with time zone AND isfinite(updated_at) AND updated_at >= created_at AND (started_at IS NULL OR isfinite(started_at) AND started_at >= created_at) AND (finished_at IS NULL OR isfinite(finished_at) AND finished_at >= created_at) AND (lease_expires_at IS NULL OR isfinite(lease_expires_at)))",
+          "validated": true
+        }
+      ],
+      "triggers": [],
+      "row_count": null,
+      "create_sql": "CREATE TABLE recording_jobs (\n    job_id TEXT PRIMARY KEY NOT NULL,\n    camera_id TEXT NOT NULL,\n    config_version TEXT NOT NULL,\n    sdk_event_id TEXT NOT NULL,\n    event_type TEXT NOT NULL DEFAULT 'people',\n    duration_ms BIGINT NOT NULL,\n    sdk_timestamp_ms BIGINT,\n    created_by TEXT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    video_sha256 TEXT NOT NULL,\n    request_sha256 TEXT NOT NULL,\n    storage_key TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'queued',\n    attempts INTEGER NOT NULL DEFAULT 0,\n    worker_id TEXT,\n    worker_user_id TEXT REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    lease_token_sha256 TEXT,\n    lease_expires_at TIMESTAMPTZ,\n    result_sha256 TEXT,\n    error_code TEXT,\n    event_count INTEGER,\n    evidence_count INTEGER,\n    created_at TIMESTAMPTZ NOT NULL,\n    updated_at TIMESTAMPTZ NOT NULL,\n    started_at TIMESTAMPTZ,\n    finished_at TIMESTAMPTZ,\n    CONSTRAINT uq_recording_job_sdk_event UNIQUE(camera_id,sdk_event_id),\n    CONSTRAINT ck_recording_job_metadata CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0 AND length(trim(sdk_event_id)) > 0 AND event_type='people' AND duration_ms>0 AND (sdk_timestamp_ms IS NULL OR sdk_timestamp_ms>=0)),\n    CONSTRAINT ck_recording_job_hashes CHECK (video_sha256 ~ '^[0-9a-f]{64}$' AND request_sha256 ~ '^[0-9a-f]{64}$' AND (result_sha256 IS NULL OR result_sha256 ~ '^[0-9a-f]{64}$') AND (lease_token_sha256 IS NULL OR lease_token_sha256 ~ '^[0-9a-f]{64}$')),\n    CONSTRAINT ck_recording_job_status CHECK (status IN ('queued','processing','completed','failed') AND attempts>=0),\n    CONSTRAINT ck_recording_job_lease CHECK ((status='processing')=(lease_expires_at IS NOT NULL) AND (status='queued' OR (worker_id IS NOT NULL AND worker_user_id IS NOT NULL AND lease_token_sha256 IS NOT NULL))),\n    CONSTRAINT ck_recording_job_result CHECK ((status IN ('completed','failed'))=(finished_at IS NOT NULL) AND (status<>'completed' OR (result_sha256 IS NOT NULL AND event_count>=0 AND evidence_count>=0 AND error_code IS NULL)) AND (status<>'failed' OR error_code IS NOT NULL)),\n    CONSTRAINT ck_recording_job_time CHECK (isfinite(created_at) AND created_at>=TIMESTAMPTZ '1970-01-01 00:00:00+00' AND isfinite(updated_at) AND updated_at>=created_at AND (started_at IS NULL OR (isfinite(started_at) AND started_at>=created_at)) AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at>=created_at)) AND (lease_expires_at IS NULL OR isfinite(lease_expires_at)))\n);",
+      "label": "People 录像任务",
+      "domain": "media",
+      "description": "真实 SDK People 原片的持久异步任务；记录上传、独占租约、解析失败或完成。接收时同事务保存 pending recordings，完成时才发布 events/evidence 与录像最终状态；媒体仍只保存私有引用，任务不代表已分析覆盖。",
       "source_file": "docs/database/schema.sql"
     },
     {
@@ -918,10 +1558,10 @@
         }
       ],
       "row_count": null,
-      "create_sql": "CREATE TABLE events (\n    event_id TEXT PRIMARY KEY NOT NULL,\n    recording_id TEXT NOT NULL,\n    zone_id TEXT DEFAULT 'E3',\n    track_key TEXT,\n    person_id TEXT,\n    event_type TEXT NOT NULL,\n    shelf_level INTEGER,\n    observation_status TEXT NOT NULL DEFAULT 'candidate',\n    start_offset_ms BIGINT NOT NULL,\n    end_offset_ms BIGINT NOT NULL,\n    detection_source TEXT NOT NULL,\n    summary TEXT,\n    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),\n    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),\n    CONSTRAINT ck_event_person CHECK (person_id IS NULL OR person_id ~ '^G[0-9]{4,99}$'),\n    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),\n    CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),\n    CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),\n    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),\n    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))\n);",
+      "create_sql": "CREATE TABLE events (\n    event_id TEXT PRIMARY KEY NOT NULL,\n    recording_id TEXT NOT NULL,\n    zone_id TEXT DEFAULT 'E3',\n    track_key TEXT,\n    person_id TEXT,\n    event_type TEXT NOT NULL,\n    shelf_level INTEGER,\n    observation_status TEXT NOT NULL DEFAULT 'candidate',\n    start_offset_ms BIGINT NOT NULL,\n    end_offset_ms BIGINT NOT NULL,\n    detection_source TEXT NOT NULL,\n    summary TEXT,\n    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),\n    CONSTRAINT ck_event_person CHECK (person_id IS NULL OR person_id ~ '^G[0-9]{4,99}$'),\n    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),\n    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),\n    CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),\n    CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),\n    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),\n    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))\n);",
       "label": "事件",
       "domain": "retrieval",
-      "description": "视频里的区域事件、匿名局部 track_key 与可空 A 图库 G 编号 person_id；未知和冲突为 null，不推断自然人身份。",
+      "description": "视频里的区域事件、匿名局部 track_key及可空A图库G编号person_id；未匹配/冲突保持null，不推断自然人身份。",
       "source_file": "docs/database/schema.sql"
     },
     {
@@ -1709,7 +2349,7 @@
       "create_sql": "CREATE TABLE event_embeddings (\n    embedding_id TEXT PRIMARY KEY NOT NULL,\n    event_id TEXT NOT NULL,\n    evidence_id TEXT,\n    source_text TEXT NOT NULL,\n    embedding VECTOR NOT NULL,\n    model_name TEXT NOT NULL,\n    model_version TEXT NOT NULL,\n    dimensions INTEGER NOT NULL,\n    content_sha256 TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_embedding_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_embedding_evidence_event FOREIGN KEY (evidence_id, event_id) REFERENCES evidence (evidence_id, event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_embedding_identity CHECK (length(trim(embedding_id)) > 0 AND length(trim(event_id)) > 0 AND (evidence_id IS NULL OR length(trim(evidence_id)) > 0)),\n    CONSTRAINT ck_embedding_source CHECK (length(trim(source_text)) > 0),\n    CONSTRAINT ck_embedding_model CHECK (length(trim(model_name)) > 0 AND length(trim(model_version)) > 0),\n    CONSTRAINT ck_embedding_shape CHECK (dimensions BETWEEN 1 AND 16000 AND vector_dims(embedding) = dimensions),\n    CONSTRAINT ck_embedding_nonzero CHECK (vector_norm(embedding) > 0),\n    CONSTRAINT ck_embedding_content CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),\n    CONSTRAINT ck_embedding_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
       "label": "事件向量",
       "domain": "retrieval",
-      "description": "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务已在development实现，真实编码配置与效果待验收。",
+      "description": "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务已在 development 实现，真实编码配置与效果待验收。",
       "source_file": "docs/database/schema.sql"
     },
     {
@@ -3425,6 +4065,48 @@
   ],
   "relationships": [
     {
+      "id": "recording_jobs_created_by_fkey",
+      "constraint_name": "recording_jobs_created_by_fkey",
+      "from_table": "recording_jobs",
+      "from_columns": [
+        "created_by"
+      ],
+      "to_table": "users",
+      "to_columns": [
+        "user_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (created_by) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
+      "id": "recording_jobs_worker_user_id_fkey",
+      "constraint_name": "recording_jobs_worker_user_id_fkey",
+      "from_table": "recording_jobs",
+      "from_columns": [
+        "worker_user_id"
+      ],
+      "to_table": "users",
+      "to_columns": [
+        "user_id"
+      ],
+      "on_update": "RESTRICT",
+      "on_delete": "RESTRICT",
+      "match": "SIMPLE",
+      "kind": "sql_fk",
+      "declared_in_draft": true,
+      "deferrable": false,
+      "initially_deferred": false,
+      "validated": true,
+      "sql": "FOREIGN KEY (worker_user_id) REFERENCES users(user_id) ON UPDATE RESTRICT ON DELETE RESTRICT"
+    },
+    {
       "id": "fk_event_recording",
       "constraint_name": "fk_event_recording",
       "from_table": "events",
@@ -3756,12 +4438,12 @@
     }
   ],
   "totals": {
-    "tables": 11,
-    "columns": 80,
-    "foreign_keys": 13,
+    "tables": 12,
+    "columns": 106,
+    "foreign_keys": 15,
     "logical_relationships": 2,
-    "indices": 30,
-    "checks": 55,
+    "indices": 34,
+    "checks": 62,
     "triggers": 25
   }
 }

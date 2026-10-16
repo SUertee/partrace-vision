@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -51,6 +52,10 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ControlCamera
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
+import com.anker.esiotkit.sample.main.mega.event.MegaEventScreen
+import com.anker.esiotkit.sample.main.mega.event.BatchDownloadScreen
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -132,50 +137,13 @@ class MegaLiveVideoScreen constructor(
   override val key: ScreenKey = uniqueScreenKey
 
   @Composable
-  override fun RowScope.TitleRightIcon() {
-    val megaDevice = remember { MegaDeviceManager.getDeviceBy(deviceSn) } ?: return
-    val deviceManager = koinInject<com.anker.esiotkit.domain_thing.api.ESIotDeviceManager>()
-    val viewModel = rememberScreenModel { MegaLiveStreamViewModel(megaDevice, deviceManager) }
-    val uiState by viewModel.uiState.collectAsState()
-
-    if (uiState.supportsAlarm) {
-      IconButton(
-        onClick = {
-          if (uiState.alarmCountdown <= 0) {
-            viewModel.showAlarmDialog = true
-          }
-        }
-      ) {
-        Icon(
-          imageVector = AlarmIcon,
-          contentDescription = "Manual Alarm",
-          tint = if (uiState.alarmCountdown > 0) Color(0xFFFF6B35) else Color(0xFF333333),
-          modifier = Modifier.size(24.dp)
-        )
-      }
-    }
-
-    IconButton(
-      onClick = {
-        currentNavigator?.push(MegaDeviceSettingsScreen(deviceSn))
-      }
-    ) {
-      Icon(
-        imageVector = CardGearIcon,
-        contentDescription = "Device Settings",
-        tint = Color(0xFF333333),
-        modifier = Modifier.size(24.dp)
-      )
-    }
-  }
-
-  @Composable
   override fun Content() {
     val megaDevice = remember { MegaDeviceManager.getDeviceBy(deviceSn) } ?: return
     val deviceManager = koinInject<com.anker.esiotkit.domain_thing.api.ESIotDeviceManager>()
     val viewModel = rememberScreenModel { MegaLiveStreamViewModel(megaDevice, deviceManager) }
     val uiState by viewModel.uiState.collectAsState()
     val fullScreen by fullScreen.collectAsState()
+    var showMoreControls by state(false)
     var showQuickResponseDialog by state(false)
     var showPresetsDialog by state(false)
     var showPTZControlDialog by state(false)
@@ -343,51 +311,66 @@ class MegaLiveVideoScreen constructor(
       )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
-      val localContext = applicationContext
-      Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopStart)) {
-        if (!fullScreen) {
-          BaseTitle(true)
+    val localContext = applicationContext
+    val permissionController = rememberPermissionController()
+    BindEffect(permissionController)
+    val scope = rememberCoroutineScope()
+    val onTalk = {
+      scope.launch {
+        if (permissionController.isPermissionGranted(Permission.RECORD_AUDIO)) {
+          viewModel.action(MegaLiveStreamAction.Talk)
+        } else {
+          permissionController.providePermission(Permission.RECORD_AUDIO)
         }
-        // Alarm capsule overlay
-        if (uiState.alarmCountdown > 0) {
-          Box(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            contentAlignment = Alignment.CenterEnd
-          ) {
-            AlarmCapsuleOverlay(
-              alarmTypeName = uiState.alarmTypeName,
-              countdown = uiState.alarmCountdown,
-              onStop = { viewModel.action(MegaLiveStreamAction.StopAlarm) }
-            )
-          }
-        }
-        PlayerContainer(
-          onViewCreated = {
-            dataLogger.i("MegaLiveVideoScreen LiveDebug: [ON_VIEW_CREATED] dispatching Play playType=$playType")
-            viewModel.action(MegaLiveStreamAction.Play(playType))
-          }
-        )
       }
-      Column(
-        modifier = Modifier.fillMaxWidth().align(Alignment.BottomStart)
-          .background(Color.White.copy(alpha = 0.5f)).navigationBarsPadding()
+      Unit
+    }
+    fun openRecordings(title: String) {
+      currentNavigator?.push(MegaEventScreen(filterDeviceSn = deviceSn, detailTitle = title))
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+      DeviceLiveDetailLayout(
+        name = dynamicTitle(), state = uiState, fullScreen = fullScreen,
+        onBack = ::onBackClick,
+        onSettings = { currentNavigator?.push(MegaDeviceSettingsScreen(deviceSn)) },
+        onMore = { showMoreControls = true },
+        onPTZ = { showPTZControlDialog = true }, onTalk = onTalk,
+        onRecord = { viewModel.action(MegaLiveStreamAction.Record) },
+        onCapture = { viewModel.action(MegaLiveStreamAction.Capture) },
+        onFullScreen = { toggleScreenOrientation() },
+        onEvents = { openRecordings("设备事件") },
+        onPlayback = { openRecordings("录像回放") },
+        onRecordings = { openRecordings("全部录像") },
+        onDownloads = { currentNavigator?.push(BatchDownloadScreen()) },
+        player = {
+          Box {
+            PlayerContainer(onViewCreated = { viewModel.action(MegaLiveStreamAction.Play(playType)) })
+            if (!fullScreen) Column(Modifier.align(Alignment.BottomCenter)) {
+              if (uiState.alarmCountdown > 0) AlarmCapsuleOverlay(
+                alarmTypeName = uiState.alarmTypeName, countdown = uiState.alarmCountdown,
+                onStop = { viewModel.action(MegaLiveStreamAction.StopAlarm) })
+              LiveVideoController(
+                rate = uiState.rate, isBuffering = uiState.isBuffering, isPlaying = uiState.isPlaying,
+                recordStatus = uiState.recordStatus, recordTime = uiState.recordTime,
+                onClickPlay = { viewModel.action(if (uiState.isPlaying) MegaLiveStreamAction.Stop else MegaLiveStreamAction.Play(playType)) },
+                onClickFullScreen = { toggleScreenOrientation() })
+            }
+          }
+        },
+      )
+      if (showMoreControls && !fullScreen) ModalBottomSheet(
+        onDismissRequest = { showMoreControls = false }, containerColor = Color.White,
       ) {
-        val permissionController = rememberPermissionController()
-        BindEffect(permissionController)
-        val scope = rememberCoroutineScope()
-        if (!fullScreen) {
-          LiveVideoController(
-            rate = uiState.rate,
-            isBuffering = uiState.isBuffering,
-            isPlaying = uiState.isPlaying,
-            onClickPlay = { viewModel.action(MegaLiveStreamAction.Play(playType)) },
-            recordStatus = uiState.recordStatus,
-            recordTime = uiState.recordTime,
-            onClickFullScreen = { toggleScreenOrientation() }
-          )
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
+          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Text("更多设备控制", Modifier.weight(1f), fontSize = 20.sp)
+            TextButton(onClick = { showMoreControls = false }) { androidx.compose.material3.Text("完成") }
+          }
           LiveVideoFunctions(
+            modifier = Modifier.heightIn(max = 380.dp),
             megaDevice = megaDevice,
+            onClickAlarm = { showMoreControls = false; if (uiState.alarmCountdown <= 0) viewModel.showAlarmDialog = true },
             uiState = uiState,
             onClickCapture = { viewModel.action(MegaLiveStreamAction.Capture) },
             onClickRecord = { viewModel.action(MegaLiveStreamAction.Record) },
@@ -396,31 +379,27 @@ class MegaLiveVideoScreen constructor(
             onClickAITracking = { viewModel.action(MegaLiveStreamAction.AITracking) },
             onClickCalibration = { viewModel.action(MegaLiveStreamAction.Calibration) },
             onClick360 = { viewModel.action(MegaLiveStreamAction.Round360) },
-              onClickPanorama = {
+            onClickPanorama = {
+              showMoreControls = false
               viewModel.action(MegaLiveStreamAction.Panorama(localContext))
             },
             onClickQuickResponse = {
+              showMoreControls = false
               showQuickResponseDialog = true
               viewModel.action(MegaLiveStreamAction.LoadQuickResponseList)
             },
-            onClickPresets = { showPresetsDialog = true },
-            onClickPTZControl = { showPTZControlDialog = true },
+            onClickPresets = { showMoreControls = false; showPresetsDialog = true },
+            onClickPTZControl = { showMoreControls = false; showPTZControlDialog = true },
             onClickSingleDualSwitch = {
+              showMoreControls = false
               viewModel.action(MegaLiveStreamAction.LoadSupportedVideoModes)
               showSingleDualSwitchDialog = true
             },
             onClickNightVision = {
+              showMoreControls = false
               viewModel.action(MegaLiveStreamAction.NightVision)
             },
-            onClickTalk = {
-              scope.launch {
-                if (permissionController.isPermissionGranted(Permission.RECORD_AUDIO)) {
-                  viewModel.action(MegaLiveStreamAction.Talk)
-                } else {
-                  permissionController.providePermission(Permission.RECORD_AUDIO)
-                }
-              }
-            },
+            onClickTalk = onTalk,
           )
         }
       }
@@ -701,52 +680,25 @@ class MegaLiveVideoScreen constructor(
 
   @Composable
   fun LiveVideoController(
-    rate: Int,
-    isBuffering: Boolean,
-    isPlaying: Boolean,
-    recordStatus: MegaLiveFunctionStatus,
-    recordTime: Long,
-    onClickPlay: () -> Unit,
-    onClickFullScreen: () -> Unit,
+    rate: Int, isBuffering: Boolean, isPlaying: Boolean,
+    recordStatus: MegaLiveFunctionStatus, recordTime: Long,
+    onClickPlay: () -> Unit, onClickFullScreen: () -> Unit,
   ) {
-    SideEffect {
-      dataLogger.i("MegaLiveVideoScreen LiveDebug: [CONTROLLER_RENDER] isPlaying=$isPlaying isBuffering=$isBuffering")
-    }
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.fillMaxWidth().padding(8.dp)
-    ) {
-      val playIcon = if (isPlaying) {
-        Icons.Default.Pause
-      } else {
-        Icons.Default.PlayArrow
+    Row(Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.45f)).height(40.dp).padding(horizontal = 8.dp),
+      verticalAlignment = Alignment.CenterVertically) {
+      IconButton(onClick = onClickPlay, modifier = Modifier.size(40.dp)) {
+        Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+          if (isPlaying) "暂停直播" else "播放直播", tint = Color.White, modifier = Modifier.size(23.dp))
       }
-      Icon(
-        imageVector = playIcon, contentDescription = "",
-        modifier = Modifier.size(48.dp).clickable {
-          onClickPlay()
-        },
-      )
-      if (isBuffering) {
-        CircularProgressIndicator(modifier = Modifier.padding(start = 16.dp).size(24.dp))
+      if (isBuffering) CircularProgressIndicator(Modifier.size(17.dp), color = Color.White, strokeWidth = 2.dp)
+      Spacer(Modifier.weight(1f))
+      if (recordStatus.running) Text(recordTime.msToDurationString(), color = Color(0xFFFF7C7C), fontSize = 12.sp,
+        modifier = Modifier.padding(end = 12.dp))
+      Text("$rate KB/s", color = Color.White, fontSize = 11.sp,
+        modifier = Modifier.testTag("rate-tag").layoutId("rate-layout-id"))
+      IconButton(onClick = onClickFullScreen, modifier = Modifier.size(40.dp)) {
+        Icon(Icons.Default.Fullscreen, "全屏", tint = Color.White, modifier = Modifier.size(23.dp))
       }
-      Spacer(modifier = Modifier.weight(1f))
-      if (recordStatus.running) {
-        Text(
-          text = "${recordTime.msToDurationString()}s", fontSize = 12.sp,
-          modifier = Modifier.padding(end = 16.dp), color = Color.Red
-        )
-      }
-      Text(
-        text = "$rate KB/s", fontSize = 12.sp,
-        modifier = Modifier.testTag("rate-tag").layoutId("rate-layout-id")
-      )
-      Icon(
-        imageVector = Icons.Default.Fullscreen, contentDescription = "",
-        modifier = Modifier.size(48.dp).clickable {
-          onClickFullScreen()
-        },
-      )
     }
   }
 
@@ -769,6 +721,7 @@ class MegaLiveVideoScreen constructor(
     onClickPTZControl: () -> Unit = {},
     onClickSingleDualSwitch: () -> Unit = {},
     onClickNightVision: () -> Unit = {},
+    onClickAlarm: () -> Unit = {},
   ) {
     LazyVerticalGrid(
       modifier = modifier.padding(8.dp),
@@ -776,6 +729,9 @@ class MegaLiveVideoScreen constructor(
       horizontalArrangement = Arrangement.spacedBy(6.dp),
       verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+      if (uiState.supportsAlarm) {
+        item { FunctionalButton(icon = AlarmIcon, text = "Alarm", onClick = onClickAlarm, status = uiState.alarmStatus) }
+      }
       if (uiState.supportsRecord) {
         item {
           FunctionalButton(

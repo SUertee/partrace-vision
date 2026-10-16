@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     max_result_items: int = Field(default=5000, ge=1, le=50000)
     database_schema: str = Field(default="public", pattern=r"^[a-z_][a-z0-9_]{0,62}$")
     database_pool_size: int = Field(default=4, ge=1, le=16)
+    recording_job_lease_seconds: int = Field(default=60, ge=5, le=3600)
     agent_enabled: bool = False
     agent_cursor_secret_file: Path = Path(__file__).resolve().parents[2] / ".local-state/agent-cursor.key"
     agent_model: str | None = Field(default=None, min_length=1, max_length=100)
