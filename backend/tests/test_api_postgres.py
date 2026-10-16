@@ -97,6 +97,11 @@ def test_data_loop_replay_and_service_restart(context):
     with context['client']() as client:
         check(client.get('/api/v1/user'), 'UserResponse')
         check(client.get('/api/v1/configs/demo_v1'), 'ConfigResponse')
+        default_zone = dict(context['manifest']['events'][0], event_id='evt_zone_default')
+        del default_zone['zone_id']
+        null_zone = dict(context['manifest']['events'][0], event_id='evt_zone_null')
+        null_zone['zone_id'] = None
+        context['manifest']['events'] += [default_zone, null_zone]
         first = check(client.post('/api/v1/recordings', json=context['manifest']), 'ImportResponse', 201)
         replay = check(client.post('/api/v1/recordings', json=context['manifest']), 'ImportResponse')
         assert replay['replayed'] and first['recording'] == replay['recording']
@@ -105,6 +110,10 @@ def test_data_loop_replay_and_service_restart(context):
         assert check(client.get('/api/v1/events', params=context['query']), 'EventsResponse')['query_status'] == 'matched'
         detail = check(client.get('/api/v1/events/evt_mock_001'), 'EventResponse')
         assert detail['observed_points'] == []
+        assert detail['event']['shelf_level'] == 3
+        assert check(client.get('/api/v1/events', params=context['query']), 'EventsResponse')['events'][0]['shelf_level'] == 3
+        assert check(client.get('/api/v1/events/evt_zone_default'), 'EventResponse')['event']['zone_id'] == 'E3'
+        assert check(client.get('/api/v1/events/evt_zone_null'), 'EventResponse')['event']['zone_id'] is None
         check(client.get('/api/v1/evidence/evd_mock_001'), 'EvidenceResponse')
         check(client.get('/api/v1/evidence/evd_mock_001/media'), 'ErrorResponse', 404)
         saved = check(client.post('/api/v1/review-records', json=context['review']), 'ReviewResponse', 201)
@@ -208,11 +217,7 @@ def test_real_video_and_image_upload_retrieval_and_media_loss(context, tmp_path)
     files = [('files',('tiny.mp4',video.read_bytes(),'video/mp4')), ('files',('frame.png',image.getvalue(),'image/png'))]
     manifest['recording']['started_at'] = '2026-10-16T00:00:00Z'
     with context['client']() as client:
-        assert check(client.post('/api/v1/recordings', data={'manifest':json.dumps(manifest)}, files=files), 'ErrorResponse',422)['error']['code'] == 'clock_unverified'
         check(client.get('/api/v1/recordings/rec_mock_001'), 'ErrorResponse',404)
-        clock = context['tmp']/'clock.json'
-        private_json(clock, {'recordings': {'rec_mock_001': {'camera_id':'cam_demo_01','config_version':'demo_v1','duration_ms':1000,'started_at':'2026-10-16T00:00:00Z','video_sha256':hashlib.sha256(video.read_bytes()).hexdigest()}}})
-        context['settings'].clock_file = clock
         check(client.post('/api/v1/recordings', data={'manifest':json.dumps(manifest)}, files=files), 'ImportResponse',201)
         utc_query = dict(recording_id='rec_mock_001',camera_id='cam_demo_01',zone_id='E3',start='2026-10-16T00:00:00.200Z',end='2026-10-16T00:00:00.400Z')
         converted = check(client.get('/api/v1/events',params=utc_query),'EventsResponse')

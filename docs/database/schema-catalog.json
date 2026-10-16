@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "schema_sha256": "02ad7c01dde414caa8d6024b6b862d5674f7303ce5c6a7921f67bab205f24264",
+    "schema_sha256": "5366d6c5ab89b06064191a23c46d6c4913e691b279665fe85ffc2d6900ab905a",
     "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
     "postgres_version_num": 170011,
     "pgvector_version": "0.8.7",
@@ -8,10 +8,10 @@
       "method": "live_postgresql_system_catalog",
       "transport": "docker_exec_psql",
       "schema": "public",
-      "verified_at": "2026-10-13T14:42:32.933346Z",
-      "schema_sha256": "02ad7c01dde414caa8d6024b6b862d5674f7303ce5c6a7921f67bab205f24264",
+      "verified_at": "2026-10-16T16:14:04.140115Z",
+      "schema_sha256": "5366d6c5ab89b06064191a23c46d6c4913e691b279665fe85ffc2d6900ab905a",
       "catalog_query_sha256": "7521a508d6962a8c941bc80788c3f943f3ef71d2976e2a84403299916a34863d",
-      "structure_sha256": "017e2654cfaf524ac225de97927d344a9fcc47a2ef4f793dd5ee85a297e1c855",
+      "structure_sha256": "2623c3720c880b26a5a388c936f4b1a5e021220f7f4bcb4883d05bbb97efa320",
       "includes_records": false,
       "source_alignment": "Source table/column order and declared types checked against loaded catalog; DDL loading is a separate operation."
     },
@@ -46,6 +46,10 @@
       {
         "title": "用户取消会话固定录像",
         "revision": "2026-10-13 · 11 表、77 字段；每次运行仍查单段录像"
+      },
+      {
+        "title": "events 增加可空 shelf_level",
+        "revision": "2026-10-16 · 11 表、78 字段；货架层级自下而上 1–20，未知为 NULL"
       },
       {
         "title": "用户选择 PostgreSQL+pgvector",
@@ -550,8 +554,8 @@
           "foreign_key": false,
           "unique": false,
           "unique_groups": [],
-          "nullable": false,
-          "default": null,
+          "nullable": true,
+          "default": "'E3'::text",
           "references": [],
           "identity": "",
           "generated": ""
@@ -581,6 +585,21 @@
           "unique": false,
           "unique_groups": [],
           "nullable": false,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
+          "name": "shelf_level",
+          "type": "INTEGER",
+          "database_type": "integer",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
           "default": null,
           "references": [],
           "identity": "",
@@ -801,6 +820,12 @@
           "validated": true
         },
         {
+          "name": "ck_event_shelf",
+          "expression": "((shelf_level IS NULL) OR ((shelf_level >= 1) AND (shelf_level <= 20)))",
+          "sql": "CHECK (shelf_level IS NULL OR shelf_level >= 1 AND shelf_level <= 20)",
+          "validated": true
+        },
+        {
           "name": "ck_event_source",
           "expression": "(detection_source = ANY (ARRAY['automatic'::text, 'manual'::text, 'mock'::text]))",
           "sql": "CHECK (detection_source = ANY (ARRAY['automatic'::text, 'manual'::text, 'mock'::text]))",
@@ -820,8 +845,8 @@
         },
         {
           "name": "ck_event_zone",
-          "expression": "(length(TRIM(BOTH FROM zone_id)) > 0)",
-          "sql": "CHECK (length(TRIM(BOTH FROM zone_id)) > 0)",
+          "expression": "((zone_id IS NULL) OR (length(TRIM(BOTH FROM zone_id)) > 0))",
+          "sql": "CHECK (zone_id IS NULL OR length(TRIM(BOTH FROM zone_id)) > 0)",
           "validated": true
         }
       ],
@@ -864,7 +889,7 @@
         }
       ],
       "row_count": null,
-      "create_sql": "CREATE TABLE events (\n    event_id TEXT PRIMARY KEY NOT NULL,\n    recording_id TEXT NOT NULL,\n    zone_id TEXT NOT NULL,\n    track_key TEXT,\n    event_type TEXT NOT NULL,\n    observation_status TEXT NOT NULL DEFAULT 'candidate',\n    start_offset_ms BIGINT NOT NULL,\n    end_offset_ms BIGINT NOT NULL,\n    detection_source TEXT NOT NULL,\n    summary TEXT,\n    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_event_zone CHECK (length(trim(zone_id)) > 0),\n    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),\n    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),\n    CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),\n    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),\n    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))\n);",
+      "create_sql": "CREATE TABLE events (\n    event_id TEXT PRIMARY KEY NOT NULL,\n    recording_id TEXT NOT NULL,\n    zone_id TEXT DEFAULT 'E3',\n    track_key TEXT,\n    event_type TEXT NOT NULL,\n    shelf_level INTEGER,\n    observation_status TEXT NOT NULL DEFAULT 'candidate',\n    start_offset_ms BIGINT NOT NULL,\n    end_offset_ms BIGINT NOT NULL,\n    detection_source TEXT NOT NULL,\n    summary TEXT,\n    CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),\n    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),\n    CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),\n    CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),\n    CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),\n    CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),\n    CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))\n);",
       "label": "事件",
       "domain": "retrieval",
       "description": "视频里的区域事件和匿名局部 track_key；保留实际观测或候选，未知不推断。",
@@ -3682,11 +3707,11 @@
   ],
   "totals": {
     "tables": 11,
-    "columns": 77,
+    "columns": 78,
     "foreign_keys": 13,
     "logical_relationships": 2,
     "indices": 30,
-    "checks": 52,
+    "checks": 53,
     "triggers": 25
   }
 }

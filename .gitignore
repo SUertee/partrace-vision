@@ -33,11 +33,22 @@ android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esio
 *.log
 .DS_Store
 .vercel/
-./vision/.venv-track/
-
+vision/.venv-track/
 # Camera recordings and local experiments
 test_data/
 captures/
 *.mp4
 *.mov
 *.avi
+
+# Local Python virtualenvs, model weights and runtime artifacts (vision)
+.venv-track/
+vision/.runtime/
+vision/models/*.pt
+vision/models/reid/*.pth
+vision/data/
+vision/outputs/
+vision/test_video_new/
+
+# Local backups of the vision module
+.vision.bak-*/

@@ -1,5 +1,5 @@
 -- ParTrace Vision · 驿站追迹 · 最小数据库设计 0.3-mvp-draft
--- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段。
+-- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段。
 -- PostgreSQL 17 / pgvector 0.8.7 新空库 DDL 草案；不是既有库迁移，也不代表数据库或后端已部署。
 -- SQLite 历史验证稿已完整保存在 archive/schema-sqlite-0.3.sql，不再作为当前生产选型。
 -- 首版输入：固定摄像头/区域的一段完整连续预录视频，以及一份完整分析结果包。
@@ -11,6 +11,7 @@
 -- started_at 只有 UTC 起点得到验证才填写；NULL 不参与真实日期命中。
 -- 绝对时间统一 TIMESTAMPTZ；服务绑定带时区参数，API 输出 ISO 8601 UTC，不以本地时区补全未知时间。
 -- 子对象时间只存 BIGINT 视频偏移毫秒；UTC = 录像已验证起点 + 偏移，不重复存三套时钟。
+-- events.zone_id 表示货架编号（如 E3），不表示层级；层级由 shelf_level 表示，未知货架写 NULL，缺省填 'E3'。
 -- track_key 只在同一 recording 内有效；失去跟踪后换 key，关键帧点间默认未知。
 -- 一个 review 只针对一个 event，引用该事件全部固定关键帧；不做多事件分组或复核编辑。
 -- review_id 是客户端重试键；服务端比较已有规范化请求内容，不再新增幂等键列。
@@ -71,18 +72,20 @@ CREATE TABLE recordings (
 CREATE TABLE events (
     event_id TEXT PRIMARY KEY NOT NULL,
     recording_id TEXT NOT NULL,
-    zone_id TEXT NOT NULL,
+    zone_id TEXT DEFAULT 'E3',
     track_key TEXT,
     event_type TEXT NOT NULL,
+    shelf_level INTEGER,
     observation_status TEXT NOT NULL DEFAULT 'candidate',
     start_offset_ms BIGINT NOT NULL,
     end_offset_ms BIGINT NOT NULL,
     detection_source TEXT NOT NULL,
     summary TEXT,
     CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT ck_event_zone CHECK (length(trim(zone_id)) > 0),
+    CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),
     CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),
     CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),
+    CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),
     CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),
     CONSTRAINT ck_event_offsets CHECK (start_offset_ms >= 0 AND end_offset_ms >= start_offset_ms),
     CONSTRAINT ck_event_source CHECK (detection_source IN ('automatic', 'manual', 'mock'))

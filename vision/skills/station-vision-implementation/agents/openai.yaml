@@ -1,4 +1,4 @@
 interface:
   display_name: "驿站追迹视觉实施"
-  short_description: "在指定虚拟环境中开发、运行和验证驿站追迹的人物包裹交互视觉项目"
-  default_prompt: "请使用 $station-vision-implementation 实施本次视觉需求，并通过 .venv-track 运行和验证。"
+  short_description: "在 Linux .venv-track 环境中开发、运行和验证驿站追迹的人物货架交互视觉项目（NVIDIA L4 GPU）"
+  default_prompt: "请使用 $station-vision-implementation 实施本次视觉需求，并通过 .venv-track/bin/python 运行和验证。"

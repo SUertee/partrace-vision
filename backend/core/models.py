@@ -52,6 +52,8 @@ UtcTime = Annotated[
 ]
 OffsetMs = Annotated[int, Field(strict=True, ge=0, le=9223372036854775807)]
 DurationMs = Annotated[int, Field(strict=True, ge=1, le=9223372036854775807)]
+# 货架层级自下而上从 1 开始；1–20 是校验上限，不代表现场层数，未知或不适用传 null。
+ShelfLevel = Annotated[int, Field(strict=True, ge=1, le=20)]
 NormalizedCoordinate = Annotated[float, Field(strict=True, ge=0, le=1)]
 
 
@@ -136,9 +138,11 @@ class RecordingInput(StrictModel):
 
 class EventInput(StrictModel):
     event_id: Id
-    zone_id: Id
+    # 货架编号（如 E3），不表示层级；层级用 shelf_level。未知货架传 null，缺省 E3。
+    zone_id: Id | None = "E3"
     track_key: Id | None
     event_type: EventType
+    shelf_level: ShelfLevel | None = None
     observation_status: Literal["observed", "candidate"]
     start_offset_ms: OffsetMs
     end_offset_ms: OffsetMs

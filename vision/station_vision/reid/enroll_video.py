@@ -20,7 +20,13 @@ from .profile_store import ProfileStore,atomic_json,digest,read_archive
 from ..runtime_parameters import DEFAULT_CONFIG,load_parameters
 
 
-FONT='C:/Windows/Fonts/msyh.ttc'
+def _find_font():
+    candidates=['C:/Windows/Fonts/msyh.ttc',str(Path(__file__).resolve().parents[2]/'assets'/'fonts'/'NotoSansSC-Regular.otf'),
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf']
+    for path in candidates:
+        if Path(path).exists():return path
+    return candidates[0]
+FONT=_find_font()
 
 
 def bounded_candidates(items,candidate,maximum=48,bin_ms=200):
@@ -83,12 +89,17 @@ def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_v
 
 def report(output,results,summary):
     sections=[];font=ImageFont.truetype(FONT,16)
+    archive=output.parents[1]/'data'/'person_enrollment'
+    index={p.name:p for p in archive.rglob('*.png')} if archive.is_dir() else {}
+    def resolve_crop(path):
+        p=Path(str(path).replace('\\','/'))
+        return p if p.is_file() else index.get(p.name,p)
     for result in results:
         samples=result.get('keyframes',[])
         if not samples:continue
         sheet=Image.new('RGB',(200*len(samples),340),'#142034');draw=ImageDraw.Draw(sheet)
         for i,s in enumerate(samples):
-            pic=Image.open(s['crop_path']).convert('RGB');pic.thumbnail((195,280));sheet.paste(pic,(i*200+(200-pic.width)//2,48))
+            pic=Image.open(resolve_crop(s['crop_path'])).convert('RGB');pic.thumbnail((195,280));sheet.paste(pic,(i*200+(200-pic.width)//2,48))
             draw.text((i*200+4,4),f'{s["time_ms"]/1000:.3f}s\nQ={s["quality"]["selection_quality"]:.2f}',font=font,fill='white')
         name=result['track_id']+'_keyframes.jpg';sheet.save(output/name,quality=94)
         sections.append(f'<section><h2>{html.escape(result["track_id"])} → {html.escape(result.get("person_id") or "待确认")}</h2><p>{html.escape(result["action"])}</p><img src="{name}"><p>关键帧按源时间排列，前/侧/背角度不作未经验证的保证。</p></section>')
