@@ -6,6 +6,7 @@
 | --- | --- |
 | 全部业务模块及 DB／API 关联 | [模块设计](modules/README.md) |
 | Backend 与 Agent 怎样联动 | [内部接口、执行流程与下一步](modules/BACKEND_AGENT.md) |
+| Backend 与视觉算法怎样交接 | [职责、表、API 与真实证据包](modules/BACKEND_VISION.md) |
 | 模块分工、开发顺序与验收 | [开发计划](DEVELOPMENT_PLAN.md) |
 | 数据库表、字段与关系 | [数据库说明](database/README.md) · [建表 SQL](database/schema.sql) · [检索 SQL 示例](database/semantic-search.sql) |
 | API、参数与返回 | [API 设计](api/API_DESIGN.md) · [OpenAPI](api/openapi.json) · [模拟样例](api/examples/v0.3/) |

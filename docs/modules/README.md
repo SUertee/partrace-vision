@@ -63,6 +63,8 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 - **开发内容：** Vision 完成素材与人工基准、检测／匿名跟踪、区域事件和真实关键帧；Backend 校验并原子导入完整 `Recording + Event + Evidence` 包，提供已发布录像的列表与元数据。
 - **数据：** Backend 写 `recordings / events / evidence`；Vision 经授权导入作业交接，不直连 DB。媒体字节独立存储，表内保存存储键、状态和定位；向量走 M05。
 
+[Backend／Vision 联动说明](BACKEND_VISION.md) 汇总视觉分工、表读写、完整包与媒体上传、描述向量 API、重试和验收要求；沿用既有契约，不新增视觉任务服务。
+
 | 当前 API 草案 | 提供方 → 调用方 | 数据关联 |
 | --- | --- | --- |
 | `POST /api/v1/recordings` | Backend → Vision 导入作业 | 完整包写 `recordings / events / evidence` |
