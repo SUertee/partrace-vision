@@ -1,0 +1,54 @@
+name: Backend MVP
+
+on:
+  pull_request:
+    paths: ['backend/**', 'agent/**', 'infra/**', '.dockerignore', 'docs/api/openapi.json', 'docs/database/schema.sql', '.github/workflows/backend.yml']
+  push:
+    branches: [dev, main]
+    paths: ['backend/**', 'agent/**', 'infra/**', '.dockerignore', 'docs/api/openapi.json', 'docs/database/schema.sql', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: partrace_test
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: partrace_tests
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U partrace_test -d partrace_tests"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PARTRACE_TEST_DATABASE_URL: postgresql://partrace_test:ci-only-password@127.0.0.1:5432/partrace_tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned uv and media tools
+        run: |
+          python -m pip install uv==0.11.7
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install locked dependencies
+        run: uv sync --locked --group dev
+      - name: Prepare isolated test extension
+        run: |
+          uv run python - <<'PY'
+          import os, psycopg
+          with psycopg.connect(os.environ['PARTRACE_TEST_DATABASE_URL'], autocommit=True) as connection:
+              connection.execute('CREATE EXTENSION IF NOT EXISTS vector')
+          PY
+      - name: Unit, PostgreSQL and actual media tests
+        run: uv run pytest -q

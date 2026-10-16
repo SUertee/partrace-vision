@@ -2,9 +2,10 @@
 
 > 面向：后端开发（Python / FastAPI）
 > 目标库：AWS Aurora PostgreSQL **17.9** + pgvector **0.8.1**，库名 `partrace`
-> 文档版本：2026-10-16 ｜ 数据库状态：**已建好并通过 22 项功能测试** ｜ 后端：**尚未实现**
+> 文档版本：2026-10-16 ｜ 数据库状态：**已建好并通过 22 项功能测试** ｜ 后端：**已有 development 本地实现，Aurora IAM 接入尚未实现**
 > 契约基线：表结构、字段与约束以 [schema.sql](schema.sql)（`0.3-mvp-draft`，11 表 / 77 字段）为准。当前目标环境固定为 Aurora PostgreSQL **17.9** + pgvector **0.8.1**（已核对项目实际仅用 `vector` / `vector_dims` / `vector_norm` / `<=>`，功能维度满足，决定不升级），本文连接与报错实测结论均来自该实例。DDL 草案早前在 PostgreSQL 17 / pgvector 0.8.7 隔离环境验证（见 [schema-catalog.json](schema-catalog.json)），仅作历史验证记录，与目标环境版本的差异已确认无功能影响。
 > 范围说明：本文的建库与功能验证不替代后端服务实现、真实媒体、模型编码与业务闭环验收（D10），与 [README.md](README.md#建表检索与验证) 的验证口径一致。
+> 本地实现与运行入口见 [Backend README](../../backend/README.md)：当前使用独立本地 PostgreSQL／pgvector 和 development 鉴权，本文 Aurora 连接示例仍为待接入方案，不代表服务已接通该实例。
 
 ---
 

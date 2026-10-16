@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "partrace-agent"
+version = "0.1.0"
+description = "Bounded, read-only ParTrace Vision agent execution"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "langchain==1.4.6",
+    "langchain-openai==1.7.2",
+    "langsmith==0.14.9",
+    "pydantic==2.14.1",
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1"]
+
+[tool.setuptools]
+packages = ["agent", "agent.tools"]
+package-dir = { agent = "." }
+include-package-data = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -2,7 +2,7 @@
 
 按业务功能拆分需要开发的模块，关联实现目录、数据库、API 和开发任务。四个代码目录承载以下功能，不因增加业务模块而新增独立服务。
 
-**当前为待开发草案：11 张表、27 个 API 操作，其中首轮 22 个、P1 包裹 5 个。** 本页定义开发范围；字段以 [数据库 SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 为准，进度以任务实际验收为准。
+**契约草案为 11 张表、27 个操作，其中首轮 22 个、P1 包裹 5 个。** 本地 development 默认提供 14 个 Backend 操作，显式启用 Agent 后提供 22／27；P1 包裹仍待开发。实际实现与验证不等于外部模型、部署或 D10 业务验收。字段以 [数据库 SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 为准。
 
 ## 模块总表
 
@@ -35,7 +35,7 @@ flowchart LR
   X -.-> P
 ```
 
-Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision 独立 Python 工作进程生成结果包。Android 使用 Kotlin + Compose。图片、录像字节放文件或对象存储，数据库保存引用和状态，存储方案待确认。
+Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入同一应用；Vision 继续由独立 Python 工作进程生成结果包，Android 使用 Kotlin + Compose。本地媒体存入受限目录，数据库保存引用；对象存储和正式部署另行配置。安装与启用见 [Backend README](../../backend/README.md)，工具边界见 [Agent README](../../agent/README.md)。
 
 <a id="m01"></a>
 ## M01 · Android App 骨架与导航
@@ -92,7 +92,7 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 ## M05 · 事件描述向量与语义检索
 
 - **开发内容：** 生成可追溯的事件／关键帧描述，按统一模型和编码版本交接向量；Backend 校验并入库，以授权范围和相同模型空间检索；Agent 回查候选与真实证据。
-- **数据：** 写 `event_embeddings`；关联 `events` 及可选的同事件 `evidence`，筛选范围来自 `recordings`。pgvector 与业务表同库，模型、版本、维度和描述来源必须明确，模型与维度仍待确认。
+- **数据：** 写 `event_embeddings`；关联 `events` 及可选的同事件 `evidence`，筛选范围来自 `recordings`。pgvector 与业务表同库，模型、版本、维度和描述来源必须明确；实际模型空间由私有配置指定，外部编码效果仍待验收。
 
 | 当前 API 草案 | 提供方 → 调用方 | 数据关联 |
 | --- | --- | --- |
@@ -101,13 +101,15 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 
 **依赖与验收：** D04、D05 交接，D07 用只读工具调用；事件证据入库后，可与 M07 并行开发。先精确检索，再按实测决定 ANN 索引；相似度只排序候选，未索引与无匹配分别返回，模拟向量不计入真实效果。
 
+本地两个向量操作已实现，并使用真实 PG 检查同空间检索、幂等与索引缺口；HTTP 测试编码器明确为 mock，仅用于 mock 录像。未配置真实编码器返回 503，不把外部故障伪装成空结果；实际命令见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)。
+
 <a id="m06"></a>
 ## M06 · AI 会话、计划、分析与历史
 
 - **开发内容：** 本人会话与消息，问题转可修改计划，按确认计划运行／停止，返回引用并回读聊天与分析状态；模型与配置来源可追溯。
 - **数据：** Agent 与 Backend 协作写 `conversations / messages / runs`。会话不固定录像，每次运行仍限定一份录像；读取事实经后端只读工具，历史权限与引用归属依当前授权校验。
 
-[Backend／Agent 联动说明](BACKEND_AGENT.md) 具体定义内部服务、router 注入、运行／停止／重启和两位主责的下一步交付；公开 API 和表保持当前草案。
+[Backend／Agent 联动说明](BACKEND_AGENT.md) 对应当前权限 Gateway、历史事务、显式路由、运行／停止／重启实现；公开 API 和表保持当前草案。模型仅经五个只读工具读取元数据／描述，不直连数据库，也没有把关键帧字节交给 VLM 看图。
 
 | 当前 API 草案 | 提供方 → 调用方 | 数据关联 |
 | --- | --- | --- |
@@ -120,7 +122,7 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 | `GET /api/v1/agent/runs/{run_id}` | Agent → Android | 读 `runs`，校验本次录像与事件／帧引用 |
 | `POST /api/v1/agent/runs/{run_id}/stop` | Agent → Android | 更新非终态 `runs`，仍先验权 |
 
-**依赖与验收：** D07 可先准备入口和样例，真实查询依赖 M04／M05，D08 接 App。完成答复只保存一份；停止或失败不伪造答复，重启将旧 running 标为 failed／service_restarted，不自动续跑。运行读取可先用现有 GET；流式进度与逐工具步骤历史尚无 API 契约。
+**依赖与验收：** D07 已有本地独立包和可选八个路由，实际图使用显式 fake 模型、历史／终态使用真实 PG 测试，凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)。完成答复只保存一份；停止或失败不伪造答复，单执行器重启将旧 running 标为 failed／service_restarted，不自动续跑。外部 LLM／Embedding、真实视频业务及 D08／D10 App 联调仍待验收；流式进度与逐工具步骤历史尚无 API 契约。
 
 <a id="m07"></a>
 ## M07 · 人工核查与记录回读
@@ -183,3 +185,5 @@ Backend 使用 Python + FastAPI，Agent 首版接入同一 API 应用；Vision �
 另外需评审 AI 运行列表 `GET /api/v1/agent/runs?conversation_id=...`，用于重启后找回失败、停止或未完成运行；它仅在设计说明中提出，未纳入以上五个建议或 OpenAPI。消息历史不能找回所有运行。
 
 持续直播分析、跨镜关联、电商订单关联、Web 桌面查阅和多事件分组留档后续另评审；当前不扩张表或 API。开发前同时更新模块设计、DB／API 定义及样例，依赖与验收继续统一维护在 [开发计划](../DEVELOPMENT_PLAN.md)。
+
+D05／D09 原 12 个基础数据操作的说明和凭据保留在 [Backend README](../../backend/README.md) 与 [D05 记录](../../openspec/changes/d05-backend-mvp/verification.md)。当前增加向量两个操作和显式启用的 Agent 八个操作，验证见 [D07 记录](../../openspec/changes/d07-create-agent/verification.md)；外部模型、真实视觉、Android 和 D10 仍按工作包分别验收。
