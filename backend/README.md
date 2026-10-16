@@ -24,7 +24,8 @@ backend/
   services/              业务查询、校验与事务
     facts.py             录像整包导入、事件查询与人工核查
     semantic.py          向量校验、写入和同空间检索
-  storage/               数据库探测与媒体存储
+  storage/               数据库凭据、探测与媒体存储
+    credentials.py       Aurora IAM 动态令牌与连接类工厂
     database.py          PostgreSQL／pgvector 就绪检查
     media.py             视频与图片验证、私有文件存取和清理
   ai/                    Agent 在 Backend 中的宿主功能
@@ -40,7 +41,7 @@ backend/
   Dockerfile             使用仓库根目录构建上下文
 ```
 
-`api` 解析请求，`services` 处理事实业务，`storage` 处理数据库探测和媒体文件；`ai` 托管 Agent 的任务、权限与历史，独立 `agent` 包负责模型执行。新增源码放入对应子包，并同步打包清单和 Docker 白名单。`.venv / __pycache__ / .pytest_cache / build / *.egg-info` 是本地环境或生成产物，不属于源码分类；保留在 Git 忽略范围内。
+`api` 解析请求，`services` 处理事实业务，`storage` 处理数据库连接凭据、就绪探测和媒体文件；`ai` 托管 Agent 的任务、权限与历史，独立 `agent` 包负责模型执行。新增源码放入对应子包，并同步打包清单和 Docker 白名单。`.venv / __pycache__ / .pytest_cache / build / *.egg-info` 是本地环境或生成产物，不属于源码分类；保留在 Git 忽略范围内。
 
 [模块与 DB／API 关联](../docs/modules/README.md) · [OpenAPI](../docs/api/openapi.json) · [SQL](../docs/database/schema.sql) · [开发计划](../docs/DEVELOPMENT_PLAN.md) · [D05 验证](../openspec/changes/d05-backend-mvp/verification.md) · [D07 验证](../openspec/changes/d07-create-agent/verification.md)
 
@@ -82,6 +83,8 @@ Agent／Embedding 配置按 [.env.example](.env.example)补充到已生成的私
 | --- | --- |
 | `PARTRACE_ENVIRONMENT` | 本地使用 `development`；静态引导鉴权和管理命令不用于 staging／production |
 | `PARTRACE_DATABASE_URL` | 必填 PostgreSQL URL，包含明确主机及数据库名；不提供 SQLite 或内存回退 |
+| `PARTRACE_DATABASE_IAM_AUTH` | 默认 `false`；`true` 时改用 Aurora IAM 认证，为每条新物理连接现签 15 分钟令牌 |
+| `PARTRACE_DATABASE_IAM_REGION` | IAM 签名区域（如 `us-west-2`）；启用 IAM 时必填，且 URL 必须包含数据库用户 |
 | `PARTRACE_DATABASE_TIMEOUT_SECONDS` | 连接／语句等待边界，默认 5 秒 |
 | `PARTRACE_AUTH_FILE` | 仓库 `.local-state/auth.json`：只保存令牌 SHA-256 摘要、身份及授权 |
 | `PARTRACE_CONFIGS_DIR` | 仓库 `.local-state/configs/`：每个 JSON 文件直接包含一份配置对象 |
@@ -149,6 +152,14 @@ Compose 为 API 配置 160 MiB 临时盘、512 MiB 内存与 1 GiB 内存加交�
 默认 `started_at=null`，使用视频偏移。非空 UTC 起点需 `PARTRACE_CLOCK_FILE` 指向管理员校准文件，形状为 `{"recordings":{"recording_id":{"camera_id":"...","config_version":"...","duration_ms":1000,"started_at":"2026-10-16T00:00:00Z","video_sha256":"64位实际视频摘要"}}}`；必须与实际上传字节及清单完全匹配。它是部署可信输入，不能把客户端时间写入该文件来冒充独立校准。
 
 配置与签名放受保护的本地目录；auth摘要文件仅当前用户／root可读、权限0600。`infra/compose.yaml` 挂载 `.local-state`，启动前需把 `PARTRACE_UID`／`PARTRACE_GID` 设置为该目录文件所有者，并按Compose连接地址准备环境；本地host准备脚本生成的数据库URL不可直接当作容器内部URL。不要把本地演示令牌用于公网。
+
+Aurora 部署改用 `infra/compose.aurora.yaml` 叠加层，只启动 API 并指向托管集群：
+
+```sh
+docker compose -f infra/compose.yaml -f infra/compose.aurora.yaml up -d --no-deps api
+```
+
+在 `infra/.env` 设置 `PARTRACE_AURORA_HOST` 与 `PARTRACE_AURORA_REGION`；叠加层生成无密码、`sslmode=require` 的连接 URL 并强制开启 IAM 认证，捆绑的 postgres 变量仍须保留。该集群强制 IAM 认证、不接受任何密码登录；服务从 EC2 实例角色（IMDSv2）读取临时凭据，仅在内存中为每条新物理连接现签 15 分钟令牌，不配置静态密码、不落盘、不新增依赖。连接池、就绪检查、Agent 执行器和管理命令共用 [credentials.py](storage/credentials.py) 的同一连接类工厂；IAM 关闭时返回原生 psycopg 类，密码部署行为不变。IAM 路径只在带实例角色的 EC2 上可用，本地开发继续使用本地 PostgreSQL 密码连接。签名正确性由 `tests/test_credentials.py` 锁定（冻结时间戳下与 AWS 参考签名逐字节一致）；与真实 Aurora 集群的联调验证尚未执行，接入口径见 [后端写库对接文档](../docs/database/BACKEND_WRITE_GUIDE.md)。
 
 跨文件系统与数据库无法构成同一事务：服务先原子发布私有媒体，再提交PG，确定失败会清理本次文件；COMMIT连接中断、结果不明时保留可能已关联的媒体，并以相同ID／内容重试核对结果。进程崩溃遗留的未关联暂存文件需运维核对后清理；不会通过公开API列出这些文件。
 

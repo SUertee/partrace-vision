@@ -86,6 +86,7 @@ android/                 Android 前端
 backend/                 后端
 agent/                   AI Agent
 vision/                  视觉算法
+infra/                   Compose 部署与服务器引导（含 Aurora IAM 叠加层）
 docs/
   README.md               设计文档总入口
   modules/                业务模块、数据与接口关联
