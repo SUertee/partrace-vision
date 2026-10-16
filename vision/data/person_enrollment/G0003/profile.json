@@ -1,0 +1,23 @@
+{
+  "person_id": "G0003",
+  "possible_duplicate_of": null,
+  "active_image_count": 1,
+  "history_count": 0,
+  "minimum_three_images_met": false,
+  "keyframes": [
+    {
+      "legacy_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\outputs\\person_reid_B_9efd_first60_20261015\\gallery\\G0003\\01.jpg",
+      "source_image": "data\\person_enrollment\\person_003\\c200701f4449c159b9f5f97260c8ba94.png",
+      "source_image_sha256": "e5e275de63487fd0cb91d8395fe5959c9c8f5c69c60fd7dc32ae1f03f6b83d75",
+      "quality": {
+        "height": 246,
+        "width": 68,
+        "blur": 6288.846,
+        "reason": null
+      },
+      "crop_sha256": "8236007457bf097c123e07a1d284b7ad1d7453deee93b64a599d86cafa1839ec",
+      "archive_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0003\\01.jpg",
+      "crop_path": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0003\\01.jpg"
+    }
+  ]
+}

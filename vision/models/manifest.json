@@ -1,0 +1,13 @@
+{
+  "model_name": "yolo26n-pose",
+  "file": "yolo26n-pose.pt",
+  "task": "person detection and COCO body keypoints",
+  "source_url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-pose.pt",
+  "documentation": "https://docs.ultralytics.com/models/yolo26/",
+  "dependency_license_reference": "https://github.com/ultralytics/ultralytics/blob/main/LICENSE",
+  "sha256": "eb3bb8268828aeaf515cec23a4bfafd793944a86fe9af94ba7823609c14522a9",
+  "ultralytics_version": "8.4.174",
+  "tested_torch_version": "2.6.0+cpu",
+  "tested_device": "cpu",
+  "parcel_detector_enabled": false
+}

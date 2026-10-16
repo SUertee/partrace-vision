@@ -1,0 +1,383 @@
+{
+  "session": {
+    "person_id": "P001",
+    "region_id": "manual_03",
+    "shelf_level": 3,
+    "start_ms": 5800.0,
+    "start_frame_id": "f000173",
+    "detected_at_ms": 6100.0,
+    "hands": [
+      "left",
+      "right"
+    ],
+    "wrist_trigger_regions": [
+      "manual_02",
+      "manual_03"
+    ],
+    "supporting_observation_count": 82,
+    "trigger": "sustained_whole_shelf_reach",
+    "trigger_is_physical_contact_proof": false,
+    "end_ms": 8633.333,
+    "end_frame_id": "f000258",
+    "closed_at_ms": 10366.667,
+    "close_reason": "person_observation_lost",
+    "boundary_uncertain": true,
+    "id": "s0001",
+    "algorithm_parameters": {
+      "reach": {
+        "minimum_samples": 5,
+        "onset_tolerance_ms": 300,
+        "smooth_window_ms": 80,
+        "search_window_ms": 3000,
+        "minimum_approach_px_at_720": 15,
+        "minimum_approach_ms": 150,
+        "retreat_confirm_ms": 200,
+        "retreat_distance_px_at_720": 12,
+        "retreat_smooth_window_ms": 120,
+        "retreat_median_px_at_720": 10,
+        "max_observation_gap_ms": 150,
+        "withdrawal_window_ms": 1600,
+        "withdrawal_min_ms": 300,
+        "withdrawal_distance_px_at_720": 18,
+        "withdrawal_amplitude_ratio": 0.3,
+        "early_hand_tolerance_ms": 500
+      },
+      "layer_vote": {
+        "window_ms": 120,
+        "minimum_support": 3,
+        "minimum_fraction": 0.7
+      },
+      "evidence": {
+        "before_ms": 300,
+        "after_ms": 300
+      }
+    },
+    "reach_anchor": {
+      "hand": "right",
+      "onset_index": 173,
+      "peak_index": 215,
+      "withdrawal_index": 221,
+      "onset_ms": 5800.0,
+      "peak_ms": 7200.0,
+      "withdrawal_ms": 7400.0,
+      "approach_px_reference": 212.439,
+      "pose_confidence": 0.981,
+      "confirmed_approach_retreat": true
+    },
+    "layer_evidence": {
+      "region_id": "manual_03",
+      "shelf_level": 3,
+      "basis": "first_reach_hand_region_estimate",
+      "eligible_source_frames": 7,
+      "supporting_source_frames": 7,
+      "support_fraction": 1.0,
+      "votes": {
+        "manual_03": 7
+      },
+      "evidence": [
+        {
+          "frame_id": "f000212",
+          "time_ms": 7100.0,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            409.04736328125,
+            679.1304321289062
+          ],
+          "palm_estimate": [
+            443.686279296875,
+            652.2162475585938
+          ],
+          "uncertainty_segment": [
+            [
+              430.6966857910156,
+              662.3090667724609
+            ],
+            [
+              456.6758728027344,
+              642.1234283447266
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000213",
+          "time_ms": 7133.333,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            413.5101013183594,
+            691.2792358398438
+          ],
+          "palm_estimate": [
+            448.39320678710936,
+            670.2939575195312
+          ],
+          "uncertainty_segment": [
+            [
+              435.3120422363281,
+              678.1634368896484
+            ],
+            [
+              461.4743713378906,
+              662.4244781494141
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000214",
+          "time_ms": 7166.667,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            421.874267578125,
+            694.6970825195312
+          ],
+          "palm_estimate": [
+            457.8076904296875,
+            676.5431030273437
+          ],
+          "uncertainty_segment": [
+            [
+              444.33265686035156,
+              683.3508453369141
+            ],
+            [
+              471.28272399902346,
+              669.7353607177735
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000215",
+          "time_ms": 7200.0,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            426.4859313964844,
+            698.8690795898438
+          ],
+          "palm_estimate": [
+            462.05454711914064,
+            682.9730590820312
+          ],
+          "uncertainty_segment": [
+            [
+              448.71631622314453,
+              688.9340667724609
+            ],
+            [
+              475.39277801513674,
+              677.0120513916015
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000216",
+          "time_ms": 7233.333,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            429.9870300292969,
+            698.4805297851562
+          ],
+          "palm_estimate": [
+            463.5755676269531,
+            682.5180541992188
+          ],
+          "uncertainty_segment": [
+            [
+              450.97986602783203,
+              688.5039825439453
+            ],
+            [
+              476.17126922607423,
+              676.5321258544922
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000217",
+          "time_ms": 7266.667,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            431.5555725097656,
+            697.138916015625
+          ],
+          "palm_estimate": [
+            464.24342651367186,
+            680.1410888671875
+          ],
+          "uncertainty_segment": [
+            [
+              451.98548126220703,
+              686.5152740478516
+            ],
+            [
+              476.5013717651367,
+              673.7669036865234
+            ]
+          ]
+        },
+        {
+          "frame_id": "f000218",
+          "time_ms": 7300.0,
+          "region_id": "manual_03",
+          "level": 3,
+          "hand": "right",
+          "wrist": [
+            430.8554992675781,
+            693.6051025390625
+          ],
+          "palm_estimate": [
+            462.4898254394531,
+            675.1034912109375
+          ],
+          "uncertainty_segment": [
+            [
+              450.626953125,
+              682.0415954589844
+            ],
+            [
+              474.3526977539062,
+              668.1653869628906
+            ]
+          ]
+        }
+      ],
+      "is_physical_contact_proof": false,
+      "is_calibrated_probability": false,
+      "scope": "first_reach_origin_only; other operations require visual review"
+    },
+    "shelf_level_basis": "first_reach_hand_region_estimate",
+    "shelf_level_is_physical_contact_proof": false,
+    "identity": {
+      "local_person_id": "P001",
+      "profile_id": null,
+      "status": "unmatched",
+      "independent_matched_observations": 5,
+      "matched_feature_coverage": 0.455,
+      "evidence": [
+        {
+          "frame_id": "f000225",
+          "time_ms": 7533.333,
+          "profile_id": "G0005",
+          "similarity": 0.694512665271759
+        },
+        {
+          "frame_id": "f000233",
+          "time_ms": 7800.0,
+          "profile_id": "G0005",
+          "similarity": 0.6299862265586853
+        },
+        {
+          "frame_id": "f000241",
+          "time_ms": 8066.667,
+          "profile_id": "G0005",
+          "similarity": 0.6250980496406555
+        },
+        {
+          "frame_id": "f000249",
+          "time_ms": 8333.333,
+          "profile_id": "G0005",
+          "similarity": 0.664742648601532
+        },
+        {
+          "frame_id": "f000257",
+          "time_ms": 8600.0,
+          "profile_id": "G0005",
+          "similarity": 0.6985430717468262
+        }
+      ],
+      "identity_human_verified": false,
+      "similarity_is_probability": false,
+      "thresholds": {
+        "minimum_support": 3,
+        "minimum_coverage": 0.6
+      }
+    }
+  },
+  "sampling_quality": {
+    "unique_source_frames": 5,
+    "exactly_five_distinct_frames": true,
+    "context_truncated": false
+  },
+  "frames": [
+    {
+      "role": "before",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 5500.0,
+      "frame_id": "f000164",
+      "source_frame_index": 164,
+      "actual_ms": 5500.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/01_before_f000164.png",
+      "model_image_path": "keyframes/s0001/01_before_f000164.jpg",
+      "raw_sha256": "ef6d9bbdc09e86bc55e49cb5b786ecdd33311ea197d1d44468e3d7b711aba7c5",
+      "model_image_sha256": "9e3bbca7109bab29b543677584875ff141b7d866ea930c77cc4642c023e2894b"
+    },
+    {
+      "role": "reach_onset",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 5800.0,
+      "frame_id": "f000173",
+      "source_frame_index": 173,
+      "actual_ms": 5800.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/02_reach_onset_f000173.png",
+      "model_image_path": "keyframes/s0001/02_reach_onset_f000173.jpg",
+      "raw_sha256": "8d63adc0a6cb4cd3e68cce1abdcf526762a813b1806137f0a8c03fa7e6f51a59",
+      "model_image_sha256": "868501169cdb51baccc52cedc6e7c3c13250eaa96cfddcf220f707bf9d85fe5d"
+    },
+    {
+      "role": "reach_peak",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 7200.0,
+      "frame_id": "f000215",
+      "source_frame_index": 215,
+      "actual_ms": 7200.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/03_reach_peak_f000215.png",
+      "model_image_path": "keyframes/s0001/03_reach_peak_f000215.jpg",
+      "raw_sha256": "e8418b2a948a356679ed192ba58194ac351df67ee78cd4cd4bfe005298ce11df",
+      "model_image_sha256": "02f8c38649cad94a992b3f0ef6b1a0d0c3e7aa80703400306560ae1dce14a26b"
+    },
+    {
+      "role": "withdrawal",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 7400.0,
+      "frame_id": "f000221",
+      "source_frame_index": 221,
+      "actual_ms": 7400.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/04_withdrawal_f000221.png",
+      "model_image_path": "keyframes/s0001/04_withdrawal_f000221.jpg",
+      "raw_sha256": "a9fc5470489cc2900c569996abdf28bff0bcbae1355cb2c2df28690f3ab9eebc",
+      "model_image_sha256": "831444bb2bd490bdb08bbe87b375d54424295544c032393a9d2b431579c26fcb"
+    },
+    {
+      "role": "after",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 8933.333,
+      "frame_id": "f000267",
+      "source_frame_index": 267,
+      "actual_ms": 8933.333,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0001/05_after_f000267.png",
+      "model_image_path": "keyframes/s0001/05_after_f000267.jpg",
+      "raw_sha256": "8d66d99ef86a8f19c4f353bf65b3dbd257b86f67495f1aea9e833b3eae0b484f",
+      "model_image_sha256": "8593b31e31f37e3c7853224cbd515f73c3da2c8313b4befed3866be095420151"
+    }
+  ]
+}

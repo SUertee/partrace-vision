@@ -1,0 +1,63 @@
+{
+  "width": 720,
+  "height": 1280,
+  "fps": 29.960988296488946,
+  "source_frames": 768,
+  "duration_ms": 25633.37673611111,
+  "timestamp_basis_counts": {
+    "decoder_media_pts": 768
+  },
+  "observation_wall_s": 116.155,
+  "model_and_source_setup_s": 2.625,
+  "parcel_model_enabled": false,
+  "run_device": "cuda",
+  "hardware": {
+    "python_executable": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\.venv-track\\Scripts\\python.exe",
+    "run_device": "cuda",
+    "torch": "2.6.0+cu118",
+    "opencv": "5.0.0",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU"
+  },
+  "timings": {
+    "pose": {
+      "mean_ms": 39.402,
+      "p95_ms": 61.641,
+      "total_s": 30.26,
+      "count": 768
+    },
+    "registration": {
+      "mean_ms": 100.115,
+      "p95_ms": 143.773,
+      "total_s": 76.889,
+      "count": 768
+    },
+    "identity": {
+      "mean_ms": 5.085,
+      "p95_ms": 54.39,
+      "total_s": 3.905,
+      "count": 768
+    }
+  },
+  "registration_valid_frames": 768,
+  "calibration_reference": {
+    "reference_kind": "external_image",
+    "reference_image_sha256": "1631adc80391bd3c60ac46898ee0c020cc195712a60dda248172ed918f37808d",
+    "reference_width": 720,
+    "reference_height": 1280,
+    "reference_scale_xy": [
+      1.0,
+      1.0
+    ],
+    "source_kind": "video_frame",
+    "reference_source_time_ms": 0,
+    "alignment_checked_per_frame": true
+  },
+  "person_archive": {
+    "path": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\outputs\\anker_core_validation_20261016_01_A\\gallery_snapshot.json",
+    "sha256": "8ca3746c4a0ce2a132f5c78aac915e9be7b0000c87de373057c1dd8c60af55f5",
+    "profiles": 6,
+    "model": "osnet_x0_5",
+    "weights_sha256": "e96cbd20ee9cc3c6dcc0e8f4fbba8c8069d47647a5a96a59ce381fb785c54f68",
+    "read_only_in_B": true
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "person_id": "G0001",
+  "possible_duplicate_of": null,
+  "active_image_count": 2,
+  "history_count": 0,
+  "minimum_three_images_met": false,
+  "keyframes": [
+    {
+      "legacy_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\outputs\\person_reid_B_9efd_first60_20261015\\gallery\\G0001\\01.jpg",
+      "source_image": "data\\person_enrollment\\person_001\\4a5c5237e6435038928b32294e4ecd3a.png",
+      "source_image_sha256": "2cd3726616d26b7b43944fdce060368390eb65382cf27f4910cf0be7988b35ff",
+      "quality": {
+        "height": 184,
+        "width": 66,
+        "blur": 1076.705,
+        "reason": null
+      },
+      "crop_sha256": "6cec1a203c8b75ce59420486ce6dc46a753735b6cfcda9638f65ebbd729e5ca1",
+      "archive_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0001\\01.jpg",
+      "crop_path": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0001\\01.jpg"
+    },
+    {
+      "legacy_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\outputs\\person_reid_B_9efd_first60_20261015\\gallery\\G0001\\02.jpg",
+      "source_image": "data\\person_enrollment\\person_001\\f92223df31bfcbc801c63deb833ceaf0.png",
+      "source_image_sha256": "a6a77ebd4bfb8b0ffba196c338cdb429fc961a0b76a66624f3554d7a333e5819",
+      "quality": {
+        "height": 406,
+        "width": 129,
+        "blur": 224.292,
+        "reason": null
+      },
+      "crop_sha256": "18d161424f6c04857a896d715b0d12634676fa650b1a185da2060ccac55c938d",
+      "archive_crop": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0001\\02.jpg",
+      "crop_path": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\G0001\\02.jpg"
+    }
+  ]
+}
