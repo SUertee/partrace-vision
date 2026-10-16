@@ -4,7 +4,7 @@
 
 关联 [M03 视觉产物与视频入库](README.md#m03)、[M04 事件与证据](README.md#m04)、[M05 语义检索](README.md#m05)，对应 [D03 素材与人工基准](../DEVELOPMENT_PLAN.md#d03--固定素材与人工基准)、[D04 事件与证据包](../DEVELOPMENT_PLAN.md#d04--算法事件与真实证据包) 和 [D05 共用服务](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务)。字段、必填项和返回结构以 [OpenAPI](../api/openapi.json) 为准，表与约束以 [SQL](../database/schema.sql) 为准。本页整理既有交接约定，不新增表、API 或任务调度协议。
 
-截至本次本地核对，Backend 开发工作区已有完整包导入、事件／关键帧读取及两个向量操作，对应实现与验证记录随各自开发提交另行交付；[Vision 目录](../../vision/README.md) 当前只有开发入口，尚无算法程序。本次发布交接文档，不代表真实视觉效果、外部编码器或 Android D10 已验收。
+当前 `dev` 已包含完整包导入、事件／关键帧读取及两个向量操作，以及 [Vision A/B 算法与模型](../../vision/README_hua.md)；最新基线还包含 Linux 字体／依赖适配和公开事件 `shelf_level`。本轮文档更新不交付本地新增的原片队列或 API worker，也不改变下述既有离线完整包契约。实现与本地验证的区别见 [项目状态](../PROJECT_STATUS.md)，不代表真实视觉效果、外部编码器或 Android D10 已验收。
 
 ## 谁负责什么
 
@@ -56,7 +56,7 @@
 | `GET /api/v1/evidence/{evidence_id}/media` | 打开实际图片字节，与源视频同时间帧对照 | 读授权媒体文件；缺失返回 404 `media_missing` |
 | `POST /api/v1/events/search` | 用描述相关问题核对候选、引用及向量索引缺口 | 联读 `event_embeddings / events / evidence / recordings` |
 
-查询条件固定一份 `recording_id + camera_id + zone_id`，再选视频偏移 `start_offset_ms / end_offset_ms` 或经过校准的 UTC `start / end`；两组时间不能混用，规范偏移窗口为 `0 <= start < end` 的半开区间 `[start,end)`。语义搜索提交 `query_text + filter + top_k`（1–50），可选 `min_score`（-1–1），Backend 选择并回显模型空间，不接客户端查询向量。
+查询条件固定一份 `recording_id + camera_id + zone_id`，再选视频偏移 `start_offset_ms / end_offset_ms` 或按导入方声明的非空 `started_at` 换算的 UTC `start / end`；声明起点不证明真实拍摄时间，实际时钟验证仍待验收。两组时间不能混用，规范偏移窗口为 `0 <= start < end` 的半开区间 `[start,end)`。语义搜索提交 `query_text + filter + top_k`（1–50），可选 `min_score`（-1–1），Backend 选择并回显模型空间，不接客户端查询向量。
 
 ## 从源视频到可查询事实
 
@@ -111,7 +111,7 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 
 环境变量由授权操作者在私有环境设置；不在仓库或日志记录凭据。无媒体 `application/json` 仅用于模拟包，见 [mock 导入请求](../api/examples/v0.3/recording-import-mock-request.json)，其视频／帧 `file_name` 和 `started_at` 为 `null`，媒体状态为 `missing`。不能用该样例证明真实帧上传成功。
 
-本地默认限额为清单 2 MiB、媒体合计 64 MiB、事件与关键帧各 5000 项，实际以 Backend 部署配置为准，超限明确报错。真实上传依赖 ffprobe／ffmpeg；工具准备、受限媒体目录和 UTC 校准配置随实现维护到 [Backend README](../../backend/README.md)。文件系统与数据库不能形成同一事务：明确失败时补偿清理；提交结果不明时保留可能关联的媒体，由相同 ID／内容重试核对，不能盲目换 ID 重复导入。
+本地默认限额为清单 2 MiB、媒体合计 64 MiB、事件与关键帧各 5000 项，实际以 Backend 部署配置为准，超限明确报错。真实上传依赖 ffprobe／ffmpeg；工具准备和受限媒体目录见 [Backend README](../../backend/README.md)。UTC 换算使用导入方声明的起点，真实时钟及拍摄时刻仍需单独验证。文件系统与数据库不能形成同一事务：明确失败时补偿清理；提交结果不明时保留可能关联的媒体，由相同 ID／内容重试核对，不能盲目换 ID 重复导入。
 
 ## 描述与向量怎么交接
 
@@ -147,4 +147,20 @@ curl --fail-with-body "$PARTRACE_API_BASE/api/v1/recordings" \
 | 4 · M05 检索 | 徐泽华＋Harry Xu | 真实同空间向量写入与重复请求可核对；正向问题、无匹配、部分／完全未索引、编码器失败分别记录；失败后可补写缺项 |
 | 5 · D10 闭环 | 四人共同 | 同一真实事件完成 Android 查询／开帧、Agent 引用、人工保存、App 与服务重启回读；自动结果与人工标注分别报告 |
 
-算法程序、运行参数、模型／依赖版本和检查命令在实现后维护到 [Vision README](../../vision/README.md)。当前没有可执行的算法测试命令，本页不把协议样例、后端生成媒体测试或文档核对算作真实算法验收。源视频回放、跨镜关联、持续直播分析和视觉任务调度另行评审。
+已有算法入口、参数、模型／依赖和检查方式见 [Vision 运行说明](../../vision/README_hua.md)，模块范围见 [Vision README](../../vision/README.md)。本页不把协议样例、后端生成媒体测试或文档核对算作真实算法效果验收。本轮未在 Linux 环境重新实测已有适配；源视频回放、跨镜身份确认和持续直播分析另行评审。
+
+## 本地已验证，待合入 source-first
+
+以下记录来自 2026-10-17 本地开发工作区。**原片任务、独立 API worker、Android 前台协调器和对应 SQL／API 增量尚未随本次文档发布合入 `dev`**；当前分支仍按上文接收已完成分析的完整结果包。本段记录已发生的本地验证，不宣称当前 `dev` 已提供 source 模式、任务租约或完成回调接口，也不新增可直接执行的部署步骤。代码交付及后续验收以 [项目状态](../PROJECT_STATUS.md) 为准。
+
+本地验证的顺序为：SDK People 事件 → App 下载完整录像 → API 保存待解析录像与持久任务 → Vision 经受限 API 领取／续租／提交 → PostgreSQL 同事务发布完整事实及 completed → App 回读后发出完成提示。媒体字节由私有文件存储保存，数据库保存引用；Vision 不访问业务数据库。原生 People 不等同于 `shelf_interaction` 或拿取动作。
+
+| 本地验证项 | 已确认结果与边界 |
+| --- | --- |
+| A 真实历史录像 | 门铃 A 的一条手动历史 HUMAN 录像为 30.466 秒，真实 CPU 算法运行 44.902 秒，产生 5 条匿名局部轨迹和 10 张内部选帧；已走通 App 下载、API 上传、Backend 发布与 App 完成提示。未验证自然人身份，SDK 时间未独立校准，录像起点仍为 `null` |
+| A 业务事实 | A 仅执行建档，业务事件／证据为 0／0；内部选帧不等于已发布业务证据，不能把零计数解读为无人经过，也不据此确认区域动作 |
+| 图库与完成回调 | 任务 staging 只在 Backend 确认同一 job／attempt 已 completed 后才推广到已提交图库；App completed 只保证 PostgreSQL 事实提交，A 图库 CURRENT 在其后推广，不承诺 B 已读取新档案。两者不是跨系统原子事务，中断后需受权核对恢复 |
+| B 排队快照 | 本地最终核对时 12 条真实 B 原片为 queued，属于该时间点快照。现场货架标定和区域映射尚缺，没有完成真实 B 解析，不使用不匹配的旧场景标定或空结果伪装成功 |
+| B 配置版本 | v1 保持不可变；现场标定须发布新版本。已保存的旧 v1 原片不会自动使用新版本解析，须先明确迁移策略，不能悄悄改原任务或覆盖旧配置 |
+
+本地协调器限 App 前台且 SDK 已登录。Android 后台常驻、完整 B 真实链路、生产部署和 D10 的同一事件查询／证据／Agent 引用／人工核查闭环均未验收。A 实测未调用外部模型；完整远程 LLM／Embedding 业务效果须单独验收，不能由本次建档链路推断。

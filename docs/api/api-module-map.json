@@ -1,6 +1,6 @@
 {
   "version": "0.3-module-review",
-  "scope_note": "模块/API分工与当前0.3草案对应；11表77字段、27个current_draft均未实现，5个proposed不是已存在的接口。提供方指建议代码归属，调用方指初步接入分工。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入待实现。 AI会话不固定录像，会话及user问题仅active owner；计划/运行每次仍单视频，assistant经关联run验权；消息页任一无权助手答复使整页403，无正文或部分结果。",
+  "scope_note": "模块/API分工与当前0.3草案对应；11表79字段、28个current_draft包含已实现development操作和待开发包裹操作，5个proposed不是已存在的接口。提供方指建议代码归属，调用方指初步接入分工。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入已实现，生产部署待验收。 AI会话不固定录像，会话及user问题仅active owner；计划/运行每次仍单视频，assistant经关联run验权；消息页任一无权助手答复使整页403，无正文或部分结果。",
   "sources": [
     "docs/api/openapi.json",
     "docs/api/API_DESIGN.md",
@@ -91,7 +91,7 @@
       "id": "ai_conversations",
       "order": 4,
       "label": "AI 会话与运行",
-      "current_operation_count": 8,
+      "current_operation_count": 9,
       "owners": [
         "agent",
         "android",
@@ -704,7 +704,7 @@
       "read_tables": [],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入27个当前操作。"
+      "note": "未定义请求/返回，不计入28个当前操作。"
     },
     {
       "method": "GET",
@@ -718,7 +718,7 @@
       "read_tables": [],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入27个当前操作。"
+      "note": "未定义请求/返回，不计入28个当前操作。"
     },
     {
       "method": "GET",
@@ -738,7 +738,7 @@
       ],
       "write_tables": [],
       "stage": "homepage",
-      "note": "未定义请求/返回，不计入27个当前操作。"
+      "note": "未定义请求/返回，不计入28个当前操作。"
     },
     {
       "method": "GET",
@@ -756,7 +756,7 @@
       ],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入27个当前操作。"
+      "note": "未定义请求/返回，不计入28个当前操作。"
     },
     {
       "method": "GET",
@@ -772,7 +772,7 @@
       ],
       "write_tables": [],
       "stage": "later_review",
-      "note": "未定义请求/返回，不计入27个当前操作。"
+      "note": "未定义请求/返回，不计入28个当前操作。"
     }
   ],
   "integration_edges": [
@@ -806,7 +806,7 @@
   "sdk_branch": {
     "owner": "Harry Xu",
     "status": "independent_unverified",
-    "note": "官方设备连接、直播、原生事件与回放验证是独立支线，不计入团队27个API，不阻塞预录视频闭环。"
+    "note": "官方设备连接、直播、原生事件与回放验证是独立支线，不计入团队28个API，不阻塞预录视频闭环。"
   },
   "implementation_boundaries": [
     "Android主要调用团队backend/agent API；vision产出数据并导入，不必为每个模块建HTTP服务。",
@@ -820,6 +820,6 @@
   "approval": {
     "status": "reviewed_proposal",
     "date": "2026-10-13",
-    "note": "本轮已审核的模块归属、联调阶段及包裹5接口纳入现有API页面；HTTP契约以OpenAPI为准，27操作均尚未实现。"
+    "note": "本轮已审核的模块归属、联调阶段及包裹5接口纳入现有API页面；HTTP契约以OpenAPI为准，28操作均尚未实现。"
   }
 }

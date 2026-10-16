@@ -1,6 +1,7 @@
 # ParTrace Vision 最小 API · 0.3-mvp-draft
 
-**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加九个 Agent 操作，共 23／28。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，28 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
+本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
+**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加九个 Agent 操作，共 23／28。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 79 字段](../database/README.md)，28 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
 
 需要开发的业务模块、主责、表读写与 API 交接见 [模块设计](../modules/README.md)。本页维护字段语义、范围与返回约定。
 
@@ -50,7 +51,7 @@
 | `GET /parcels/{parcel_id}/records` | 按 `sequence_no` 递增、稳定分页读取入出库历史 |
 | `POST /parcels/{parcel_id}/records` | 管理员显式确认入库或出库，记录只追加 |
 
-独立 `agent/` 包提供 `create_agent` 引擎，Backend 在显式启用后组合历史服务并挂载 `/api/v1/agent` 的既有八个操作：
+独立 `agent/` 包提供 `create_agent` 引擎，Backend 在显式启用后组合历史服务并挂载 `/api/v1/agent` 的既有九个操作：
 
 | 方法 / 路径 | 用途 |
 |---|---|
@@ -59,6 +60,7 @@
 | `POST /plans` | 绑定用户消息，生成可修改 `query/query_text/steps` |
 | `POST /runs` | 稳定 run ID 执行最终确认计划，保存运行状态 |
 | `GET /runs/{run_id}`、`POST /runs/{run_id}/stop` | 回读分析 / 停止，终态不再追加 |
+| `GET /runs/{run_id}/events` | Agent运行快照与终态SSE，完成后返回卡片包；不是Vision完成推送 |
 
 会话元数据与用户问题仅按有效 Bearer 身份及当前 active owner 验证，不要求 `data:read` 或录像授权；录像撤权不隐藏会话列表。计划、运行（含状态读取、停止及重试）需要 `data:read`，并按本次 `Query.recording_id` 验证当前录像授权与 Event/Evidence 引用归属，不以其他轮次或会话替代。助手消息通过关联 run 验证同一范围；消息分页含任一无权助手消息时整页 403，无正文或部分结果，不静默过滤。管理员也不能越过 owner。Agent 可保存自己的 AI 历史，调用监控事实工具仍只读，不导入事件、写向量或保存人工决定。
 

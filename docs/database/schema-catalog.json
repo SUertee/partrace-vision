@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "schema_sha256": "5366d6c5ab89b06064191a23c46d6c4913e691b279665fe85ffc2d6900ab905a",
+    "schema_sha256": "ad98c4964bc670fb4f67bdd368a216a3023078eadb42fe302e50ed2ad3ec2e41",
     "postgres_version": "17.11 (Debian 17.11-1.pgdg12+2)",
     "postgres_version_num": 170011,
     "pgvector_version": "0.8.7",
@@ -8,17 +8,17 @@
       "method": "live_postgresql_system_catalog",
       "transport": "docker_exec_psql",
       "schema": "public",
-      "verified_at": "2026-10-16T16:14:04.140115Z",
-      "schema_sha256": "5366d6c5ab89b06064191a23c46d6c4913e691b279665fe85ffc2d6900ab905a",
+      "verified_at": "2026-10-16T17:43:01.617517Z",
+      "schema_sha256": "ad98c4964bc670fb4f67bdd368a216a3023078eadb42fe302e50ed2ad3ec2e41",
       "catalog_query_sha256": "7521a508d6962a8c941bc80788c3f943f3ef71d2976e2a84403299916a34863d",
-      "structure_sha256": "2623c3720c880b26a5a388c936f4b1a5e021220f7f4bcb4883d05bbb97efa320",
+      "structure_sha256": "6933f2dd25db4fa9f3d36c13eb268bc6bbe87add6f6cd51f3b36874166dc9119",
       "includes_records": false,
       "source_alignment": "Source table/column order and declared types checked against loaded catalog; DDL loading is a separate operation."
     },
     "title": "ParTrace Vision · 最小数据库设计",
     "schema_version": "0.3-mvp-draft",
     "status": "draft",
-    "generated_date": "2026-10-13",
+    "generated_date": "2026-10-17",
     "engine": "PostgreSQL+pgvector",
     "production_engine": "PostgreSQL+pgvector",
     "source_files": [
@@ -52,13 +52,17 @@
         "revision": "2026-10-16 · 11 表、78 字段；货架层级自下而上 1–20，未知为 NULL"
       },
       {
+        "title": "计入 Agent 运行卡片",
+        "revision": "2026-10-17 · 当前 dev 11 表、79 字段；runs.cards_json 保存已完成卡片"
+      },
+      {
         "title": "用户选择 PostgreSQL+pgvector",
         "revision": "2026-10-13"
       }
     ],
     "parity": "Loaded public schema read from PostgreSQL pg_catalog in a read-only transaction; constraint/index/trigger/function definitions use pg_get_*; source CREATE TABLE statements attached separately.",
     "disclaimer": "设计草案；真实 PostgreSQL+pgvector 本地结构验证，不代表已部署业务服务或完成数据/检索验收。目录不含业务记录。",
-    "annotations_sha256": "0b410bbf9bbe8552621698b5f9be352d884f572d6c9d1f27076b8da391cbdf2b"
+    "annotations_sha256": "824a222237ef720c3df8d7178003235612ade1819e10de0156238eddac9f8a72"
   },
   "tables": [
     {
@@ -1680,7 +1684,7 @@
       "create_sql": "CREATE TABLE event_embeddings (\n    embedding_id TEXT PRIMARY KEY NOT NULL,\n    event_id TEXT NOT NULL,\n    evidence_id TEXT,\n    source_text TEXT NOT NULL,\n    embedding VECTOR NOT NULL,\n    model_name TEXT NOT NULL,\n    model_version TEXT NOT NULL,\n    dimensions INTEGER NOT NULL,\n    content_sha256 TEXT NOT NULL,\n    created_at TIMESTAMPTZ NOT NULL,\n    CONSTRAINT fk_embedding_event FOREIGN KEY (event_id) REFERENCES events (event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_embedding_evidence_event FOREIGN KEY (evidence_id, event_id) REFERENCES evidence (evidence_id, event_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_embedding_identity CHECK (length(trim(embedding_id)) > 0 AND length(trim(event_id)) > 0 AND (evidence_id IS NULL OR length(trim(evidence_id)) > 0)),\n    CONSTRAINT ck_embedding_source CHECK (length(trim(source_text)) > 0),\n    CONSTRAINT ck_embedding_model CHECK (length(trim(model_name)) > 0 AND length(trim(model_version)) > 0),\n    CONSTRAINT ck_embedding_shape CHECK (dimensions BETWEEN 1 AND 16000 AND vector_dims(embedding) = dimensions),\n    CONSTRAINT ck_embedding_nonzero CHECK (vector_norm(embedding) > 0),\n    CONSTRAINT ck_embedding_content CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),\n    CONSTRAINT ck_embedding_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')\n);",
       "label": "事件向量",
       "domain": "retrieval",
-      "description": "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务待实现。",
+      "description": "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务已在development实现，真实编码配置与效果待验收。",
       "source_file": "docs/database/schema.sql"
     },
     {
@@ -2600,6 +2604,21 @@
           "generated": ""
         },
         {
+          "name": "cards_json",
+          "type": "JSONB",
+          "database_type": "jsonb",
+          "primary_key": false,
+          "pk_position": 0,
+          "foreign_key": false,
+          "unique": false,
+          "unique_groups": [],
+          "nullable": true,
+          "default": null,
+          "references": [],
+          "identity": "",
+          "generated": ""
+        },
+        {
           "name": "model_key",
           "type": "TEXT",
           "database_type": "text",
@@ -2794,6 +2813,12 @@
       ],
       "checks": [
         {
+          "name": "ck_run_cards",
+          "expression": "((cards_json IS NULL) OR ((jsonb_typeof(cards_json) = 'object'::text) AND ((cards_json ->> 'version'::text) = '1'::text) AND (jsonb_typeof((cards_json -> 'cards'::text)) = 'array'::text) AND (jsonb_typeof((cards_json -> 'query'::text)) = 'object'::text)))",
+          "sql": "CHECK (cards_json IS NULL OR jsonb_typeof(cards_json) = 'object'::text AND (cards_json ->> 'version'::text) = '1'::text AND jsonb_typeof(cards_json -> 'cards'::text) = 'array'::text AND jsonb_typeof(cards_json -> 'query'::text) = 'object'::text)",
+          "validated": true
+        },
+        {
           "name": "ck_run_error",
           "expression": "((error_json IS NULL) OR (jsonb_typeof(error_json) = 'object'::text))",
           "sql": "CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object'::text)",
@@ -2825,8 +2850,8 @@
         },
         {
           "name": "ck_run_terminal",
-          "expression": "(((status = 'running'::text) AND (finished_at IS NULL) AND (error_json IS NULL)) OR ((status = ANY (ARRAY['completed'::text, 'stopped'::text])) AND (finished_at IS NOT NULL) AND (error_json IS NULL)) OR ((status = 'failed'::text) AND (finished_at IS NOT NULL) AND (error_json IS NOT NULL)))",
-          "sql": "CHECK (status = 'running'::text AND finished_at IS NULL AND error_json IS NULL OR (status = ANY (ARRAY['completed'::text, 'stopped'::text])) AND finished_at IS NOT NULL AND error_json IS NULL OR status = 'failed'::text AND finished_at IS NOT NULL AND error_json IS NOT NULL)",
+          "expression": "(((status = 'running'::text) AND (finished_at IS NULL) AND (error_json IS NULL) AND (cards_json IS NULL)) OR ((status = 'completed'::text) AND (finished_at IS NOT NULL) AND (error_json IS NULL) AND (cards_json IS NOT NULL)) OR ((status = 'stopped'::text) AND (finished_at IS NOT NULL) AND (error_json IS NULL) AND (cards_json IS NULL)) OR ((status = 'failed'::text) AND (finished_at IS NOT NULL) AND (error_json IS NOT NULL) AND (cards_json IS NULL)))",
+          "sql": "CHECK (status = 'running'::text AND finished_at IS NULL AND error_json IS NULL AND cards_json IS NULL OR status = 'completed'::text AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NOT NULL OR status = 'stopped'::text AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NULL OR status = 'failed'::text AND finished_at IS NOT NULL AND error_json IS NOT NULL AND cards_json IS NULL)",
           "validated": true
         },
         {
@@ -2887,7 +2912,7 @@
         }
       ],
       "row_count": null,
-      "create_sql": "CREATE TABLE runs (\n    run_id TEXT PRIMARY KEY NOT NULL,\n    conversation_id TEXT NOT NULL,\n    input_message_id TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'running',\n    plan_json JSONB NOT NULL,\n    references_json JSONB NOT NULL DEFAULT '[]'::jsonb,\n    model_key TEXT NOT NULL,\n    error_json JSONB,\n    created_at TIMESTAMPTZ NOT NULL,\n    finished_at TIMESTAMPTZ,\n    CONSTRAINT fk_run_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_run_input_message FOREIGN KEY (input_message_id) REFERENCES messages (message_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_run_identity CHECK (length(trim(run_id)) > 0 AND length(trim(model_key)) > 0),\n    CONSTRAINT ck_run_status CHECK (status IN ('running', 'completed', 'stopped', 'failed')),\n    CONSTRAINT ck_run_plan CHECK (\n        CASE WHEN jsonb_typeof(plan_json) = 'object'\n            AND jsonb_typeof(plan_json -> 'query') = 'object'\n            AND jsonb_typeof(plan_json -> 'query_text') = 'string'\n            AND length(trim(plan_json ->> 'query_text')) > 0\n            AND jsonb_typeof(plan_json -> 'steps') = 'array'\n            AND jsonb_typeof(plan_json #> '{query,recording_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,recording_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,camera_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,camera_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,zone_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,zone_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,start_offset_ms}') = 'number'\n            AND jsonb_typeof(plan_json #> '{query,end_offset_ms}') = 'number'\n        THEN COALESCE(\n            (plan_json #>> '{query,start_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,end_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,start_offset_ms}')::numeric BETWEEN 0 AND 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric <= 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric > (plan_json #>> '{query,start_offset_ms}')::numeric,\n            FALSE\n        )\n        ELSE FALSE END\n    ),\n    CONSTRAINT ck_run_references CHECK (jsonb_typeof(references_json) = 'array'),\n    CONSTRAINT ck_run_time CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00' AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at >= created_at))),\n    CONSTRAINT ck_run_terminal CHECK (\n        (status = 'running' AND finished_at IS NULL AND error_json IS NULL)\n        OR (status IN ('completed', 'stopped') AND finished_at IS NOT NULL AND error_json IS NULL)\n        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL)\n    ),\n    CONSTRAINT ck_run_error CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object')\n);",
+      "create_sql": "CREATE TABLE runs (\n    run_id TEXT PRIMARY KEY NOT NULL,\n    conversation_id TEXT NOT NULL,\n    input_message_id TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'running',\n    plan_json JSONB NOT NULL,\n    references_json JSONB NOT NULL DEFAULT '[]'::jsonb,\n    cards_json JSONB,\n    model_key TEXT NOT NULL,\n    error_json JSONB,\n    created_at TIMESTAMPTZ NOT NULL,\n    finished_at TIMESTAMPTZ,\n    CONSTRAINT fk_run_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT fk_run_input_message FOREIGN KEY (input_message_id) REFERENCES messages (message_id) ON DELETE RESTRICT ON UPDATE RESTRICT,\n    CONSTRAINT ck_run_identity CHECK (length(trim(run_id)) > 0 AND length(trim(model_key)) > 0),\n    CONSTRAINT ck_run_status CHECK (status IN ('running', 'completed', 'stopped', 'failed')),\n    CONSTRAINT ck_run_plan CHECK (\n        CASE WHEN jsonb_typeof(plan_json) = 'object'\n            AND jsonb_typeof(plan_json -> 'query') = 'object'\n            AND jsonb_typeof(plan_json -> 'query_text') = 'string'\n            AND length(trim(plan_json ->> 'query_text')) > 0\n            AND jsonb_typeof(plan_json -> 'steps') = 'array'\n            AND jsonb_typeof(plan_json #> '{query,recording_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,recording_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,camera_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,camera_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,zone_id}') = 'string'\n            AND length(trim(plan_json #>> '{query,zone_id}')) > 0\n            AND jsonb_typeof(plan_json #> '{query,start_offset_ms}') = 'number'\n            AND jsonb_typeof(plan_json #> '{query,end_offset_ms}') = 'number'\n        THEN COALESCE(\n            (plan_json #>> '{query,start_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,end_offset_ms}') ~ '^[0-9]+$'\n            AND (plan_json #>> '{query,start_offset_ms}')::numeric BETWEEN 0 AND 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric <= 9223372036854775807\n            AND (plan_json #>> '{query,end_offset_ms}')::numeric > (plan_json #>> '{query,start_offset_ms}')::numeric,\n            FALSE\n        )\n        ELSE FALSE END\n    ),\n    CONSTRAINT ck_run_references CHECK (jsonb_typeof(references_json) = 'array'),\n    CONSTRAINT ck_run_cards CHECK (\n        cards_json IS NULL OR (\n            jsonb_typeof(cards_json) = 'object'\n            AND cards_json ->> 'version' = '1'\n            AND jsonb_typeof(cards_json -> 'cards') = 'array'\n            AND jsonb_typeof(cards_json -> 'query') = 'object'\n        )\n    ),\n    CONSTRAINT ck_run_time CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00' AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at >= created_at))),\n    CONSTRAINT ck_run_terminal CHECK (\n        (status = 'running' AND finished_at IS NULL AND error_json IS NULL AND cards_json IS NULL)\n        OR (status = 'completed' AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NOT NULL)\n        OR (status = 'stopped' AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NULL)\n        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL AND cards_json IS NULL)\n    ),\n    CONSTRAINT ck_run_error CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object')\n);",
       "label": "Agent 分析",
       "domain": "agent",
       "description": "确认后的计划、模型配置版本、运行状态及事件/关键帧引用；引用 JSON 由服务验证，终态不可覆盖，不能替代人工核查。",
@@ -3707,11 +3732,11 @@
   ],
   "totals": {
     "tables": 11,
-    "columns": 78,
+    "columns": 79,
     "foreign_keys": 13,
     "logical_relationships": 2,
     "indices": 30,
-    "checks": 53,
+    "checks": 54,
     "triggers": 25
   }
 }

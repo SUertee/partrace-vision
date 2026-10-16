@@ -24,5 +24,24 @@
   "model_key": "mock-language-model@mock-run-config-v1",
   "error": null,
   "created_at": "2026-10-13T03:00:03Z",
-  "finished_at": "2026-10-13T03:00:05Z"
+  "finished_at": "2026-10-13T03:00:05Z",
+  "cards": {
+    "version": 1,
+    "run_id": "run_mock_001",
+    "query": {
+      "recording_id": "rec_mock_001",
+      "camera_id": "cam_demo_01",
+      "zone_id": "E3",
+      "start_offset_ms": 0,
+      "end_offset_ms": 120000
+    },
+    "cards": [
+      {
+        "kind": "run_summary",
+        "title": "模拟分析结果",
+        "summary": "模拟结果中有1个候选事件；关键帧缺失，无法做事实核查。",
+        "references": []
+      }
+    ]
+  }
 }

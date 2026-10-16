@@ -1,6 +1,7 @@
 # 最小数据库设计
 
-**PostgreSQL + pgvector · 0.3-mvp-draft · 11 张表、77 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，尚未部署业务数据库或实现服务。
+本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
+**PostgreSQL + pgvector · 0.3-mvp-draft · 11 张表、79 个字段。** 当前设计包含「视频 → 事件与关键帧 → 结构化／语义检索 → 人工核查保存」、AI 会话与分析历史，以及包裹建档与管理员确认的入出库流水，development服务与本地PG已使用，生产部署和完整业务效果未验收。
 
 关系图按五个数据模块分组：**视频素材**（`recordings`）、**事件与检索**（`events / evidence / event_embeddings`）、**AI 会话与运行**（`conversations / messages / runs`）、**账号与核查**（`users / review_records`）、**包裹与入出库**（`parcels / parcel_records`）。这是业务数据的分组；接口可跨模块读写，团队分工见开发计划。
 
@@ -8,13 +9,13 @@
 | --- | ---: | --- | --- |
 | `users` | 5 | App 用户名称、角色、启用状态和创建时间 | [M02 账号](../modules/README.md#m02)；AI／核查／入出库身份归属 |
 | `recordings` | 10 | 视频来源、摄像头配置、时间起点、时长与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
-| `events` | 10 | 区域事件、视频内匿名片段、发生时间与候选说明 | [M03 产出／入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
+| `events` | 11 | 区域事件、视频内匿名片段、发生时间与候选说明 | [M03 产出／入库](../modules/README.md#m03)、[M04 查询](../modules/README.md#m04) |
 | `evidence` | 6 | 事件的关键帧、视频偏移、可选检测框与文件状态 | [M03 入库](../modules/README.md#m03)、[M04 证据回看](../modules/README.md#m04) |
 | `event_embeddings` | 10 | 事件描述文本向量、模型版本和关联关键帧 | [M05 语义检索](../modules/README.md#m05) |
 | `review_records` | 7 | 原查询、所查事件、人工结论、说明、操作人与保存时间 | [M07 人工核查](../modules/README.md#m07)、[M08 首页](../modules/README.md#m08) |
 | `conversations` | 3 | 用户的 AI 会话，不固定视频 | [M06 AI 会话](../modules/README.md#m06) |
 | `messages` | 6 | 会话中的用户问题与完整助手答复 | [M06 聊天历史](../modules/README.md#m06) |
-| `runs` | 10 | 一次分析的执行计划、状态、模型配置版本、证据引用与错误 | [M06 分析运行](../modules/README.md#m06) |
+| `runs` | 11 | 一次分析的执行计划、状态、模型配置版本、证据引用与错误 | [M06 分析运行](../modules/README.md#m06) |
 | `parcels` | 3 | 内部包裹 ID、二维码使用的唯一文本单号与建档时间 | [M10 P1 包裹](../modules/README.md#m10) |
 | `parcel_records` | 7 | 包裹内序号、入出库动作、区域、操作人与实际登记时间 | [M10 P1 入出库](../modules/README.md#m10) |
 
@@ -81,7 +82,7 @@ SQL 保证单号唯一、真实包裹与用户外键、正序号及同包裹序�
 | --- | --- |
 | `conversations` | `conversation_id`、`user_id`、`created_at` |
 | `messages` | `message_id`、`conversation_id`、`role`、`content`、`run_id`、`created_at` |
-| `runs` | `run_id`、`conversation_id`、`input_message_id`、`status`、`plan_json`、`references_json`、`model_key`、`error_json`、`created_at`、`finished_at` |
+| `runs` | `run_id`、`conversation_id`、`input_message_id`、`status`、`plan_json`、`references_json`、`model_key`、`error_json`、`created_at`、`finished_at`、`cards_json` |
 
 一位用户可以开启多个会话；会话不固定录像。同一会话有多条消息和多次运行，每次运行仍查询一段录像，不同运行可以选择不同录像。用户消息的 `run_id` 为空；每次完成的运行最多写入一条助手答复，答复正文只存 `messages.content`。
 
@@ -119,7 +120,7 @@ OpsClaw 依据本机该版本的 `opsclaw/db/models.py` 与 `opsclaw/core/chat/s
 ## 首版规则
 
 - **输入先收窄：** 只导入连续视频的完整分析包；失败整包回滚。摄像头、区域与 ROI 放不可覆盖的配置文件，录像保存 `camera_id + config_version`。SDK 原生事件与离散帧包先留在验证支线。
-- **时间只存一套：** 录像有已验证的 UTC 起点时才填 `started_at`；事件和帧只存视频偏移毫秒。未知 UTC 仍可按视频偏移回看，不参与确定的日期查询。
+- **时间只存一套：** dev对非空 `started_at` 按导入方声明保存和换算，声明不证明拍摄时刻；事件和帧只存视频偏移毫秒。未知起点应留null，仍可按偏移回看；真实日期取证另须核对时钟基准。
 - **结果不覆盖：** 每个 `recording_id` 对应一份最终分析。同 ID、同清单内容重试返回原结果；不同内容返回冲突。重算或重新校时新增 `recording_id`，旧事件和关键帧保持不变。
 - **路线来自实际点：** `track_key` 只在一段视频中有效；跟踪丢失后换 key。按关键帧的时间与检测框显示离散观测点，点间保持未知，不当作连续路径或人物身份。
 - **核查只追加：** 一条记录只查一个事件，自动引用该事件的全部固定关键帧；`query_json` 仅保存录像、摄像头、区域和起止偏移五项条件。结论为 `confirmed / dismissed / uncertain`，人工结论不改变原始候选事件。重试沿用 `review_id`，服务端比较已保存的规范化请求；不同内容返回冲突。
@@ -134,7 +135,7 @@ OpsClaw 依据本机该版本的 `opsclaw/db/models.py` 与 `opsclaw/core/chat/s
 
 [schema.sql](schema.sql) 用于新建空库，不是现有生产库迁移。它启用 `vector` 扩展并一次性创建表、索引与约束函数；不执行删除或覆盖已有表。开发环境需有安装 pgvector 的 PostgreSQL，本次验证采用 PostgreSQL 17 / pgvector 0.8.7。
 
-[semantic-search.sql](semantic-search.sql) 是只读 `PREPARE` 示例：后端先检查用户身份、录像权限、范围和模型配置；`MATERIALIZED` CTE 限定候选录像与模型空间，再做精确余弦排序，选每个来源最新描述并按事件去重。它不代替鉴权、向量生成或 `matched/no_matches/unindexed` 统计，尚无运行 API 服务。
+[semantic-search.sql](semantic-search.sql) 是只读 `PREPARE` 示例：后端先检查用户身份、录像权限、范围和模型配置；`MATERIALIZED` CTE 限定候选录像与模型空间，再做精确余弦排序，选每个来源最新描述并按事件去重。它不代替鉴权、向量生成或 `matched/no_matches/unindexed` 统计，已有development API实现，真实编码配置和效果仍待验收。
 
 可在自己创建的隔离开发容器中验证（`partrace-check` 是示例容器名）：
 

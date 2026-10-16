@@ -4,7 +4,7 @@
   "info": {
     "title": "ParTrace Vision MVP API",
     "version": "0.3-mvp-draft",
-    "description": "设计草案，未实现、未冻结。单视频区域事件、关键帧、文本向量、人工核查、AI聊天/分析历史及二维码包裹入出库；十一张SQL表（77字段），27个草案操作。已选PostgreSQL+pgvector；模型/维度、鉴权和服务未实现，未建立ANN索引或生产库。API形状保持UTC时间字符串、JSON对象/数组和embedding数组。 全部外部路径以/api/v1为前缀，Agent命名空间为/api/v1/agent，代码归属仍是agent/；统一路径不表示网关已部署。v1是路由主版本，0.3-mvp-draft是本次未冻结契约资料/示例版本，api_version字段保持后者。 Android只配置一个API base URL；backend/agent可分模块实现，内部接入仍待实现。"
+    "description": "设计草案，未实现、未冻结。单视频区域事件、关键帧、文本向量、人工核查、AI聊天/分析历史及二维码包裹入出库；十一张SQL表（77字段），27个草案操作。已选PostgreSQL+pgvector；模型/维度、鉴权和服务未实现，未建立ANN索引或生产库。API形状保持UTC时间字符串、JSON对象/数组和embedding数组。 全部外部路径以/api/v1为前缀，Agent命名空间为/api/v1/agent，代码归属仍是agent/；统一路径不表示网关已部署。v1是路由主版本，0.3-mvp-draft是本次未冻结契约资料/示例版本，api_version字段保持后者。 Android只配置一个API base URL；backend/agent可分模块实现，内部接入已实现，正式部署仍待验收。"
   },
   "servers": [
     {
@@ -38,7 +38,7 @@
       "get": {
         "operationId": "get_user",
         "summary": "读取当前用户",
-        "description": "认证方式仍待确认；Bearer subject 由服务端映射 users.user_id，缺失/无效身份 401，禁用身份 403。只返回公开资料，不创建用户、不读取 SDK 凭据，不扩大授权资源范围。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。 路径user仍代表认证主体映射的当前用户；不接收user_id来读取其他人。",
+        "description": "认证方式仍待确认；Bearer subject 由服务端映射 users.user_id，缺失/无效身份 401，禁用身份 403。只返回公开资料，不创建用户、不读取 SDK 凭据，不扩大授权资源范围。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。 路径user仍代表认证主体映射的当前用户；不接收user_id来读取其他人。",
         "tags": [
           "Backend"
         ],
@@ -96,7 +96,7 @@
       "get": {
         "operationId": "读取不可变区域配置",
         "summary": "读取不可变区域配置",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -195,7 +195,7 @@
       "get": {
         "operationId": "列出已完整发布录制",
         "summary": "列出已完整发布录制",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -292,7 +292,7 @@
       "post": {
         "operationId": "原子导入视频事件与关键帧",
         "summary": "原子导入视频事件与关键帧",
-        "description": "首次导入 201；同 recording_id + 服务端规范化清单/文件 SHA256 重放 200。同 ID 内容改变 409。文件验证与事实发布必须全部成功；失败不落半包数据。仅 mock 无媒体可以 JSON；真实输入用 multipart。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": "首次导入 201；同 recording_id + 服务端规范化清单/文件 SHA256 重放 200。同 ID 内容改变 409。文件验证与事实发布必须全部成功；失败不落半包数据。仅 mock 无媒体可以 JSON；真实输入用 multipart。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -439,7 +439,7 @@
       "get": {
         "operationId": "读取录制元数据",
         "summary": "读取录制元数据",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -538,7 +538,7 @@
       "get": {
         "operationId": "按单视频区域与时间查事件",
         "summary": "按单视频区域与时间查事件",
-        "description": "必须给出 start_offset_ms/end_offset_ms 或 start/end 其中一对，不能混用。UTC 仅在已验证 started_at 下换算。返回规范化偏移与录制交集摘要；结果完整返回，不隐式截断，超配置限额返回 422。视频偏移窗口 [start,end)，事件相交，零时长点按窗口包含判断。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": "必须给出 start_offset_ms/end_offset_ms 或 start/end 其中一对，不能混用。UTC 按导入方声明的非空 started_at 换算，声明不证明实际拍摄时刻。返回规范化偏移与录制交集摘要；结果完整返回，不隐式截断，超配置限额返回 422。视频偏移窗口 [start,end)，事件相交，零时长点按窗口包含判断。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -691,7 +691,7 @@
       "get": {
         "operationId": "读取事件与关键帧",
         "summary": "读取事件与关键帧",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -790,7 +790,7 @@
       "get": {
         "operationId": "读取关键帧元数据",
         "summary": "读取关键帧元数据",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -889,7 +889,7 @@
       "get": {
         "operationId": "读取真实关键帧字节",
         "summary": "读取真实关键帧字节",
-        "description": "available 且真实文件存在才返回 200。missing 返回 404 media_missing；不存在的 evidence 返回 404 not_found；禁止返回占位图充当成功。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": "available 且真实文件存在才返回 200。missing 返回 404 media_missing；不存在的 evidence 返回 404 not_found；禁止返回占位图充当成功。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -995,7 +995,7 @@
       "get": {
         "operationId": "列出人工核查记录",
         "summary": "列出人工核查记录",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -1092,7 +1092,7 @@
       "post": {
         "operationId": "保存单事件人工核查",
         "summary": "保存单事件人工核查",
-        "description": "仅管理员显式提交；query 在服务端规范化，验证事件命中有效视频窗口并固定所属区域/摄像头。全部 event 关键帧自动引用，不接受客户端快照。同 review_id + 当前身份 + 相同规范化请求重放 200，内容不同 409。事实不修改，核查记录只追加。 用户必须存在、active、role=admin 且已授权目标事件；reviewer_id 从当前服务端身份填入，不接收客户端值。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": "仅管理员显式提交；query 在服务端规范化，验证事件命中有效视频窗口并固定所属区域/摄像头。全部 event 关键帧自动引用，不接受客户端快照。同 review_id + 当前身份 + 相同规范化请求重放 200，内容不同 409。事实不修改，核查记录只追加。 用户必须存在、active、role=admin 且已授权目标事件；reviewer_id 从当前服务端身份填入，不接收客户端值。 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],
@@ -1209,7 +1209,7 @@
       "get": {
         "operationId": "回读核查与当前证据状态",
         "summary": "回读核查与当前证据状态",
-        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；此鉴权边界尚未实现。",
+        "description": " 服务端必须同时校验 active 用户、角色、所需 scope 与目标资源授权，任一缺失返回 403；development已实现此鉴权边界，生产认证另行配置。",
         "tags": [
           "Backend"
         ],

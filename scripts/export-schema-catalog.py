@@ -22,7 +22,7 @@ TABLE_META = {
     "recordings": ("视频", "media", "一段固定摄像头连续视频与一份完整分析；保留来源、时间起点、配置版本及媒体状态。"),
     "events": ("事件", "retrieval", "视频里的区域事件和匿名局部 track_key；保留实际观测或候选，未知不推断。"),
     "evidence": ("关键帧", "retrieval", "一个事件的真实关键帧、视频偏移和可选检测框；画面缺失仍保留引用。"),
-    "event_embeddings": ("事件向量", "retrieval", "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务待实现。"),
+    "event_embeddings": ("事件向量", "retrieval", "事件或关键帧文字描述的语义向量，关联同一事件；保存来源描述、模型/编码版本和维数，候选不升级为事实。使用 pgvector 原生 vector 列；dimensions 与 vector_dims 保持一致，模型空间筛选与检索服务已在development实现，真实编码配置与效果待验收。"),
     "review_records": ("核查记录", "review", "一次人工保存针对一个事件，包含查询条件、结论和说明；记录只追加。"),
     "conversations": ("AI 会话", "agent", "一个用户的聊天会话，不固定录像；历史消息与分析通过外键关联，每次运行单独保存查询范围。"),
     "messages": ("聊天消息", "agent", "不可覆盖的用户问题或完整助手答复；助手答复只关联同会话的 completed 运行，每次运行至多一条。"),
@@ -42,7 +42,7 @@ DOMAINS = [
 
 ENGINE = "PostgreSQL+pgvector"
 QUERY_PATH = ROOT / "scripts/postgres-catalog.sql"
-GENERATED_DATE = "2026-10-13"
+GENERATED_DATE = "2026-10-17"
 ACTIONS = {"a": "NO ACTION", "r": "RESTRICT", "c": "CASCADE", "n": "SET NULL", "d": "SET DEFAULT"}
 MATCHES = {"s": "SIMPLE", "f": "FULL", "p": "PARTIAL"}
 LIVE_HINT = "Load the current schema.sql in PostgreSQL, then rerun with --container NAME or --database-url."
@@ -192,8 +192,8 @@ def source_tables(schema_path):
                 raise CatalogError("Cannot identify a declared PostgreSQL column type.")
             columns.append({"name": cname, "type": canonical_type(declared.group())})
         result[name] = {"sql": statement.rstrip(";") + ";", "columns": columns}
-    if set(result) != set(TABLE_META) or sum(len(t["columns"]) for t in result.values()) != 78:
-        raise CatalogError("Source DDL must contain the agreed eleven public tables and 78 columns.")
+    if set(result) != set(TABLE_META) or sum(len(t["columns"]) for t in result.values()) != 79:
+        raise CatalogError("Source DDL must contain the agreed eleven public tables and 79 columns.")
     return result
 
 
@@ -287,6 +287,7 @@ def annotations(catalog, schema_path):
                     {"title": "用户确认包裹单号与入出库两表", "revision": "2026-10-13 · 11 表、78 字段"},
                     {"title": "用户取消会话固定录像", "revision": "2026-10-13 · 11 表、77 字段；每次运行仍查单段录像"},
                     {"title": "events 增加可空 shelf_level", "revision": "2026-10-16 · 11 表、78 字段；货架层级自下而上 1–20，未知为 NULL"},
+                    {"title": "计入 Agent 运行卡片", "revision": "2026-10-17 · 当前 dev 11 表、79 字段；runs.cards_json 保存已完成卡片"},
                     {"title": "用户选择 PostgreSQL+pgvector", "revision": "2026-10-13"}],
         "parity": "Loaded public schema read from PostgreSQL pg_catalog in a read-only transaction; constraint/index/trigger/function definitions use pg_get_*; source CREATE TABLE statements attached separately.",
         "disclaimer": "设计草案；真实 PostgreSQL+pgvector 本地结构验证，不代表已部署业务服务或完成数据/检索验收。目录不含业务记录。",
@@ -296,8 +297,8 @@ def annotations(catalog, schema_path):
 
 
 def assert_source_alignment(tables, parsed):
-    if {t["name"] for t in tables} != set(TABLE_META) or sum(len(t["columns"]) for t in tables) != 78:
-        raise CatalogError("Loaded/saved catalog differs from the agreed eleven tables / 78 columns.")
+    if {t["name"] for t in tables} != set(TABLE_META) or sum(len(t["columns"]) for t in tables) != 79:
+        raise CatalogError("Loaded/saved catalog differs from the agreed eleven tables / 79 columns.")
     for table in tables:
         actual = [{"name": c["name"], "type": canonical_type(c.get("database_type", c["type"]))} for c in table["columns"]]
         if actual != parsed[table["name"]]["columns"]:

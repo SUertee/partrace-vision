@@ -1,5 +1,6 @@
 # 最小接口与数据约定
 
+本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
 当前草案覆盖 **单视频 → 事件与关键帧 → 描述文本检索 → AI会话 / 分析回读 → 人工核查**，并已纳入 **包裹建档 → 二维码生成 / 扫码查询 → 管理员确认入出库 → 流水回读**；实际实现放在 Android、后端、Agent 和视觉四个目录。
 
 | 资料 | 用途 |
@@ -11,7 +12,7 @@
 | [OpenAPI](openapi.json) | `0.3-mvp-draft`：19 个后端操作 + 9 个独立 Agent 操作，共 28 个 |
 | [Agent 接口对接文档](AGENT_API.md) | 前端对接：9 个 Agent 接口的鉴权、参数、返回、错误与 SSE 协议 |
 | [v0.3 模拟样例](examples/v0.3/) | 完整/范围外/缺失媒体/重试/错误交接；包裹样例内联于 OpenAPI；无真实业务执行 |
-| [数据库](../database/README.md) · [离线关系图](../database/schema-canvas.html) | 11 表、77 字段；HTML 双击可打开 |
+| [数据库](../database/README.md) · [离线关系图](../database/schema-canvas.html) | 11 表、79 字段；HTML 双击可打开 |
 
 ## 按开发模块交接
 
@@ -32,7 +33,7 @@ Android 不直接访问数据库；视觉算法可用批处理与导入客户端
 
 **接口草案仍待确认；已有本地运行实现，没有据此声明生产部署。** 按 2026-10-12 最小版本收敛，并按 2026-10-13 用户要求加入事件关联文本向量、AI聊天/分析持久化及二维码包裹入出库，依据仍为[技术方案 r51](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) 与 [PRD r230](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc)，主端按已确认的 Android。
 
-`users` 只保存用户资料、角色和状态；认证主体由服务端映射，不保存摄像头 SDK 凭据。摄像头/ROI 放版本配置文件；视频偏移为定位基准，只有验证过的起始时间才支持 UTC 查询。事实发布后不覆盖，管理员显式保存；`event_embeddings` 绑定事件及可选关键帧，Agent 只读语义检索后回看证据。`conversations/messages/runs` 保存本人会话、问题、已完成答复和运行状态；会话不固定录像，元数据和用户问题仅 Bearer + active owner。每次分析仍使用单视频 Query，计划/运行及助手答复按本次录像的当前授权与引用归属校验；历史消息先确定页，再逐助手消息经 run 验权，任一无权则整页 403，无正文或部分结果，不静默过滤；会话列表不因录像撤权消失。Agent 保存自己的 AI 历史，监控事实工具仍只读。已选 PostgreSQL + pgvector；SQL 时间为 TIMESTAMPTZ、JSON 为 JSONB、向量为 `embedding vector`，API 同名时间保持 UTC 字符串、向量保持数组。后端在授权范围和同模型空间内精确检索，Agent 不直连数据库；查询编码器采用服务端 OpenAI 兼容配置，真实模型/维度与外部调用仍待验证，首版没有 ANN 索引。电商订单关联、跨镜、原生 SDK 检测事件、离散帧集和复核分组后置。
+`users` 只保存用户资料、角色和状态；认证主体由服务端映射，不保存摄像头 SDK 凭据。摄像头/ROI 放版本配置文件；视频偏移为定位基准，dev按导入方声明的非空started_at支持UTC换算，声明不证明拍摄时刻；起点未知使用偏移。事实发布后不覆盖，管理员显式保存；`event_embeddings` 绑定事件及可选关键帧，Agent 只读语义检索后回看证据。`conversations/messages/runs` 保存本人会话、问题、已完成答复和运行状态；会话不固定录像，元数据和用户问题仅 Bearer + active owner。每次分析仍使用单视频 Query，计划/运行及助手答复按本次录像的当前授权与引用归属校验；历史消息先确定页，再逐助手消息经 run 验权，任一无权则整页 403，无正文或部分结果，不静默过滤；会话列表不因录像撤权消失。Agent 保存自己的 AI 历史，监控事实工具仍只读。已选 PostgreSQL + pgvector；SQL 时间为 TIMESTAMPTZ、JSON 为 JSONB、向量为 `embedding vector`，API 同名时间保持 UTC 字符串、向量保持数组。后端在授权范围和同模型空间内精确检索，Agent 不直连数据库；查询编码器采用服务端 OpenAI 兼容配置，真实模型/维度与外部调用仍待验证，首版没有 ANN 索引。电商订单关联、跨镜、原生 SDK 检测事件、离散帧集和复核分组后置。
 
 P1 包裹的五个接口仅在当前草案／API 页面中，尚未实现：`POST /parcels`、`GET /parcels?parcel_no=...`、`GET /parcels/{parcel_id}`、`GET/POST /parcels/{parcel_id}/records`。`parcels` 保存 3 列，`parcel_records` 保存 7 列；单号可由后端生成，用 TEXT 保留前导零，二维码不另建表，重复扫码不写流水。状态按 `sequence_no` 派生为 `pending / in_stock / outbound`；入库必须有效 `zone_id`，出库保留最近入库货架但当前位置为空。两项写入要求管理员显式确认与 `parcels:write`，操作人 / 时间 / 序号由后端设置；Agent 只调用三个 GET。完整的幂等、状态冲突、分页与模拟样例见 [API 说明](API_DESIGN.md#二维码包裹与入出库) 和 OpenAPI。
 

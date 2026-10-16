@@ -2,9 +2,11 @@
 
 主责：韩广宁。对应 D07，并在 D10 补齐首页简报。
 
+本页说明已合入 `dev@4cc9aa1` 的 Agent；最新实测与本地尚未合入的 Android／People 管线统一见 [项目实际状态](../docs/PROJECT_STATUS.md)。本次文档同步不合入这些本地源码。
+
 业务功能与表／API 关联见 [M06 AI 会话与分析](../docs/modules/README.md#m06)；只读检索接 [M04 事件证据](../docs/modules/README.md#m04) 和 [M05 语义检索](../docs/modules/README.md#m05)，后续读取 [M10 包裹历史](../docs/modules/README.md#m10)。首页简报属于 [M08](../docs/modules/README.md#m08)。
 
-源码组织在 `agent/` 包内，外层目录通过 `__init__.py` 成为 Python 包，工具实现放在 `tools/` 子包，使用 `agent.engine` 等导入；不使用 `src/`，也不再套一层同名源码目录。发行包名保持 `partrace-agent`。模块使用 LangChain `create_agent` 运行受限工具循环，只依赖模型和 `ToolGateway` 协议，不直连数据库，不单独启动 HTTP 服务。Backend 工厂组合 Agent 引擎、权限工具、运行控制和 AI 历史；八个既有 `/api/v1/agent/...` 路由由 Backend 显式挂载。交接与状态规则见 [联动说明](../docs/modules/BACKEND_AGENT.md)，本地验证见 [D07 记录](../openspec/changes/d07-create-agent/verification.md)。
+源码组织在 `agent/` 包内，外层目录通过 `__init__.py` 成为 Python 包，工具实现放在 `tools/` 子包，使用 `agent.engine` 等导入；不使用 `src/`，也不再套一层同名源码目录。发行包名保持 `partrace-agent`。模块使用 LangChain `create_agent` 运行受限工具循环，只依赖模型和 `ToolGateway` 协议，不直连数据库，不单独启动 HTTP 服务。Backend 工厂组合 Agent 引擎、权限工具、运行控制和 AI 历史；九个 `/api/v1/agent/...` 操作由 Backend 显式挂载，包含运行终态 SSE。交接与状态规则见 [联动说明](../docs/modules/BACKEND_AGENT.md)，历史验证见 [D07 记录](../openspec/changes/d07-create-agent/verification.md)。
 
 实现 AI 会话与消息、问题转计划、后端只读检索工具、有效证据引用、run_id 状态、停止与错误回退。聊天和分析历史保存到 `conversations / messages / runs`，与后端共同落实存储；会话按用户隔离，不固定录像；每次运行单独保存一段录像的查询范围，同一会话不同轮次可查询不同录像。保存最终执行的语义检索文本，完成答复只存一份；停止或失败不伪造完成消息，重启后的旧运行明确标为中断失败。
 
@@ -56,7 +58,7 @@ uv run pytest
 uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-默认 Backend 提供 14 个数据操作；在私有 `backend/.env` 显式设置 `PARTRACE_AGENT_ENABLED=true` 后挂载 8 个 Agent 操作，共 22／27。P1 包裹 5 个操作尚未实现。
+当前 `dev` 默认 Backend 提供 14 个数据操作；在私有 `backend/.env` 显式设置 `PARTRACE_AGENT_ENABLED=true` 后挂载 9 个 Agent 操作，共实现 23／28。P1 包裹 5 个契约操作尚未实现。本地未合入的 People 管线增加七个 Backend 操作，启用 Agent 后为 30／35；这部分源码与验证边界见 [项目实际状态](../docs/PROJECT_STATUS.md)。
 
 模型与 Embedding 的 OpenAI 兼容配置见 [环境模板](../backend/.env.example)。只在私有环境文件／进程环境提供密钥，不通过聊天、源码、请求正文或日志传递；缺模型时生成计划或新分析返回 503 `model_unavailable`，不使用测试模型或模拟向量回退。
 
@@ -66,10 +68,10 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 
 ## 验证边界
 
-已经使用真实 `create_agent` 图与显式测试模型检查工具循环，并在真实 PostgreSQL + pgvector 上验证历史、权限和终态事务。外部 LLM／Embedding、真实视频的视觉业务结果、Android 及 D10 同事件端到端尚未验收；本地代码与测试不代表已部署、模型可用或业务全面完成。详细凭据及未验证项以 [D07 记录](../openspec/changes/d07-create-agent/verification.md)为准。
+已经使用真实 `create_agent` 图与显式测试模型检查工具循环，并在真实 PostgreSQL + pgvector 上验证历史、权限和终态事务。后续本地 Android 联调取得真实模型计划，但运行出现失败／超时，尚未取得完整答复、有效引用与人工保存闭环；Embedding 仍待配置与验证。真实模型完整运行、真实事件与 D10 同事件端到端仍待验收。本地代码与测试不代表已部署或业务全面完成，当前凭据见 [项目实际状态](../docs/PROJECT_STATUS.md)，历史测试保留在 [D07 记录](../openspec/changes/d07-create-agent/verification.md)。
 
 交付与验收见 [开发计划](../docs/DEVELOPMENT_PLAN.md)。
 
 共享接口与数据格式见 [docs/api](../docs/api/README.md)。
 
-运行列表、SSE、逐工具持久化日志、跨镜追踪和 P1 包裹工具尚未实现，不计入当前八个 Agent 操作。
+`GET /api/v1/agent/runs/{run_id}/events` 的 SSE 已实现：快照先行、提交后通知终态；completed 返回已落库卡片，stopped／failed 返回状态卡，不新增助手答复。它只推送 Agent 运行，Vision 完成仍由任务状态回读确认。运行列表、逐工具持久化日志、跨镜追踪和 P1 包裹工具尚未实现，不计入当前九个 Agent 操作。

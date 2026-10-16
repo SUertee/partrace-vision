@@ -6,7 +6,9 @@
 
 **主端采用 Android：Kotlin + Compose，复用官方 KMP/Compose 示例。** 官方 App SDK 提供事件查询、缩略图、回放、下载及设备控制，适合首轮取证与核查；Web 桌面查阅放到后续。
 
-**服务端统一 Python：Backend 使用 FastAPI，Agent 以独立 Python 包接入同一 API 应用，Vision 使用独立工作进程。** 本地 Backend 已有 14 个数据操作；显式启用 Agent 后再挂载 8 个，共 22／27，P1 包裹 5 个仍待开发。媒体使用受限本地文件存储；外部模型和真实视频业务效果尚未验收。
+**服务端统一 Python：Backend 使用 FastAPI，Agent 以独立 Python 包接入同一 API 应用，Vision 使用独立工作进程。** 本地 Backend 已有 14 个数据操作；显式启用 Agent 后再挂载 9 个，共 23／28，P1 包裹 5 个仍待开发。媒体使用受限本地文件存储；外部模型和真实视频业务效果尚未验收。
+
+截至2026-10-17，dev已有数据服务、Agent卡片/SSE和A/B离线算法。本地另已验证Android真实设备、People原片先入库与A解析回调；这些实现源码仍待合入，完整B与D10未验收。详见[实际进展与待验收项](docs/PROJECT_STATUS.md)。
 
 ## 工作台与资料
 
@@ -14,7 +16,7 @@
 - [在线工作台：原型、模块、API 与数据库](https://yizhan-trace-workbench.vercel.app/)
 - [最新离线工作台 HTML](docs/workbench/index.html)：原型、开发模块、流程和数据库设计，下载此文件双击即可打开。
 - [首轮开发计划：D01–D10](docs/DEVELOPMENT_PLAN.md) · [GitHub 任务](https://github.com/SUertee/partrace-vision/issues)
-- [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 77 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
+- [按模块查看 API](docs/api/api-canvas.html) · [最小 API 草案](docs/api/API_DESIGN.md) · [最小数据库：11 表 / 79 字段](docs/database/README.md) · [离线关系图 HTML](docs/database/schema-canvas.html)
 - [开发协作规范：AGENTS.md](AGENTS.md)
 - [OpenSpec：安装、规格与开发流程](docs/OPENSPEC.md)
 - [产品 PRD](https://q0ef12ao819.feishu.cn/wiki/QHVvwxixBiJspmkoBD1cuU6InQc) · [技术方案](https://q0ef12ao819.feishu.cn/wiki/RFLWwHFplicxpIk10bbcTBr6nqr) · [飞书任务看板](https://q0ef12ao819.feishu.cn/wiki/D3cnwFQJTijUYQkyqaIc0HhjnYf)
@@ -33,7 +35,7 @@
 
 | 主责 | 负责什么 | 先交付什么 |
 | --- | --- | --- |
-| 李果钦 · Android 前端 | 四 Tab、查询与证据联动、Agent 页面、核查与记录 | 可安装 App 骨架，页面先接共享样例 |
+| 李果钦 · Android 前端 | 三入口、查询与证据联动、Agent 页面、核查与记录 | 可安装 App 骨架，页面先接共享样例 |
 | 徐泽华 · 算法 | 受控素材、匿名跟踪、区域事件、真实关键帧 | 视频、ROI 和人工时间基准，再交事件包 |
 | 韩广宁 · Agent | 问题转计划、只读工具、引用结果、运行控制 | 可调用服务、计划及工具调用样例 |
 | Harry Xu · 后端 / SDK | 协议、事件/证据/覆盖接口、核查持久化、SDK 与联调 | 统一 JSON 和接口样例；另做真机 SDK 验证 |
@@ -101,7 +103,7 @@ openspec/                行为规格、变更提案与归档记录
 
 ## Backend 与 Agent 本地版本
 
-development 实现保留事件包导入、查询、关键帧、人工保存与回读的 12 个基础操作，并增加向量写入／语义检索两个操作。`agent/` 使用 `create_agent` 和五个只读工具，不直连数据库；`PARTRACE_AGENT_ENABLED=true` 显式挂载八个 AI 操作，默认关闭。
+development 实现保留事件包导入、查询、关键帧、人工保存与回读的 12 个基础操作，并增加向量写入／语义检索两个操作。`agent/` 使用 `create_agent` 和五个只读工具，不直连数据库；`PARTRACE_AGENT_ENABLED=true` 显式挂载九个 AI 操作，默认关闭。
 
 ```sh
 cd backend

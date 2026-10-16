@@ -4,19 +4,21 @@
 
 **契约草案为 11 张表、28 个操作，其中首轮 23 个、P1 包裹 5 个。** 本地 development 默认提供 14 个 Backend 操作，显式启用 Agent 后提供 23／28；P1 包裹仍待开发。实际实现与验证不等于外部模型、部署或 D10 业务验收。字段以 [数据库 SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 为准。
 
+当前状态按[项目进展](../PROJECT_STATUS.md)核对：本表API计数只描述dev的28个契约。People新增7个操作及source-first、Android业务壳与worker仍在本地待合入，不计为dev已交付。
+
 ## 模块总表
 
 | 模块 | 需要交付什么 | 实现与主责 | 主要表 | 当前 API 数／任务 |
 | --- | --- | --- | --- | --- |
-| [M01 · App 骨架](#m01) | 四 Tab、导航与页面状态 | Android · 李果钦 | 经 API 使用数据，不直连 DB | 0／D02、D08 |
+| [M01 · App 骨架](#m01) | 三入口、导航与页面状态（本地待合入） | Android · 李果钦 | 经 API 使用数据，不直连 DB | 0／D02、D08 |
 | [M02 · 账号与配置](#m02) | 当前用户、固定镜头与区域配置 | Backend · Harry Xu；Android／Vision 调用 | `users`；配置文件 | 2／D01、D05 |
 | [M03 · 视觉产物与视频入库](#m03) | 真实事件包、关键帧、完整包导入与录像元数据 | Vision · 徐泽华；Backend · Harry Xu | `recordings`、`events`、`evidence` | 3／D03–D05 |
 | [M04 · 事件与证据](#m04) | 条件查询、候选、事件详情与关键帧回看 | Backend · Harry Xu；Android · 李果钦 | `recordings`、`events`、`evidence` | 4／D05、D08 |
 | [M05 · 语义检索](#m05) | 事件描述向量入库、同模型空间检索 | Backend · Harry Xu；Vision 交接编码；Agent 调用 | `event_embeddings`、`events`、`evidence`、`recordings` | 2／D04、D05、D07 |
-| [M06 · AI 会话与分析](#m06) | 聊天、修改计划、执行／停止、引用与历史 | Agent · 韩广宁；Backend 协作存储；Android 展示 | `conversations`、`messages`、`runs` | 8／D07、D08 |
+| [M06 · AI 会话与分析](#m06) | 聊天、修改计划、执行／停止、引用与历史 | Agent · 韩广宁；Backend 协作存储；Android 展示 | `conversations`、`messages`、`runs` | 9／D07、D08 |
 | [M07 · 人工核查](#m07) | 确认保存、历史列表和重启回读 | Backend · Harry Xu；Android · 李果钦 | `review_records`；关联 `users` 与事件证据 | 3／D09、D10 |
 | [M08 · 首页与简报](#m08) | 活动概况、待核查线索与带引用的简报 | Android／Backend／Agent | 从视频、事件、关键帧与核查记录派生 | 0，汇总接口待评审／D10 |
-| [M09 · SDK 验证](#m09) | 官方登录、设备、事件与媒体能力实测记录 | Harry Xu · 独立验证支线 | 暂不导入首轮事实表 | 官方 SDK，非团队 API／D06 |
+| [M09 · SDK 验证](#m09) | 官方登录、设备、事件与媒体能力实测记录 | Harry Xu · 独立验证支线 | dev仍走完整包；本地People已入pending/事实 | 官方SDK；本地另7任务API待合入／D06 |
 | [M10 · 包裹入出库](#m10) | 建档、二维码、扫码查询、人工确认与流水 | Backend／Android；Agent 只读 | `parcels`、`parcel_records`；操作人关联 `users` | 5／P1，D10 后 |
 
 以上表列表描述业务数据关联，不表示调用方直接访问数据库。认证身份统一映射到 `users`，不在每项读取中重复列出。详细字段见 [数据库说明](../database/README.md)，接口参数与模拟样例见 [API 设计](../api/API_DESIGN.md) 和 [v0.3 样例](../api/examples/v0.3/)。
@@ -40,7 +42,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 <a id="m01"></a>
 ## M01 · Android App 骨架与导航
 
-- **开发内容：** 四 Tab 骨架；候选、事件、帧和 AI 引用的选中状态；加载、空结果、无覆盖、失败与返回恢复。业务页面按 M04、M06、M07 接口实现，不为每个页面新增表。
+- **开发内容：** 三入口骨架（本地实现待合入）；候选、事件、帧和 AI 引用的选中状态；加载、空结果、无覆盖、失败与返回恢复。业务页面按 M04、M06、M07 接口实现，不为每个页面新增表。
 - **数据／API：** 本模块不提供 API，不直连数据库；使用后端与 Agent 接口。工程准备见 [Android README](../../android/README.md)。
 - **依赖与验收：** D01 范围确认后做 D02；协议冻结后按共享样例推进 D08。真机可往返导航，引用跳到同一事件；样例可用不等于真实闭环完成。
 
@@ -55,7 +57,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 | `GET /api/v1/user` | Backend → Android | 读 `users`，身份由认证主体确定 |
 | `GET /api/v1/configs/{config_version}` | Backend → Android／Vision | 读配置文件，不读写业务表 |
 
-**依赖与验收：** D01 确定配置、身份及权限约定，D05 实现；返回当前本人，非法／未知配置明确报错。认证实现仍待确定。
+**依赖与验收：** D01 确定配置、身份及权限约定，D05 实现；返回当前本人，非法／未知配置明确报错。development认证已实现；生产认证另行设计。
 
 <a id="m03"></a>
 ## M03 · 视觉产物、完整包入库与录像元数据
@@ -150,7 +152,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 ## M09 · 官方摄像头 SDK 独立验证
 
 - **开发内容：** Harry Xu 在官方 Android 底座与设备上分别验证鉴权／登录、设备列表、事件查询、缩略图、直播、回放、下载和时间定位，记录 SDK／设备版本及成功或失败证据。
-- **数据／API：** 官方 SDK／API 不计入团队 27 个接口；官方检测事件与团队视觉动作事件分开。首轮暂不写官方事件到现有事实表，后续导入方式与时间转换须先验证。
+- **数据／API：** 官方 SDK／API 不计入团队 28 个接口；官方检测事件与团队视觉动作事件分开。dev尚无People原片队列；本地已验证原片先入pending、Vision发布事实，SDK检测仍不当作团队动作，时间未校准保持null。
 - **依赖与验收：** D06 需要设备、账号与 SDK 环境；独立推进，不阻塞预录素材的 D10。SDK 具备接口不等于真机已接通，缩略图不证明连续轨迹。
 
 <a id="m10"></a>
@@ -171,9 +173,9 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 
 ## 接口与扩展边界
 
-当前 OpenAPI 共 27 个操作，字段和请求／返回定义不在本页复制。[模块 API 映射](../api/api-module-map.json) 记录提供方、调用方及各 API 的完整读写表，包括归属校验；[功能对照](../api/FEATURE_DATA_API_MAP.md) 从功能反查数据需求。
+当前 OpenAPI 共 28 个操作，字段和请求／返回定义不在本页复制。[模块 API 映射](../api/api-module-map.json) 记录提供方、调用方及各 API 的完整读写表，包括归属校验；[功能对照](../api/FEATURE_DATA_API_MAP.md) 从功能反查数据需求。
 
-以下五个接口只在现有映射中标为 `proposed`，尚无 OpenAPI 契约，不计入 27 个：
+以下五个接口只在现有映射中标为 `proposed`，尚无 OpenAPI 契约，不计入 28 个：
 
 | 建议接口 | 关联模块 | 数据来源 |
 | --- | --- | --- |
@@ -187,4 +189,4 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 
 持续直播分析、跨镜关联、电商订单关联、Web 桌面查阅和多事件分组留档后续另评审；当前不扩张表或 API。开发前同时更新模块设计、DB／API 定义及样例，依赖与验收继续统一维护在 [开发计划](../DEVELOPMENT_PLAN.md)。
 
-D05／D09 原 12 个基础数据操作的说明和凭据保留在 [Backend README](../../backend/README.md) 与 [D05 记录](../../openspec/changes/d05-backend-mvp/verification.md)。当前增加向量两个操作和显式启用的 Agent 八个操作，验证见 [D07 记录](../../openspec/changes/d07-create-agent/verification.md)；外部模型、真实视觉、Android 和 D10 仍按工作包分别验收。
+D05／D09 原 12 个基础数据操作的说明和凭据保留在 [Backend README](../../backend/README.md) 与 [D05 记录](../../openspec/changes/d05-backend-mvp/verification.md)。当前增加向量两个操作和显式启用的 Agent 九个操作，验证见 [D07 记录](../../openspec/changes/d07-create-agent/verification.md)；外部模型、真实视觉、Android 和 D10 仍按工作包分别验收。

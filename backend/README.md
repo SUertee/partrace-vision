@@ -2,6 +2,8 @@
 
 主责 Harry Xu；当前本地实现包括 D05 事件证据与语义检索、D09 人工留档，并可显式组合 D07 Agent。使用 **Python 3.12 + FastAPI + PostgreSQL / pgvector**，图片和录像保存在本地受限目录，数据库保存媒体键。
 
+本页运行说明对应已合入 `dev@4cc9aa1` 的源码；最新进展与本地尚未合入的能力统一见 [项目实际状态](../docs/PROJECT_STATUS.md)。本次只同步文档，People 原片任务、source-first 发布与 Android 新接入的源码继续单独交付。
+
 源码按职责放在 `backend/` 的子包内，外层目录本身是 Python 包；启动入口为 `backend.app`，管理命令为 `backend.manage`。发行包名为 `partrace-backend`。以下命令均从 `backend/` 执行。
 
 ```text
@@ -13,7 +15,7 @@ backend/
     __init__.py          Agent 路由挂载
     facts.py             用户、配置、录像、事件、证据、核查接口
     semantic.py          向量写入与语义检索接口
-    agent.py             会话、计划、运行与停止接口
+    agent.py             会话、计划、运行、停止与 SSE 状态接口
     boundary.py          请求大小限制、request_id 与文档访问边界
   core/                  共用配置、身份与数据结构
     settings.py          私有环境配置与默认资源路径
@@ -56,9 +58,11 @@ backend/
 | 人工核查保存、列表及回读 | `POST /api/v1/review-records`、`GET /api/v1/review-records`、`GET /api/v1/review-records/{review_id}` |
 | 描述文本向量写入与语义检索 | `POST /api/v1/event-embeddings`、`POST /api/v1/events/search` |
 
-基础数据的原有验证保留在 [D05 记录](../openspec/changes/d05-backend-mvp/verification.md)，向量与 Agent 的当前验证见 [D07 记录](../openspec/changes/d07-create-agent/verification.md)。数据库不可用时明确失败，不回退成进程内数据或模拟成功；服务重启后从 PostgreSQL 回读。`/health/live` 与 `/health/ready` 是运行探测，不计入 27 个业务操作。
+基础数据的原有验证保留在 [D05 记录](../openspec/changes/d05-backend-mvp/verification.md)，向量与 Agent 的历史验证见 [D07 记录](../openspec/changes/d07-create-agent/verification.md)，后续联调见 [项目实际状态](../docs/PROJECT_STATUS.md)。数据库不可用时明确失败，不回退成进程内数据或模拟成功；服务重启后从 PostgreSQL 回读。`/health/live` 与 `/health/ready` 是运行探测，不计入 28 个契约业务操作。
 
-基础数据闭环原有 12 个操作，本轮增加两个向量操作，默认共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 再挂载 8 个 Agent 操作，共 22／27，P1 包裹 5 个操作尚未实现。空库 DDL 仍创建既有十一张表，空表不代表功能接通。[Backend／Agent 联动](../docs/modules/BACKEND_AGENT.md)采用同一 FastAPI 应用内的 Python 接口；独立 `agent/` 包使用 `create_agent`，通过五个受限工具调用 Backend，不直连数据库。D06 摄像头 SDK 验证独立推进。
+`dev` 默认提供 12 个基础数据操作及两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 再挂载 9 个 Agent 操作（含卡片与 SSE），共实现 23／28。契约中的 P1 包裹 5 个操作尚未实现。空库 DDL 创建十一张表，空表不代表功能接通。[Backend／Agent 联动](../docs/modules/BACKEND_AGENT.md)采用同一 FastAPI 应用内的 Python 接口；独立 `agent/` 包使用 `create_agent`，通过五个受限工具调用 Backend，不直连数据库。D06 摄像头 SDK 验证独立推进。
+
+本地未合入的 People 管线增加七个任务操作，默认 Backend 21 个、启用 Agent 后 30／35；source-first 使用 `POST /recordings` 的 `mode=source` 先保存 pending 录像和任务，Vision 完成后原子发布事实与完成状态。其隔离回归及真实 A／B 进展见 [项目实际状态](../docs/PROJECT_STATUS.md)。`migrate-recording-jobs`、`migrate-source-recordings` 与 `retry-recording-job` 管理命令也仅在该本地实现中存在，须随对应源码合入后使用；本页下述命令仍对应当前 `dev`。
 
 ## 本地准备
 
@@ -74,7 +78,7 @@ uv run python scripts/setup-local.py --start-db
 
 准备脚本写入 `backend/.env` 和仓库 `.local-state/` 下的受限本地文件；已有文件拒绝覆盖。随机令牌只保存到 `.local-state/bootstrap-credentials.json`，命令只显示保存位置，不打印令牌。按本地引导文件中的身份创建数据库用户，实际密码、令牌及媒体不得提交 Git。
 
-Agent／Embedding 配置按 [.env.example](.env.example)补充到已生成的私有 `backend/.env`，不要覆盖已有数据库和身份配置。模型适配器使用 OpenAI 兼容接口；API key 只从私有环境读取，不发到聊天、源码、业务请求或日志。缺 Agent 模型时计划／新分析返回 503，缺编码模型时语义检索返回 503 `model_unavailable`，不自动换成测试模型或模拟向量。真实外部模型服务仍待实际验证。
+Agent／Embedding 配置按 [.env.example](.env.example)补充到已生成的私有 `backend/.env`，不要覆盖已有数据库和身份配置。模型适配器使用 OpenAI 兼容接口；API key 只从私有环境读取，不发到聊天、源码、业务请求或日志。缺 Agent 模型时计划／新分析返回 503，缺编码模型时语义检索返回 503 `model_unavailable`，不自动换成测试模型或模拟向量。真实模型的计划、完整运行与 Embedding 验收分别记录在 [项目实际状态](../docs/PROJECT_STATUS.md)。
 
 已有独立空库时，改为通过环境提供 `PARTRACE_DATABASE_URL` 后执行不带 `--start-db` 的准备命令。脚本不创建业务表和用户。不要把密码直接写进可记录的终端命令或截图；本地环境文件及 `.local-state/` 被忽略。
 
@@ -126,7 +130,9 @@ uv run python -m backend.manage --help
 
 ## 显式启用 Agent
 
-在私有环境设置 `PARTRACE_AGENT_ENABLED=true` 后，启动工厂挂载八个既有 Agent 路由；保持默认 false 时不挂载这些业务路由。运行和工具细节见 [Agent README](../agent/README.md)。
+在私有环境设置 `PARTRACE_AGENT_ENABLED=true` 后，启动工厂挂载九个 Agent 操作；保持默认 false 时不挂载这些业务路由。运行和工具细节见 [Agent README](../agent/README.md)。
+
+`GET /api/v1/agent/runs/{run_id}/events` 已提供 SSE：先回读运行快照，再推送已提交的终态；完成卡片保存在 `runs.cards_json`。这属于 Agent 运行状态，不是 Vision 任务完成通知；Android 本地接入目前使用轮询，详见 [项目实际状态](../docs/PROJECT_STATUS.md)。
 
 - 使用一个执行进程与 `--workers 1`。专用 PostgreSQL 连接取得 session advisory lease；同数据库／schema 的第二执行器拒绝启动，lease 不是多实例任务调度方案。
 - 默认每次模型最多 8 次调用、工具 12 次、60 秒总超时，并发运行 2 个；环境配置名见 [.env.example](.env.example)。
@@ -138,7 +144,7 @@ uv run python -m backend.manage --help
 
 ## 真实媒体与开发文档
 
-打开 `http://127.0.0.1:8000/docs` 可查看并调用当前已挂载操作（默认 14 个，启用 Agent 后 22 个，Authorize 使用本地令牌）；`/openapi.json` 复用仓库契约并只列已挂载业务操作。开发文档在 staging／production 不开放，静态令牌也在这两个环境 fail closed。
+打开 `http://127.0.0.1:8000/docs` 可查看并调用当前 `dev` 已挂载操作（默认 14 个，启用 Agent 后 23 个，Authorize 使用本地令牌）；`/openapi.json` 复用仓库契约并只列已挂载业务操作。开发文档在 staging／production 不开放，静态令牌也在这两个环境 fail closed。
 
 真实视频上传需要 **ffprobe + ffmpeg**（本地安装后放 PATH，或设置 `PARTRACE_FFPROBE_PATH`／`PARTRACE_FFMPEG_PATH`）。Dockerfile 提供 FFmpeg 工具。检查 MP4 格式、持续时间和完整解码，PNG／JPEG 使用 Pillow 验证；缺工具返回503，坏媒体返回422，不伪装成功。清单默认限2MiB、媒体合计64MiB、事件和关键帧分别限5000项；超限明确拒绝，读取列表也不静默截断。图片解码只证明文件有效，bbox／对象对应和动作仍是授权 Vision 产物声明，须按真实素材验收。
 

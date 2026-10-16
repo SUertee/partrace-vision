@@ -1,9 +1,10 @@
 # ParTrace Vision 设计文档
 
-当前为待评审的设计草案：**PostgreSQL + pgvector、11 张表 / 77 个字段、28 个 API 操作**。接口统一使用 `/api/v1`；扫码入出库为 P1 拓展，在首轮视频核查闭环之后开发。
+当前为待评审的设计草案：**PostgreSQL + pgvector、11 张表 / 79 个字段、28 个 API 操作**。接口统一使用 `/api/v1`；扫码入出库为 P1 拓展，在首轮视频核查闭环之后开发。
 
 | 要查看的内容 | 入口 |
 | --- | --- |
+| 截至2026-10-17的实际能力、验证与待合入范围 | [项目状态](PROJECT_STATUS.md) |
 | 全部业务模块及 DB／API 关联 | [模块设计](modules/README.md) |
 | Backend 与 Agent 怎样联动 | [内部接口、执行流程与下一步](modules/BACKEND_AGENT.md) |
 | Backend 与视觉算法怎样交接 | [职责、表、API 与真实证据包](modules/BACKEND_VISION.md) |

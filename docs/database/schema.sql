@@ -1,5 +1,5 @@
 -- ParTrace Vision · 驿站追迹 · 最小数据库设计 0.3-mvp-draft
--- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段。
+-- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段；截至 2026-10-17 再计入 runs.cards_json，共 11 表、79 字段。
 -- PostgreSQL 17 / pgvector 0.8.7 新空库 DDL 草案；不是既有库迁移，也不代表数据库或后端已部署。
 -- SQLite 历史验证稿已完整保存在 archive/schema-sqlite-0.3.sql，不再作为当前生产选型。
 -- 首版输入：固定摄像头/区域的一段完整连续预录视频，以及一份完整分析结果包。
@@ -8,7 +8,7 @@
 -- 录像只发布一次：完整包在单事务写入；失败回滚。重算或重新校时须换 recording_id。
 -- recording_id + manifest_sha256 在服务端处理重试：同 ID 同内容返回原结果，异内容冲突。
 -- 媒体文件不入库；storage_key 为服务端存储键，available 须先核实真实文件。
--- started_at 只有 UTC 起点得到验证才填写；NULL 不参与真实日期命中。
+-- started_at 非空按导入方声明保存并用于 UTC 换算，不证明实际拍摄时刻；起点未知用 NULL。
 -- 绝对时间统一 TIMESTAMPTZ；服务绑定带时区参数，API 输出 ISO 8601 UTC，不以本地时区补全未知时间。
 -- 子对象时间只存 BIGINT 视频偏移毫秒；UTC = 录像已验证起点 + 偏移，不重复存三套时钟。
 -- events.zone_id 表示货架编号（如 E3），不表示层级；层级由 shelf_level 表示，未知货架写 NULL，缺省填 'E3'。
