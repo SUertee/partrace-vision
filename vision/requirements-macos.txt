@@ -1,0 +1,4 @@
+# PyTorch macOS wheels use unsuffixed versions; no CUDA runtime is installed.
+-r requirements.txt
+torch==2.6.0
+torchvision==0.21.0

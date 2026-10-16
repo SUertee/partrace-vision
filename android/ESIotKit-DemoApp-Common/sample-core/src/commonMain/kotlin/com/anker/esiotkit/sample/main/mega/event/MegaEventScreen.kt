@@ -3,6 +3,7 @@ package com.anker.esiotkit.sample.main.mega.event
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -66,6 +67,7 @@ import com.anker.esiotkit.domain.model.MegaEvent
 import com.anker.esiotkit.domain_thing.model.device.MegaDevice
 import com.anker.esiotkit.sample.ui.component.DisableOverscrollEffect
 import com.anker.esiotkit.sample.ui.component.ConfirmDialog
+import com.anker.esiotkit.sample.view.TitleBar
 import com.anker.esiotkit.sample.view.emitToast
 import com.anker.esiotkit.sample.view.toastNotSupport
 import com.anker.esiotkit.support.log.appLogger
@@ -80,7 +82,7 @@ import kotlinx.datetime.toLocalDateTime
  * @version 2024/5/1
  */
 
-data class MegaEventScreen(val filterDeviceSn: String? = null) : Screen {
+data class MegaEventScreen(val filterDeviceSn: String? = null, val detailTitle: String? = null) : Screen {
   @OptIn(ExperimentalMaterialApi::class)
   @Composable
   override fun Content() {
@@ -110,109 +112,118 @@ data class MegaEventScreen(val filterDeviceSn: String? = null) : Screen {
     val selectedDeleteEvents = remember { mutableStateListOf<MegaEvent>() }
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
 
-    ModalBottomSheetLayout(
-      sheetState = state,
-      sheetContent = {
-        FilterSheetContent(
-          tempSelectedDeviceList = viewModel.tempSelectedDeviceList,
-          allDeviceList = allDeviceList,
-          onToggleSelectAllTemp = viewModel::onToggleSelectAllTemp,
-          onToggleSelectTemp = viewModel::onToggleSelectTemp,
-          onCancel = {
-            scope.launch { state.hide() }
-            viewModel.resetTempSelection()
-          },
-          onConfirm = {
-            scope.launch { state.hide() }
-            viewModel.applyTempSelection()
-          },
-          selectedCategory = viewModel.tempSelectedCategory,
-          onCategoryChange = viewModel::onCategoryChange,
-          selectedEventType = viewModel.tempSelectedEventType,
-          onEventTypeChange = viewModel::onEventTypeChange,
-          selectedDetectionTypes = viewModel.tempSelectedDetectionTypes,
-          onDetectionTypeToggle = viewModel::onDetectionTypeToggle
-        )
+    Column(Modifier.fillMaxSize().background(Color.White)) {
+      detailTitle?.let { title ->
+        TitleBar(title = title, onBackClick = { navigator.pop() })
+        Text("当前设备的事件录像 · 选择片段即可回放", color = Color.Gray, fontSize = 12.sp,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
       }
-    ) {
-      MainContent(
-        selectedDeviceList = viewModel.selectedDeviceList,
-        megaEventList = viewModel.megaEventList,
-        error = viewModel.error,
-        isRefreshing = viewModel.loading,
-        selectedDateMillis = selectedDateMillis,
-        state = state,
-        scope = scope,
-        batchDownloadMode = batchDownloadMode,
-        selectedDownloadEvents = selectedDownloadEvents,
-        batchDeleteMode = batchDeleteMode,
-        selectedDeleteEvents = selectedDeleteEvents,
-        onBatchDownloadModeChange = { batchDownloadMode = it },
-        onToggleSelectDownload = { event ->
-          if (selectedDownloadEvents.any { e -> e.megaEventId == event.megaEventId }) {
-            selectedDownloadEvents.removeAll { e -> e.megaEventId == event.megaEventId }
-          } else {
-            selectedDownloadEvents.add(event)
+      Box(Modifier.weight(1f)) {
+        ModalBottomSheetLayout(
+          sheetState = state,
+          sheetContent = {
+            FilterSheetContent(
+              tempSelectedDeviceList = viewModel.tempSelectedDeviceList,
+              allDeviceList = allDeviceList,
+              onToggleSelectAllTemp = viewModel::onToggleSelectAllTemp,
+              onToggleSelectTemp = viewModel::onToggleSelectTemp,
+              onCancel = {
+                scope.launch { state.hide() }
+                viewModel.resetTempSelection()
+              },
+              onConfirm = {
+                scope.launch { state.hide() }
+                viewModel.applyTempSelection()
+              },
+              selectedCategory = viewModel.tempSelectedCategory,
+              onCategoryChange = viewModel::onCategoryChange,
+              selectedEventType = viewModel.tempSelectedEventType,
+              onEventTypeChange = viewModel::onEventTypeChange,
+              selectedDetectionTypes = viewModel.tempSelectedDetectionTypes,
+              onDetectionTypeToggle = viewModel::onDetectionTypeToggle
+            )
           }
-        },
-        onBatchDownload = {
-          appLogger.i("EVT-BATCH start batch download, count=${selectedDownloadEvents.size}, events=${selectedDownloadEvents.map { e -> e.megaEventId }}, queue.tasks=${DownloadQueueManager.tasks.value.size}, queue.isRunning=${DownloadQueueManager.isRunning}")
-          val eventsToDownload = selectedDownloadEvents.toList()
-          batchDownloadMode = false
-          selectedDownloadEvents.clear()
-          DownloadQueueManager.addToQueue(eventsToDownload)
-          emitToast("Added ${eventsToDownload.size} events to download queue")
-        },
-        onNavigateToDownloadQueue = {
-          navigator.push(BatchDownloadScreen())
-        },
-        onBatchDownloadCancel = {
-          appLogger.i("EVT-BATCH cancelled")
-          batchDownloadMode = false
-          selectedDownloadEvents.clear()
-        },
-        onBatchDeleteModeChange = { batchDeleteMode = it },
-        onToggleSelectDelete = { event ->
-          if (selectedDeleteEvents.any { e -> e.megaEventId == event.megaEventId }) {
-            selectedDeleteEvents.removeAll { e -> e.megaEventId == event.megaEventId }
-          } else {
-            selectedDeleteEvents.add(event)
-          }
-        },
-        onBatchDelete = {
-          appLogger.i("EVT-DELETE start batch delete, count=${selectedDeleteEvents.size}, events=${selectedDeleteEvents.map { e -> e.megaEventId }}")
-          showBatchDeleteDialog = true
-        },
-        onBatchDeleteConfirm = {
-          val eventsToDelete = selectedDeleteEvents.toList()
-          batchDeleteMode = false
-          selectedDeleteEvents.clear()
-          showBatchDeleteDialog = false
-          viewModel.deleteEvents(eventsToDelete)
-        },
-        onBatchDeleteCancel = {
-          appLogger.i("EVT-DELETE cancelled")
-          batchDeleteMode = false
-          selectedDeleteEvents.clear()
-        },
-        showBatchDeleteDialog = showBatchDeleteDialog,
-        onDismissBatchDeleteDialog = { showBatchDeleteDialog = false },
-        onDateChange = { newDateMillis ->
-          viewModel.changeDate(newDateMillis.toString())
-        },
-        onShowDialog = { viewModel.showDialog(true) },
-        onToggleSelect = { device ->
-          viewModel.onToggleSelect(device)
-          viewModel.resetTempSelection()
-        },
-        onEventClick = { event ->
-          navigator.push(EventPlayScreen(event))
-        },
-        onDeleteEvent = { event ->
-          viewModel.deleteEvent(event)
-        },
-        onRefresh = viewModel::getEventFlow
-      )
+        ) {
+          MainContent(
+            selectedDeviceList = viewModel.selectedDeviceList,
+            megaEventList = viewModel.megaEventList,
+            error = viewModel.error,
+            isRefreshing = viewModel.loading,
+            selectedDateMillis = selectedDateMillis,
+            state = state,
+            scope = scope,
+            batchDownloadMode = batchDownloadMode,
+            selectedDownloadEvents = selectedDownloadEvents,
+            batchDeleteMode = batchDeleteMode,
+            selectedDeleteEvents = selectedDeleteEvents,
+            onBatchDownloadModeChange = { batchDownloadMode = it },
+            onToggleSelectDownload = { event ->
+              if (selectedDownloadEvents.any { e -> e.megaEventId == event.megaEventId }) {
+                selectedDownloadEvents.removeAll { e -> e.megaEventId == event.megaEventId }
+              } else {
+                selectedDownloadEvents.add(event)
+              }
+            },
+            onBatchDownload = {
+              appLogger.i("EVT-BATCH start batch download, count=${selectedDownloadEvents.size}, events=${selectedDownloadEvents.map { e -> e.megaEventId }}, queue.tasks=${DownloadQueueManager.tasks.value.size}, queue.isRunning=${DownloadQueueManager.isRunning}")
+              val eventsToDownload = selectedDownloadEvents.toList()
+              batchDownloadMode = false
+              selectedDownloadEvents.clear()
+              DownloadQueueManager.addToQueue(eventsToDownload)
+              emitToast("Added ${eventsToDownload.size} events to download queue")
+            },
+            onNavigateToDownloadQueue = {
+              navigator.push(BatchDownloadScreen())
+            },
+            onBatchDownloadCancel = {
+              appLogger.i("EVT-BATCH cancelled")
+              batchDownloadMode = false
+              selectedDownloadEvents.clear()
+            },
+            onBatchDeleteModeChange = { batchDeleteMode = it },
+            onToggleSelectDelete = { event ->
+              if (selectedDeleteEvents.any { e -> e.megaEventId == event.megaEventId }) {
+                selectedDeleteEvents.removeAll { e -> e.megaEventId == event.megaEventId }
+              } else {
+                selectedDeleteEvents.add(event)
+              }
+            },
+            onBatchDelete = {
+              appLogger.i("EVT-DELETE start batch delete, count=${selectedDeleteEvents.size}, events=${selectedDeleteEvents.map { e -> e.megaEventId }}")
+              showBatchDeleteDialog = true
+            },
+            onBatchDeleteConfirm = {
+              val eventsToDelete = selectedDeleteEvents.toList()
+              batchDeleteMode = false
+              selectedDeleteEvents.clear()
+              showBatchDeleteDialog = false
+              viewModel.deleteEvents(eventsToDelete)
+            },
+            onBatchDeleteCancel = {
+              appLogger.i("EVT-DELETE cancelled")
+              batchDeleteMode = false
+              selectedDeleteEvents.clear()
+            },
+            showBatchDeleteDialog = showBatchDeleteDialog,
+            onDismissBatchDeleteDialog = { showBatchDeleteDialog = false },
+            onDateChange = { newDateMillis ->
+              viewModel.changeDate(newDateMillis.toString())
+            },
+            onShowDialog = { viewModel.showDialog(true) },
+            onToggleSelect = { device ->
+              viewModel.onToggleSelect(device)
+              viewModel.resetTempSelection()
+            },
+            onEventClick = { event ->
+              navigator.push(EventPlayScreen(event))
+            },
+            onDeleteEvent = { event ->
+              viewModel.deleteEvent(event)
+            },
+            onRefresh = viewModel::getEventFlow
+          )
+        }
+      }
     }
     if (showDialog) {
       DatePickerModal(

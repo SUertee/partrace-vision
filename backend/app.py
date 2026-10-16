@@ -20,6 +20,8 @@ from backend.services.semantic import SemanticService
 from backend.core.errors import API_VERSION, ApiError
 from backend.api.boundary import RequestBoundary
 from backend.services.facts import BackendService
+from backend.services.recording_jobs import RecordingJobs
+from backend.api.recording_jobs import router as recording_jobs_router
 
 ReadinessProbe = Callable[[], Awaitable[DatabaseReadiness]]
 
@@ -43,6 +45,7 @@ def create_app(
 
         application.state.readiness_probe = readiness_probe or database_probe
         application.state.backend = BackendService(configuration)
+        application.state.recording_jobs = RecordingJobs(application.state.backend)
         application.state.agent_runtime = None
         try:
             from backend.ai.providers import make_encoder
@@ -79,9 +82,10 @@ def create_app(
     application.add_middleware(RequestBoundary)
     application.include_router(data_router)
     application.include_router(semantic_router)
+    application.include_router(recording_jobs_router)
     # FastAPI uses lazy included-router wrappers; retain the actual mounted leaf
     # operations rather than inferring them from application.routes wrappers.
-    implemented_operations = {(route.path, method.lower()) for router in (data_router, semantic_router)
+    implemented_operations = {(route.path, method.lower()) for router in (data_router, semantic_router, recording_jobs_router)
                               for route in router.routes for method in route.methods}
 
     def error_response(request, status, code, message):

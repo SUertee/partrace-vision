@@ -8,7 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 from starlette.datastructures import UploadFile
 
 from backend.core.errors import ApiError, invalid
-from backend.core.models import Id, Query, UtcQuery, RecordingManifest, ReviewCreateRequest
+from backend.core.models import Id, Query, UtcQuery, RecordingJobInput, RecordingManifest, ReviewCreateRequest
 from backend.services.facts import envelope, one, utc
 
 router = APIRouter(prefix="/api/v1", tags=["data"])
@@ -18,12 +18,16 @@ def service(request):
     return request.app.state.backend
 
 
-def principal(request):
+def credential(request):
     header = request.headers.get("authorization", "")
     parts = header.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise ApiError(401, "unauthorized", "请提供有效 Bearer 凭据。")
-    return service(request).authenticate(parts[1])
+    return parts[1]
+
+
+def principal(request):
+    return service(request).authenticate(credential(request))
 
 
 def identifier(value):
@@ -101,7 +105,7 @@ def list_recordings(request: Request):
     s = service(request)
     with s.transaction(p, "data:read") as (connection, _):
         rows = connection.execute(
-            "SELECT * FROM recordings WHERE camera_id=ANY(%s) AND (%s::text IS NULL OR camera_id=%s) "
+            "SELECT * FROM recordings WHERE publication_status='published' AND camera_id=ANY(%s) AND (%s::text IS NULL OR camera_id=%s) "
             "AND (%s::text[] IS NULL OR recording_id=ANY(%s)) ORDER BY created_at DESC,recording_id DESC LIMIT %s",
             (list(p.camera_ids), camera, camera, list(p.recording_ids) if p.recording_ids is not None else None,
              list(p.recording_ids) if p.recording_ids is not None else None, s.settings.max_result_items + 1),
@@ -131,8 +135,9 @@ async def import_recording(request: Request):
         if manifest.recording.source_mode != "mock":
             raise ApiError(415, "unsupported_media_type", "真实录像须使用 multipart 上传。")
     elif media_type == "multipart/form-data":
-        async with request.form(max_files=s.settings.max_result_items + 2, max_fields=1, max_part_size=s.settings.max_manifest_bytes) as form:
+        async with request.form(max_files=s.settings.max_result_items + 2, max_fields=2, max_part_size=s.settings.max_manifest_bytes) as form:
             manifest_data = None
+            mode = None
             total = 0
             for key, value in form.multi_items():
                 if key == "manifest" and manifest_data is None:
@@ -144,6 +149,10 @@ async def import_recording(request: Request):
                         manifest_data = value.encode()
                     if len(manifest_data) > s.settings.max_manifest_bytes:
                         raise ApiError(413, "payload_too_large", "清单超过部署限额。")
+                elif key == "mode" and mode is None and isinstance(value, str):
+                    if value not in {"source", "result"}:
+                        raise invalid("mode 须为 source 或 result。")
+                    mode = value
                 elif key == "files" and isinstance(value, UploadFile):
                     name = value.filename
                     if not name or name in uploads:
@@ -157,6 +166,15 @@ async def import_recording(request: Request):
                     raise invalid("multipart 字段未知、重复或类型无效。")
             if manifest_data is None:
                 raise invalid("缺少 manifest part。")
+            if mode == "source":
+                if set(uploads) != {"source.mp4"}:
+                    raise invalid("原片录入须恰好一个 files/source.mp4。")
+                value = RecordingJobInput.model_validate(strict_json(manifest_data))
+                result, status = await run_in_threadpool(
+                    request.app.state.recording_jobs.create, credential(request), value, uploads["source.mp4"],
+                    include_recording=True,
+                )
+                return Response(content=json.dumps(result, ensure_ascii=False), status_code=status, media_type="application/json")
             manifest = RecordingManifest.model_validate(strict_json(manifest_data))
             if manifest.recording.source_mode == "mock":
                 raise ApiError(415, "unsupported_media_type", "无媒体模拟包仅接受 application/json。")
@@ -172,7 +190,7 @@ def get_recording(recording_id: str, request: Request):
     params(request, set())
     s = service(request)
     with s.transaction(p, "data:read") as (connection, _):
-        return envelope(recording=s.public_recording(s.recording(connection, identifier(recording_id), p)))
+        return envelope(recording=s.public_recording(s.recording(connection, identifier(recording_id), p, require_published=False)))
 
 
 @router.get("/events")
@@ -230,7 +248,7 @@ def list_reviews(request: Request):
             s.recording(connection, recording_id, p)
         rows = connection.execute(
             "SELECT v.* FROM review_records v JOIN events e USING(event_id) JOIN recordings r USING(recording_id) "
-            "WHERE r.camera_id=ANY(%s) AND (%s::text IS NULL OR r.recording_id=%s) "
+            "WHERE r.publication_status='published' AND r.camera_id=ANY(%s) AND (%s::text IS NULL OR r.recording_id=%s) "
             "AND (%s::text[] IS NULL OR r.recording_id=ANY(%s)) ORDER BY v.created_at DESC,v.review_id DESC LIMIT %s",
             (list(p.camera_ids), recording_id, recording_id,
              list(p.recording_ids) if p.recording_ids is not None else None,

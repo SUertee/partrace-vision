@@ -11,10 +11,25 @@ from pydantic import TypeAdapter, ValidationError
 from backend.core.auth import AuthRegistry, Principal
 from backend.core.configuration import ConfigRegistry, config_signature
 from backend.core.errors import ApiError
-from backend.core.models import Config, Id, Query, RecordingManifest, ReviewCreateRequest, UtcQuery
+from backend.core.models import Config, Id, Query, RecordingJobInput, RecordingManifest, ReviewCreateRequest, UtcQuery
 
 
 EXAMPLES = Path(__file__).resolve().parents[2] / "docs/api/examples/v0.3"
+
+
+@pytest.mark.parametrize("native_id", ["native/event@123|x", " opaque/event@123|x ", "原生事件/设备@甲|1", "x" * 200])
+def test_sdk_event_id_is_opaque_and_preserved(native_id):
+    value = RecordingJobInput(job_id="job_1", camera_id="camera_1", config_version="test_v1",
+                              sdk_event_id=native_id, duration_ms=1000)
+    assert value.sdk_event_id == native_id
+
+
+@pytest.mark.parametrize("native_id", [None, 123, True, "", " ", "\u3000\u00a0", "x" * 201,
+                                        "native\x00id", "native\nid", "native\tid", "native\x7fid", "native\x85id"])
+def test_sdk_event_id_rejects_invalid_values(native_id):
+    with pytest.raises(ValidationError):
+        RecordingJobInput(job_id="job_1", camera_id="camera_1", config_version="test_v1",
+                          sdk_event_id=native_id, duration_ms=1000)
 
 
 @pytest.fixture

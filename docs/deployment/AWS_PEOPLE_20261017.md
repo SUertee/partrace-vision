@@ -1,12 +1,12 @@
 # AWS 公网 HTTPS 与真实 People 录像验收
 
-更新：2026-10-17（Asia/Shanghai）。关联工作包：[D04 #4](https://github.com/SUertee/partrace-vision/issues/4)、[D05 #5](https://github.com/SUertee/partrace-vision/issues/5)、[D06 #6](https://github.com/SUertee/partrace-vision/issues/6)；本文不关闭这些 Issue，也不代替 D10 完整业务验收。
+更新：2026-10-17（Asia/Shanghai）。本文保留独立部署历史；本次开发整合已包含 Android、People API、worker 和部署脚本，尚未以整合版重部署 EC2。源码基线与完整检查见[版本说明](../releases/DEVELOPMENT_20261017.md)。关联工作包：[D04 #4](https://github.com/SUertee/partrace-vision/issues/4)、[D05 #5](https://github.com/SUertee/partrace-vision/issues/5)、[D06 #6](https://github.com/SUertee/partrace-vision/issues/6)；本文不关闭这些 Issue，也不代替 D10 完整业务验收。
 
 门铃 A 已用真实历史原片及新自动 People 事件验证 **App 下载 → 公网 API → Aurora pending → Vision → published/completed → App 完成回调**。球机 B 的真实自动原片已入 Aurora，现场标定和区域映射尚未完成，因此保留 pending/queued。
 
 ## 部署与源码基线
 
-先前 `df2de62` 只更新部署文档和只读查询 SQL，其运行代码基线为 `4cc9aa1`。本次 person_id 提交在该基线上补充事件字段、独立迁移和既有 Vision 出口；Android、People API、任务迁移、worker 和部署脚本仍未随本次合入，不能从 dev 直接重建完整的独立 People 部署。当前 [dev SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 仍描述 dev 已有契约，不是云端 People 结构的完整快照。
+先前 `df2de62` 只更新部署文档和只读查询 SQL，其运行代码基线为 `4cc9aa1`。本次 person_id 提交在该基线上补充事件字段、独立迁移和既有 Vision 出口；Android、People API、任务迁移、worker 和部署脚本仍未随本次合入，不能从 dev 直接重建完整的独立 People 部署。本次整合后的 [SQL](../database/schema.sql) 为 12 表/106 列，包含 People、shelf_level、person_id 与 cards_json；云端仍是独立补丁版本，不能将源码合入当作云端已同步。
 
 | 项目 | 本次核验的实际状态 |
 | --- | --- |
@@ -14,7 +14,7 @@
 | TLS | Let’s Encrypt IP SAN 证书，IP 匹配；本次证书到期时间 `2026-10-23T09:26:33Z` |
 | 网络 | 用户已确认新增 TCP 80/443 入站；外部 HTTP-01 文件与 HTTPS 实际可达。未因实例角色无 EC2 修改权限而绕过安全组 |
 | 反向代理 | Nginx 对外监听 80/443，HTTPS 代理至 `127.0.0.1:8001`；80 保留 HTTP-01，其余重定向 HTTPS |
-| People API | `partrace-people-api-20261017`，镜像 `partrace-vision-api:people-20261017`，21 个数据/任务操作，Agent 关闭 |
+| People API | `partrace-people-api-20261017`，当前镜像 `partrace-vision-api:person-id-20261017`，21 个数据/任务操作，Agent 关闭 |
 | 原 API | `partrace-vision-api-1`，`127.0.0.1:8000`，保留供受控回退；未删除或覆盖其 Git 工作树 |
 | 数据库 | 原 Aurora 集群内 `partrace` 库、`public` schema，沿用 EC2 实例角色 IAM 认证 |
 | 鉴权 | `development` 最小 Bearer 注册表；App 与 A worker 使用独立凭据和精确镜头授权。正式 production 鉴权尚未完成 |
@@ -23,7 +23,7 @@
 
 People 镜像以服务器 `dev_hua@39aa4ab` 为基线合入本地任务实现，保留 `shelf_level`、可空 `zone_id` 和该基线的 UTC 声明规则。发布目录 `/opt/partrace-people-20261017`；运行数据继续位于 `/srv/partrace-vision/.local-state`。源码冻结包和本地验收凭据保留在被忽略的私有目录，未将密钥、令牌、录像、人物帧或私有配置提交到 Git。
 
-云端实际结构为 12 表 / 104 列，含 `recording_jobs`、`recordings.publication_status`、`events.shelf_level`，尚无 `runs.cards_json`；不能因列数相同就与原本地 104 列结构视为一致。dev 仍为 11 表 / 79 列，含 `cards_json` 与 `shelf_level`。
+初次 People 部署为 12 表/104 列；004 迁移后云端为 12 表/105 列，含 person_id，尚无 runs.cards_json。本次整合源码为 12 表/106 列，同时包含 shelf_level、person_id、cards_json；不能将两份结构混用。
 
 ## 原片先入库，再发布分析结果
 
@@ -74,7 +74,7 @@ A 历史原片的真实 CPU 算法耗时 36.741 秒，4 条匿名局部轨迹、
 
 ## 在 Aurora 查询
 
-在已迁移的 AWS `partrace` 库执行 [aurora-people-status.sql](../database/aurora-people-status.sql)。该只读 SQL 针对上述部署扩展；尚未包含 People 源码/迁移的 dev 新库不能直接执行。
+在已迁移的 AWS `partrace` 库执行 [aurora-people-status.sql](../database/aurora-people-status.sql)。该只读 SQL 针对上述部署扩展；未应用 People 迁移的既有库不能直接执行。
 
 ```sql
 SELECT r.recording_id, r.camera_id,
@@ -93,7 +93,7 @@ ORDER BY j.created_at DESC;
 - 用户已确认新增 80/443 入站；80 的 HTTP-01 验证文件已返回 200，公网证书按 IP 正常验证，无跳过证书校验。
 - `/health/live` 外部 200；未授权 `/api/v1/user` 返回 401；`/docs` 与 `/openapi.json` 外部 404。People API 的本机 readiness 为 200。
 - 使用 Certbot `v5.4.0`；续期服务 `partrace-public-ip-renew.service` 与 timer 已启用，每日检查两次并重载 Nginx。本轮手动执行服务为 `Result=success / ExecMainStatus=0`。短期证书不能依赖人工续期，IP 改变后须重新签发对应 IP 证书。
-- 服务端已有运维文件在 `/opt/partrace-public-ip` 和 `/opt/partrace-people-20261017/operations`。它们属于独立部署交付，本文不假定这些脚本已进入 dev 源码。显式重配时第三参数 `8001` 不可遗漏，否则可能指回旧 API。
+- 服务端已有运维文件在 `/opt/partrace-public-ip` 和 `/opt/partrace-people-20261017/operations`。它们属于独立部署交付，本次源码已收录对应 infra 目录；服务器文件仍按原发布版本运行。显式重配时第三参数 `8001` 不可遗漏，否则可能指回旧 API。
 
 ```sh
 sudo systemctl status partrace-public-ip-renew.timer
@@ -103,7 +103,7 @@ sudo nginx -t
 sudo bash /opt/partrace-public-ip/configure.sh issue 35.84.190.14 8001
 ```
 
-原 API/旧镜像仍保留；回退前须限制新原片入口并评估旧查询对 pending 的语义，不能直接把旧 API 暴露给新客户端。保留新增表/列及所有数据，不执行破坏性降级。不要直接用当前 dev 重建覆盖该独立 People 镜像。正式源码合入时需共同核对最新 dev 的 shelf 字段、cards、SQL/OpenAPI 和迁移。
+原 API/旧镜像仍保留；回退前须限制新原片入口并评估旧查询对 pending 的语义，不能直接把旧 API 暴露给新客户端。保留新增表/列及所有数据，不执行破坏性降级。不要直接用当前 dev 重建覆盖该独立 People 镜像。本次源码已整合 shelf 字段、cards、People 和 person_id；后续部署仍须核对实际旧库差异和显式迁移。
 
 ## 验证范围与剩余工作
 
@@ -114,7 +114,7 @@ sudo bash /opt/partrace-public-ip/configure.sh issue 35.84.190.14 8001
 1. **B 现场标定/区域映射。** 发布新配置版本，并明确旧 v1 pending 原片如何迁移；不能覆盖不可变旧配置或直接宣称 B 完成。
 2. **worker 的服务器运行交付。** A 当前在 Mac CPU 进程持续运行；Mac/进程停止后，API 可继续保存 pending 原片，但不会自行解析。
 3. **Android 真机、系统后台常驻与正式生产鉴权。** 当前验证依赖前台 App 和 SDK 登录，公网 HTTPS 不代表上述事项完成。
-4. **源码整合与完整业务闭环。** People 源码/迁移/部署自动化仍待合入 dev；Agent 云端启用、真实区域事件/证据引用、人工核查和 D10 独立验收，本文不提前标为完成。
+4. **源码整合与完整业务闭环。** 本次已纳入 People 源码、迁移与部署脚本；Agent 云端启用、真实区域事件/证据引用、人工核查和 D10 独立验收，本文不提前标为完成。
 
 ## person_id 字段补丁 · 2026-10-17
 
@@ -122,4 +122,4 @@ Aurora 已执行 `004-event-person-id.sql`，增加可空的 A 图库 G 编号�
 
 独立发布目录 `/opt/partrace-person-id-20261017` 保存补丁与 root 私有的迁移前 events 快照；旧 People 容器保留为 `partrace-people-api-20261017-before-person-id`。新容器 readiness 200，21 个操作的契约含 person_id；公网正常验证证书后 health 200、无凭据 recordings 401、App 既有凭据读取 recordings 200。既有 8000 API 保留，不执行破坏性数据库降级。
 
-本次 dev 合入与该云端补丁共享字段语义，但完整 People 源码整合仍待进行。B 尚缺现场标定，没有真实 B 匹配 G 编号的入库事件；详见[D04 验证](../../openspec/changes/d04-event-person-id/verification.md)。
+本次 dev 合入与该云端补丁共享字段语义，但People 源码已随本次开发版整合，云端仍未重部署该整合版。B 尚缺现场标定，没有真实 B 匹配 G 编号的入库事件；详见[D04 验证](../../openspec/changes/d04-event-person-id/verification.md)。

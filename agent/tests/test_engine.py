@@ -2,16 +2,19 @@
 
 import asyncio
 from copy import deepcopy
+import json
 
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langsmith.run_helpers import get_tracing_context
 from pydantic import Field, ValidationError
 import pytest
 
 from agent import AgentEngine, AgentExecutionError, AgentLimits
+from agent.contracts import ToolUnavailable
 from agent.models import QueryScope
 from agent.tools import build_tools
+from agent.tools.skills import skill_catalog
 
 
 SCOPE = {
@@ -155,6 +158,7 @@ def test_actual_graph_calls_tools_and_returns_only_read_evidence():
     assert [entry[0] for entry in gateway.calls] == ["search", "event", "evidence"]
     assert all(entry[1] == SCOPE for entry in gateway.calls)
     assert set(model.bound_names) == {
+        "load_skill",
         "search_events", "semantic_search_events", "get_event", "get_evidence",
         "read_recording", "CandidateAnswer",
     }
@@ -373,3 +377,162 @@ def test_timeout_and_external_cancellation_are_distinct():
             await task
 
     run(cancel())
+
+
+def test_skill_discovery_loading_and_actual_evidence_workflow():
+    gateway = FakeGateway()
+    model = ToolCallingFake(responses=[
+        call("load_skill", {"skill_name": "event-evidence-review"}),
+        call("search_events"),
+        call("get_event", {"event_id": "event_1"}),
+        call("get_evidence", {"evidence_id": "frame_1"}), answer(),
+    ])
+    result = run(AgentEngine(model).execute("核对事件", PLAN, gateway, run_id="run_skill"))
+    assert result["answer"]["references"] == [REFERENCE]
+    assert [entry[0] for entry in gateway.calls] == ["search", "event", "evidence"]
+    prompt = str(model.seen_messages[0][0].content)
+    assert all(skill["name"] in prompt for skill in skill_catalog())
+    assert "builtin_skill_instructions" in str(model.seen_messages[1])
+
+
+@pytest.mark.parametrize("skill", skill_catalog())
+def test_each_catalog_skill_loads_only_instructions_and_no_facts(skill):
+    gateway = FakeGateway()
+    tools, ledger = build_tools(gateway, QueryScope.model_validate(SCOPE), PLAN["query_text"])
+    loader = next(tool for tool in tools if tool.name == "load_skill")
+    result = run(loader.ainvoke({"skill_name": skill["name"]}))
+    assert result["status"] == "loaded"
+    assert result["name"] == skill["name"]
+    assert result["instructions"]
+    assert set(result["tools"]) <= {tool.name for tool in tools}
+    assert gateway.calls == [] and ledger.events == {} and ledger.frames == {}
+    # Every result is a fresh copy; model-side mutation cannot change the catalog.
+    result["tools"].append("shell")
+    assert "shell" not in run(loader.ainvoke({"skill_name": skill["name"]}))["tools"]
+
+
+@pytest.mark.parametrize("name", ["unknown", "../../private/secret", "/tmp/skill.md"])
+def test_unknown_skill_or_path_is_never_loaded(name):
+    gateway = FakeGateway()
+    tools, _ = build_tools(gateway, QueryScope.model_validate(SCOPE), PLAN["query_text"])
+    loader = next(tool for tool in tools if tool.name == "load_skill")
+    result = run(loader.ainvoke({"skill_name": name}))
+    assert result == {"status": "unknown_skill", "available_skills": skill_catalog()}
+    assert gateway.calls == []
+    with pytest.raises(ValidationError):
+        run(loader.ainvoke({"skill_name": "event-evidence-review", "query": SCOPE}))
+
+
+def test_skill_loading_does_not_count_as_reading_evidence():
+    model = ToolCallingFake(responses=[
+        call("load_skill", {"skill_name": "event-evidence-review"}), answer(),
+    ])
+    gateway = FakeGateway()
+    with pytest.raises(AgentExecutionError, match="invalid_references"):
+        run(AgentEngine(model).execute("核对", PLAN, gateway, run_id="run_1"))
+    assert gateway.calls == []
+
+
+def test_skill_loading_is_bounded_by_the_tool_budget():
+    model = ToolCallingFake(responses=[call("load_skill", {"skill_name": "event-evidence-review"})])
+    with pytest.raises(AgentExecutionError, match="agent_tool_limit"):
+        run(AgentEngine(model, AgentLimits(tool_calls=1)).execute("核对", PLAN, FakeGateway(), run_id="run_1"))
+
+
+def test_semantic_outage_can_continue_with_real_reads_and_discloses_the_gap():
+    class NoEncoderGateway(FakeGateway):
+        async def semantic_search_events(self, *args):
+            self.calls.append(("semantic_unavailable",))
+            raise ToolUnavailable()
+
+    gateway = NoEncoderGateway()
+    model = ToolCallingFake(responses=[
+        call("load_skill", {"skill_name": "semantic-event-search"}),
+        call("semantic_search_events"),
+        call("semantic_search_events"),
+        call("search_events"),
+        call("get_event", {"event_id": "event_1"}),
+        call("get_evidence", {"evidence_id": "frame_1"}), answer(),
+    ])
+    result = run(AgentEngine(model).execute("核对", PLAN, gateway, run_id="run_1"))
+    assert [entry[0] for entry in gateway.calls] == ["semantic_unavailable", "search", "event", "evidence"]
+    assert result["answer"]["references"] == [REFERENCE]
+    assert "语义检索服务不可用" in result["answer"]["summary"]
+    assert result["cards"]["cards"][0]["summary"] == result["answer"]["summary"]
+    # The unavailable response must not pretend to be a successful empty search.
+    messages = [item for item in model.seen_messages[-1] if isinstance(item, ToolMessage)
+                and item.name == "semantic_search_events"]
+    assert len(messages) == 2
+    for item in messages:
+        data = json.loads(item.content)["data"]
+        assert data["status"] == "unavailable" and data["fallback_tool"] == "search_events"
+        assert "coverage" not in data and "candidates" not in data and "search_status" not in data
+
+
+def test_outage_disclosure_keeps_the_answer_within_the_contract_limit():
+    class NoEncoderGateway(FakeGateway):
+        async def semantic_search_events(self, *args):
+            raise ToolUnavailable()
+
+    model = ToolCallingFake(responses=[call("semantic_search_events"), answer([], "字" * 4000)])
+    result = run(AgentEngine(model).execute("核对", PLAN, NoEncoderGateway(), run_id="run_1"))
+    assert len(result["answer"]["summary"]) == 4000
+    assert "语义检索服务不可用" in result["answer"]["summary"]
+
+
+def test_parallel_semantic_calls_contact_an_unavailable_encoder_only_once():
+    class NoEncoderGateway(FakeGateway):
+        async def semantic_search_events(self, *args):
+            self.calls.append(("semantic_unavailable",))
+            await asyncio.sleep(0)
+            raise ToolUnavailable()
+
+    async def scenario():
+        gateway = NoEncoderGateway()
+        tools, ledger = build_tools(gateway, QueryScope.model_validate(SCOPE), PLAN["query_text"])
+        semantic = next(tool for tool in tools if tool.name == "semantic_search_events")
+        results = await asyncio.gather(semantic.ainvoke({}), semantic.ainvoke({}))
+        assert [result["data"]["status"] for result in results] == ["unavailable", "unavailable"]
+        assert gateway.calls == [("semantic_unavailable",)]
+        assert ledger.semantic_unavailable and ledger.semantic_reads == []
+
+    run(scenario())
+
+
+@pytest.mark.parametrize("status", ["matched", "no_matches"])
+def test_partial_index_coverage_is_reported_even_when_some_events_match(status):
+    class PartialIndexGateway(FakeGateway):
+        async def semantic_search_events(self, *args):
+            result = await super().semantic_search_events(*args)
+            result["search_status"] = status
+            result["coverage"].update(eligible_event_count=2, indexed_event_count=1, missing_event_count=1)
+            return result
+
+    model = ToolCallingFake(responses=[call("semantic_search_events"), answer([])])
+    result = run(AgentEngine(model).execute("核对", PLAN, PartialIndexGateway(), run_id="run_1"))
+    gap = next(card for card in result["cards"]["cards"] if card["kind"] == "coverage_gap")
+    assert gap["gap"] == "unindexed" and gap["indexed_event_count"] == 1
+
+
+@pytest.mark.parametrize("limits,code", [
+    (AgentLimits(model_calls=1), "agent_model_limit"),
+    (AgentLimits(tool_calls=1), "agent_tool_limit"),
+    (AgentLimits(recursion_limit=2), "agent_recursion_limit"),
+])
+def test_call_limits_keep_distinct_safe_failure_codes(limits, code):
+    model = ToolCallingFake(responses=[call("search_events")])
+    with pytest.raises(AgentExecutionError) as failure:
+        run(AgentEngine(model, limits).execute("核对", PLAN, FakeGateway(), run_id="run_1"))
+    assert failure.value.code == code
+
+
+def test_model_can_correct_invalid_tool_arguments_without_a_gateway_read():
+    gateway = FakeGateway()
+    model = ToolCallingFake(responses=[
+        call("get_event", {"event_id": 1}),
+        call("get_event", {"event_id": "event_1"}),
+        call("get_evidence", {"evidence_id": "frame_1"}), answer(),
+    ])
+    result = run(AgentEngine(model).execute("核对", PLAN, gateway, run_id="run_1"))
+    assert result["answer"]["references"] == [REFERENCE]
+    assert [entry[0] for entry in gateway.calls] == ["event", "evidence"]

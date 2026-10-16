@@ -1,11 +1,16 @@
 # ParTrace Vision 最小 API · 0.3-mvp-draft
 
-本页描述当前dev契约；本地已验证但待合入的People/Android/worker扩展与业务验收状态见[项目进展](../PROJECT_STATUS.md)。
-**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加九个 Agent 操作，共 23／28。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 79 字段](../database/README.md)，28 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
+**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，另加七个 People 原片任务操作后共 21 个；显式 `PARTRACE_AGENT_ENABLED=true` 加九个 Agent 操作，共 30／35。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [12 表 / 106 字段，含原片任务](../database/README.md)，35 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
 
 需要开发的业务模块、主责、表读写与 API 交接见 [模块设计](../modules/README.md)。本页维护字段语义、范围与返回约定。
 
 已选 **PostgreSQL + pgvector**，业务表与 `event_embeddings` 在同一个 PostgreSQL 中分表保存。SQL 时间字段用 `TIMESTAMPTZ`，JSON 字段用 `JSONB`（保留 `*_json` 名称），向量列为 `embedding vector`；API 仍是 UTC 字符串、JSON 对象/数组和 `embedding` 数组。首版在后端授权、元数据范围和同一模型空间内做精确余弦排序，之后再评估 ANN；Agent 通过后端工具访问，不直连数据库。
+
+## People 原片先入库
+
+SDK People 事件结束后，Android 使用 `POST /api/v1/recordings` 的 multipart `mode=source`，`manifest` 为 `RecordingJobInput`，重复 `files` 恰好一个 `source.mp4`。服务先保存原片并原子写 `recordings(pending)` 与 `recording_jobs(queued)`，新建202、同内容重放200，返回 `{api_version,recording,job,replayed}`。Vision 独立领取并完成解析；有效租约下 complete 将事件/证据、录像 published 与任务 completed 一次提交，App 回读后触发完成回调。详细协议见 [People 管线](../modules/BACKEND_VISION.md#people-pipeline)。
+
+`publication_status=pending|published` 与任务处理状态分开；pending 的 `manifest_sha256=null`，失败保留待发布原片。默认录像列表只列 published，直接元数据读取可见 pending；事实查询对 pending 返回 `409 recording_not_ready`，不得解释成零事件。省略 mode 或 `mode=result` 继续使用旧 `RecordingManifest + files` 完整结果导入（201/200）。Agent run SSE 与 Vision 任务完成属于不同流程。
 
 ## 首版交接
 
@@ -31,7 +36,7 @@
 
 `v1` 是外部路由主版本；`0.3-mvp-draft` 是未冻结设计资料与示例版本，响应的 `api_version` 保持后者。统一公开地址设计为 `https://api.example.invalid`，Android 只配置一个 API base URL；后端与独立 Agent 包在同一 FastAPI 工厂组合，内部通过受限 Python 接口调用。占位地址不代表已部署服务或网关。
 
-全部外部 API 使用 `/api/v1`；其中后端业务接口共 19 个操作，Agent 9 个，共 28 个当前草案。development 已实现受保护摘要凭据到 Bearer subject 的映射及 active／role／scope／资源检查；staging／production 的正式认证仍待配置，本地凭据在这两种环境拒绝使用。subject 映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
+全部外部 API 使用 `/api/v1`；其中后端业务接口共 26 个操作（含七个 People 任务），Agent 9 个，共 35 个当前草案。development 已实现受保护摘要凭据到 Bearer subject 的映射及 active／role／scope／资源检查；staging／production 的正式认证仍待配置，本地凭据在这两种环境拒绝使用。subject 映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
 
 | 方法 / 路径 | 用途 |
 |---|---|
@@ -51,7 +56,7 @@
 | `GET /parcels/{parcel_id}/records` | 按 `sequence_no` 递增、稳定分页读取入出库历史 |
 | `POST /parcels/{parcel_id}/records` | 管理员显式确认入库或出库，记录只追加 |
 
-独立 `agent/` 包提供 `create_agent` 引擎，Backend 在显式启用后组合历史服务并挂载 `/api/v1/agent` 的既有九个操作：
+独立 `agent/` 包提供 `create_agent` 引擎，Backend 在显式启用后组合历史服务并挂载 `/api/v1/agent` 的既有八个操作：
 
 | 方法 / 路径 | 用途 |
 |---|---|
@@ -60,7 +65,6 @@
 | `POST /plans` | 绑定用户消息，生成可修改 `query/query_text/steps` |
 | `POST /runs` | 稳定 run ID 执行最终确认计划，保存运行状态 |
 | `GET /runs/{run_id}`、`POST /runs/{run_id}/stop` | 回读分析 / 停止，终态不再追加 |
-| `GET /runs/{run_id}/events` | Agent运行快照与终态SSE，完成后返回卡片包；不是Vision完成推送 |
 
 会话元数据与用户问题仅按有效 Bearer 身份及当前 active owner 验证，不要求 `data:read` 或录像授权；录像撤权不隐藏会话列表。计划、运行（含状态读取、停止及重试）需要 `data:read`，并按本次 `Query.recording_id` 验证当前录像授权与 Event/Evidence 引用归属，不以其他轮次或会话替代。助手消息通过关联 run 验证同一范围；消息分页含任一无权助手消息时整页 403，无正文或部分结果，不静默过滤。管理员也不能越过 owner。Agent 可保存自己的 AI 历史，调用监控事实工具仍只读，不导入事件、写向量或保存人工决定。
 
@@ -183,8 +187,6 @@ JSON 成功响应与错误均带 `api_version=0.3-mvp-draft`，严格限制未�
 
 [v0.2 完整方案及旧样例](archive/0.2.md) 仅作历史参考，不能混用；0.1 `demo-bundle.json` 同样不是当前导入格式。
 
-## 事件 person_id
+### 事件 person_id
 
-`EventInput` 新增可省略、可空的 `person_id`，格式为 G 加 4–99 位数字（例如 `G0007`），表示 A 图库管理的匿名档案；`Event` 读取固定返回该键，未知为 `null`。它与录像内的 `track_key` 及 App 用户身份不同。Vision 未匹配、冲突或复核人物不一致时必须传 `null`，不能用局部 P 编号冒充 G。
-
-旧清单省略字段或显式传 `null` 保持旧摘要和重放语义；已知 G 参与不可变摘要，同录像换 G 返回内容冲突。现有数据库先应用 [004 增量迁移](../database/migrations/004-event-person-id.sql)，旧事件不推测回填。格式、发布回读和兼容性见 [D04 验收](../../openspec/changes/d04-event-person-id/verification.md)。
+事件输入新增可省略、可空person_id，事件读取返回该字段；有效值为A图库管理的G编号，未知为null。track_key仍是同录像局部轨迹。B匹配成功时如 `{"track_key":"P003","person_id":"G0007"}`；未知为 `{"track_key":"P003","person_id":null}`。局部P编号不能填入person_id，不是App user_id。旧清单省略与显式null保持相同幂等摘要；已发布事件换G编号属于不同结果，不能覆盖。

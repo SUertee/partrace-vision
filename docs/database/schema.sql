@@ -1,17 +1,17 @@
 -- ParTrace Vision · 驿站追迹 · 最小数据库设计 0.3-mvp-draft
--- 依据：技术方案 r51、PRD r230；用户于 2026-10-13 选择 PostgreSQL + pgvector、确认包裹入出库并取消会话固定录像：11 表、77 字段；2026-10-16 events 增加可空 shelf_level（货架层级自下而上 1–20，未知为 NULL）、zone_id 改为可空且默认 'E3'（zone_id 表示货架编号，不表示层级；层级由 shelf_level 表示）：11 表、78 字段；截至 2026-10-17 再计入 runs.cards_json，共 11 表、79 字段；2026-10-17 events 增加可空 person_id，保存 A 图库的匿名 G 编号，当前共 11 表、80 字段。
+-- 依据：技术方案 r51、PRD r230；用户选择 PostgreSQL + pgvector，并于 2026-10-17 增加原片任务：12 表、106 字段。
 -- PostgreSQL 17 / pgvector 0.8.7 新空库 DDL 草案；不是既有库迁移，也不代表数据库或后端已部署。
 -- SQLite 历史验证稿已完整保存在 archive/schema-sqlite-0.3.sql，不再作为当前生产选型。
 -- 首版输入：固定摄像头/区域的一段完整连续预录视频，以及一份完整分析结果包。
 -- camera_id/config_version/zone_id 引用仓库中不可覆盖的配置，不另建配置表。
--- source_mode=sdk 仅允许已验证取得的连续视频；SDK 原生事件、离散帧包暂不导入。
+-- source_mode=sdk 仅允许已验证取得的连续视频；原片先存 pending recordings，SDK People 元数据与处理状态保留在 recording_jobs，离散帧不能冒充原片。
 -- 录像只发布一次：完整包在单事务写入；失败回滚。重算或重新校时须换 recording_id。
 -- recording_id + manifest_sha256 在服务端处理重试：同 ID 同内容返回原结果，异内容冲突。
 -- 媒体文件不入库；storage_key 为服务端存储键，available 须先核实真实文件。
--- started_at 非空按导入方声明保存并用于 UTC 换算，不证明实际拍摄时刻；起点未知用 NULL。
+-- started_at 只有 UTC 起点得到验证才填写；NULL 不参与真实日期命中。
 -- 绝对时间统一 TIMESTAMPTZ；服务绑定带时区参数，API 输出 ISO 8601 UTC，不以本地时区补全未知时间。
 -- 子对象时间只存 BIGINT 视频偏移毫秒；UTC = 录像已验证起点 + 偏移，不重复存三套时钟。
--- events.zone_id 表示货架编号（如 E3），不表示层级；层级由 shelf_level 表示，未知货架写 NULL，缺省填 'E3'。
+-- events.person_id 保存 A 图库的可空 G 编号；shelf_level 保留自下而上 1–20 的候选层级，未知为 NULL。
 -- track_key 只在同一 recording 内有效；失去跟踪后换 key，关键帧点间默认未知。
 -- 一个 review 只针对一个 event，引用该事件全部固定关键帧；不做多事件分组或复核编辑。
 -- review_id 是客户端重试键；服务端比较已有规范化请求内容，不再新增幂等键列。
@@ -55,19 +55,59 @@ CREATE TABLE recordings (
     source_mode TEXT NOT NULL,
     started_at TIMESTAMPTZ,
     duration_ms BIGINT NOT NULL,
-    manifest_sha256 TEXT NOT NULL,
+    manifest_sha256 TEXT,
     storage_key TEXT,
     media_status TEXT NOT NULL DEFAULT 'missing',
     created_at TIMESTAMPTZ NOT NULL,
+    publication_status TEXT NOT NULL DEFAULT 'published',
     CONSTRAINT ck_recording_config CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0),
     CONSTRAINT ck_recording_source CHECK (source_mode IN ('prerecorded', 'sdk', 'mock')),
     CONSTRAINT ck_recording_time CHECK (started_at IS NULL OR (isfinite(started_at) AND started_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')),
     CONSTRAINT ck_recording_duration CHECK (duration_ms > 0),
-    CONSTRAINT ck_recording_manifest CHECK (manifest_sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_recording_manifest CHECK ((publication_status = 'published' AND manifest_sha256 IS NOT NULL AND manifest_sha256 ~ '^[0-9a-f]{64}$') OR (publication_status = 'pending' AND manifest_sha256 IS NULL)),
+    CONSTRAINT ck_recording_publication CHECK (publication_status IN ('pending', 'published') AND (publication_status <> 'pending' OR (source_mode = 'sdk' AND started_at IS NULL AND storage_key IS NOT NULL))),
     CONSTRAINT ck_recording_media CHECK (media_status IN ('available', 'missing')),
     CONSTRAINT ck_recording_storage CHECK ((storage_key IS NULL OR length(trim(storage_key)) > 0) AND (media_status <> 'available' OR storage_key IS NOT NULL)),
     CONSTRAINT ck_recording_created CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00')
 );
+
+-- Jobs own processing state; pending source recordings become published only with final facts.
+CREATE TABLE recording_jobs (
+    job_id TEXT PRIMARY KEY NOT NULL,
+    camera_id TEXT NOT NULL,
+    config_version TEXT NOT NULL,
+    sdk_event_id TEXT NOT NULL,
+    event_type TEXT NOT NULL DEFAULT 'people',
+    duration_ms BIGINT NOT NULL,
+    sdk_timestamp_ms BIGINT,
+    created_by TEXT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    video_sha256 TEXT NOT NULL,
+    request_sha256 TEXT NOT NULL,
+    storage_key TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    worker_id TEXT,
+    worker_user_id TEXT REFERENCES users(user_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    lease_token_sha256 TEXT,
+    lease_expires_at TIMESTAMPTZ,
+    result_sha256 TEXT,
+    error_code TEXT,
+    event_count INTEGER,
+    evidence_count INTEGER,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    started_at TIMESTAMPTZ,
+    finished_at TIMESTAMPTZ,
+    CONSTRAINT uq_recording_job_sdk_event UNIQUE(camera_id,sdk_event_id),
+    CONSTRAINT ck_recording_job_metadata CHECK (length(trim(camera_id)) > 0 AND length(trim(config_version)) > 0 AND length(trim(sdk_event_id)) > 0 AND event_type='people' AND duration_ms>0 AND (sdk_timestamp_ms IS NULL OR sdk_timestamp_ms>=0)),
+    CONSTRAINT ck_recording_job_hashes CHECK (video_sha256 ~ '^[0-9a-f]{64}$' AND request_sha256 ~ '^[0-9a-f]{64}$' AND (result_sha256 IS NULL OR result_sha256 ~ '^[0-9a-f]{64}$') AND (lease_token_sha256 IS NULL OR lease_token_sha256 ~ '^[0-9a-f]{64}$')),
+    CONSTRAINT ck_recording_job_status CHECK (status IN ('queued','processing','completed','failed') AND attempts>=0),
+    CONSTRAINT ck_recording_job_lease CHECK ((status='processing')=(lease_expires_at IS NOT NULL) AND (status='queued' OR (worker_id IS NOT NULL AND worker_user_id IS NOT NULL AND lease_token_sha256 IS NOT NULL))),
+    CONSTRAINT ck_recording_job_result CHECK ((status IN ('completed','failed'))=(finished_at IS NOT NULL) AND (status<>'completed' OR (result_sha256 IS NOT NULL AND event_count>=0 AND evidence_count>=0 AND error_code IS NULL)) AND (status<>'failed' OR error_code IS NOT NULL)),
+    CONSTRAINT ck_recording_job_time CHECK (isfinite(created_at) AND created_at>=TIMESTAMPTZ '1970-01-01 00:00:00+00' AND isfinite(updated_at) AND updated_at>=created_at AND (started_at IS NULL OR (isfinite(started_at) AND started_at>=created_at)) AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at>=created_at)) AND (lease_expires_at IS NULL OR isfinite(lease_expires_at)))
+);
+CREATE INDEX idx_recording_jobs_claim ON recording_jobs(status,lease_expires_at,created_at,job_id);
+CREATE INDEX idx_recording_jobs_camera ON recording_jobs(camera_id,created_at);
 
 CREATE TABLE events (
     event_id TEXT PRIMARY KEY NOT NULL,
@@ -84,8 +124,8 @@ CREATE TABLE events (
     summary TEXT,
     CONSTRAINT fk_event_recording FOREIGN KEY (recording_id) REFERENCES recordings (recording_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT ck_event_zone CHECK (zone_id IS NULL OR length(trim(zone_id)) > 0),
-    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),
     CONSTRAINT ck_event_person CHECK (person_id IS NULL OR person_id ~ '^G[0-9]{4,99}$'),
+    CONSTRAINT ck_event_track CHECK (track_key IS NULL OR length(trim(track_key)) > 0),
     CONSTRAINT ck_event_type CHECK (event_type IN ('enter_zone', 'dwell', 'shelf_interaction', 'leave_zone')),
     CONSTRAINT ck_event_shelf CHECK (shelf_level IS NULL OR shelf_level BETWEEN 1 AND 20),
     CONSTRAINT ck_event_observation CHECK (observation_status IN ('observed', 'candidate')),
@@ -359,14 +399,16 @@ $body$;
 CREATE TRIGGER evidence_offset_in_recording BEFORE INSERT ON evidence
     FOR EACH ROW EXECUTE FUNCTION partrace_evidence_offset_in_recording();
 
--- 只允许更新媒体状态；录制来源/时间/配置与关键帧定位均不可覆盖。
+-- 原片仅允许一次 pending -> published；来源/时间/配置/媒体定位不可覆盖，发布后事实不可变。
 CREATE FUNCTION partrace_recording_facts_immutable() RETURNS trigger
 LANGUAGE plpgsql AS $body$
 BEGIN
     IF ROW(NEW.recording_id, NEW.camera_id, NEW.config_version, NEW.source_mode, NEW.started_at, NEW.duration_ms,
-        NEW.manifest_sha256, NEW.storage_key, NEW.created_at)
+        NEW.storage_key, NEW.created_at)
         IS DISTINCT FROM ROW(OLD.recording_id, OLD.camera_id, OLD.config_version, OLD.source_mode, OLD.started_at, OLD.duration_ms,
-        OLD.manifest_sha256, OLD.storage_key, OLD.created_at) THEN
+        OLD.storage_key, OLD.created_at) OR
+        (ROW(NEW.publication_status, NEW.manifest_sha256) IS DISTINCT FROM ROW(OLD.publication_status, OLD.manifest_sha256)
+         AND NOT (OLD.publication_status = 'pending' AND NEW.publication_status = 'published' AND NEW.manifest_sha256 IS NOT NULL)) THEN
         RAISE EXCEPTION 'recording facts are immutable; create a new recording' USING ERRCODE = '23514';
     END IF;
     RETURN NEW;

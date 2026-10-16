@@ -4,22 +4,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw
 from .reach import palm_cues,reference_points
-
-
-def _find_font():
-    candidates=['C:/Windows/Fonts/msyh.ttc',str(Path(__file__).resolve().parents[2]/'assets'/'fonts'/'NotoSansSC-Regular.otf'),
-        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc','/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf']
-    for path in candidates:
-        if Path(path).exists():return path
-    return candidates[0]
-FONT=_find_font()
+from ..fonts import load_font
 
 
 def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_identity=False):
     canvas=Image.fromarray(cv2.cvtColor(raw,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas)
-    font=ImageFont.truetype(FONT,20)
+    font=load_font(20)
     person_ids={person_id} if isinstance(person_id,str) else set(person_id)
     region_ids={region_id} if isinstance(region_id,str) or region_id is None else set(region_id)
     for z in row['shelf_polygons']:
@@ -53,7 +45,7 @@ def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_ident
             draw.rectangle(p['box'],outline='#73db9f',width=2)
             draw.text((p['box'][0],max(0,p['box'][1]-22)),p['id']+' '+p['source'],font=font,fill='#73db9f')
     draw.text((10,10),f'{row["time_ms"]/1000:.3f}s / {row["frame_id"]}',font=font,fill='white',stroke_width=2,stroke_fill='black')
-    draw.text((10,40),'蓝：姿态腕点｜橙色虚线：估计手区，非接触证明',font=ImageFont.truetype(FONT,16),fill='white',stroke_width=2,stroke_fill='black')
+    draw.text((10,40),'蓝：姿态腕点｜橙色虚线：估计手区，非接触证明',font=load_font(16),fill='white',stroke_width=2,stroke_fill='black')
     return cv2.cvtColor(np.asarray(canvas),cv2.COLOR_RGB2BGR)
 
 
@@ -66,7 +58,7 @@ def save_image(path,img):
 
 def export_video(source,rows,sessions,results,output,fps,parcel_evidence=False):
     cap=cv2.VideoCapture(str(source));writer=None;clips={};count=0
-    font=ImageFont.truetype(FONT,20);small=ImageFont.truetype(FONT,17)
+    font=load_font(20);small=load_font(17)
     try:
         for row in rows:
             ok,raw=cap.read()
@@ -122,7 +114,7 @@ def export_video(source,rows,sessions,results,output,fps,parcel_evidence=False):
 
 def model_sheet(output,session_id,frames):
     sheet=Image.new('RGB',(1200,460),'#151c28');draw=ImageDraw.Draw(sheet)
-    font=ImageFont.truetype(FONT,17)
+    font=load_font(17)
     for i,f in enumerate(frames):
         img=Image.open(output/f['model_image_path']).convert('RGB');img.thumbnail((240,420))
         sheet.paste(img,(i*240+(240-img.width)//2,40))
@@ -154,7 +146,7 @@ def reach_diagnostic(rows,session,frames,output):
     for path,col in ((wrist_path,'#51baf7'),(palm_path,'#ffb94f')):
         if len(path)>1:draw.line(path,fill=col,width=3)
     board=Image.new('RGB',(raw.width+500,raw.height),'#141c29');board.paste(canvas,(0,0));draw=ImageDraw.Draw(board)
-    font=ImageFont.truetype(FONT,21)
+    font=load_font(21)
     lines=['首次伸手轨迹核查（非原始证据）',
         '蓝色：检测到的腕点轨迹', '橙色：肘腕方向延长的估计手区',
         '估计手区不是接触证明，也不是包裹。',

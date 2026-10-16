@@ -665,6 +665,10 @@ data: {"run_id":"run_001","status":"completed","cards":{"version":1,...},"error"
 
 > 5xx 均可安全重试（创建类沿用原稳定 ID）；503 建议在客户端做指数退避。
 
+运行中的预算耗尽经既有 `error.code` 返回：`agent_model_limit`（模型调用上限）、`agent_tool_limit`（含 skill 加载的工具上限）、`agent_recursion_limit`（图步数上限）；超时为 `agent_timeout`。读取运行本身仍返回 200，需检查 `status=failed`；计划阶段的这些错误使用既有 503 响应结构。失败运行重做使用新 run_id，旧 ID 只回读原结果。
+
+执行图可通过内置 skill 指引使用现有业务工具；语义编码明确不可用时，重新验权后可改用普通事件查询，completed 的 summary／摘要卡会包含语义不可用说明。直接语义检索 HTTP 接口的 503 行为不变；此机制没有增加公开路由或错误／卡片 schema 字段。
+
 ---
 
 ## 7. 推荐对接流程

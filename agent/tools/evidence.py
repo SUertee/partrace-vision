@@ -26,6 +26,7 @@ class EvidenceLedger:
     event_payloads: dict[str, dict[str, Any]] = field(default_factory=dict)
     frame_payloads: dict[str, dict[str, Any]] = field(default_factory=dict)
     semantic_reads: list[dict[str, Any]] = field(default_factory=list)
+    semantic_unavailable: bool = False
 
     def record_event(self, requested_id: str, response: dict[str, Any]) -> None:
         event = response.get("event")

@@ -1,6 +1,6 @@
 {
   "version": "0.3-review",
-  "scope_note": "功能关联评审；本地0.3加入事件文本向量、AI会话/分析持久化及二维码包裹入出库，当前11表79字段、28草案操作与5建议。current_draft已定义；实现范围为14Backend+9Agent，P1包裹5操作待开发；proposed未定义请求/返回。业务读写/归属映射非SQL执行日志。AI会话不固定录像；会话元数据与user问题仅active owner验证，计划/运行及assistant按本次Query录像当前授权和引用归属验证；消息页含任一无权助手答复则整页403，不返回正文或部分结果，不静默过滤；会话列表不因录像撤权消失；Agent可持久化messages/runs，监控事实工具仍只读，plan保留真正执行query_text；completed才保存完整助手回复。重启旧running标failed/service_restarted，不自动续跑。 已选PostgreSQL+pgvector；业务与向量分表，后端在授权及同模型空间内精确排序，Agent不直连DB；SQL时间为TIMESTAMPTZ、JSON为JSONB、embedding为vector，API形状保持不变，未实现ANN或生产服务。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入已实现，生产部署待验收。 parcels只存稳定ID、TEXT唯一单号与服务器时间三列；parcel_records七列只追加，按sequence_no派生状态和当前位置。二维码不建表、扫码不写流水；Agent只读GET，管理员显式确认+parcels:write才可写。",
+  "scope_note": "功能关联评审；本地0.3加入事件文本向量、AI会话/分析持久化及二维码包裹入出库，当前12表104字段、35草案操作与5建议。current_draft已定义未实现；proposed未定义请求/返回。业务读写/归属映射非SQL执行日志。AI会话不固定录像；会话元数据与user问题仅active owner验证，计划/运行及assistant按本次Query录像当前授权和引用归属验证；消息页含任一无权助手答复则整页403，不返回正文或部分结果，不静默过滤；会话列表不因录像撤权消失；Agent可持久化messages/runs，监控事实工具仍只读，plan保留真正执行query_text；completed才保存完整助手回复。重启旧running标failed/service_restarted，不自动续跑。 已选PostgreSQL+pgvector；业务与向量分表，后端在授权及同模型空间内精确排序，Agent不直连DB；SQL时间为TIMESTAMPTZ、JSON为JSONB、embedding为vector，API形状保持不变，未实现ANN或生产服务。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入待实现。 parcels只存稳定ID、TEXT唯一单号与服务器时间三列；parcel_records七列只追加，按sequence_no派生状态和当前位置。二维码不建表、扫码不写流水；Agent只读GET，管理员显式确认+parcels:write才可写。 2026-10-16新增recording_jobs表和People任务7操作，当前35契约操作；raw任务不计入已发布录像覆盖。",
   "operations": [
     {
       "id": "get_user",
@@ -39,16 +39,18 @@
       "method": "POST",
       "path": "/api/v1/recordings",
       "status": "current_draft",
-      "summary": "原子发布最终视频事件包；读取既有结果校验同 ID 重试，身份授权统一检查。",
+      "summary": "原片先写 pending 录像并排队；兼容已分析整包原子发布",
       "read_tables": [
         "recordings",
         "events",
-        "evidence"
+        "evidence",
+        "recording_jobs"
       ],
       "write_tables": [
         "recordings",
         "events",
-        "evidence"
+        "evidence",
+        "recording_jobs"
       ]
     },
     {
@@ -457,6 +459,108 @@
         "recordings"
       ],
       "write_tables": []
+    },
+    {
+      "id": "submit_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs",
+      "status": "current_draft",
+      "summary": "兼容原片入口，同事务保存 pending 录像与任务",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings"
+      ]
+    },
+    {
+      "id": "get_recording_job",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}",
+      "status": "current_draft",
+      "summary": "读取原片上传与Vision解析状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "claim_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/claim",
+      "status": "current_draft",
+      "summary": "领取独占Vision解析租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "get_recording_job_media",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}/media",
+      "status": "current_draft",
+      "summary": "读取当前租约的真实原片",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "heartbeat_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/heartbeat",
+      "status": "current_draft",
+      "summary": "续期当前Vision租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "complete_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/complete",
+      "status": "current_draft",
+      "summary": "原子发布Vision完整结果并回传完成",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings",
+        "events",
+        "evidence"
+      ]
+    },
+    {
+      "id": "fail_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/fail",
+      "status": "current_draft",
+      "summary": "记录解析失败状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
     }
   ]
 }

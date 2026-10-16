@@ -8,9 +8,12 @@ from typing import Any
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
+from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
+from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 from langchain.agents.structured_output import ToolStrategy
 from langchain_core.language_models import BaseChatModel
 from langsmith import tracing_context
+from langgraph.errors import GraphRecursionError
 from pydantic import ValidationError
 
 from agent.cards import build_cards
@@ -18,6 +21,7 @@ from agent.contracts import ToolGateway
 from agent.models import CandidateAnswer, ConfirmedPlan, DraftPlan, QueryScope
 from agent.prompts import EXECUTION_PROMPT as _EXECUTION_PROMPT, PLAN_PROMPT as _PLAN_PROMPT
 from agent.tools import InvalidReferences, InvalidToolResult, build_tools
+from agent.tools.skills import skill_catalog
 
 
 class AgentExecutionError(RuntimeError):
@@ -33,7 +37,9 @@ class AgentLimits:
     timeout_seconds: float = 60
     model_calls: int = 8
     tool_calls: int = 12
-    recursion_limit: int = 30
+    # Middleware nodes also consume graph steps; leave room for eight model
+    # calls plus skill loading and tool results within the independent budgets.
+    recursion_limit: int = 60
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
@@ -71,6 +77,12 @@ class AgentEngine:
             raise AgentExecutionError("agent_timeout") from None
         except AgentExecutionError:
             raise
+        except ModelCallLimitExceededError:
+            raise AgentExecutionError("agent_model_limit") from None
+        except ToolCallLimitExceededError:
+            raise AgentExecutionError("agent_tool_limit") from None
+        except GraphRecursionError:
+            raise AgentExecutionError("agent_recursion_limit") from None
         except (InvalidReferences, InvalidToolResult):
             raise AgentExecutionError("invalid_references") from None
         except Exception:
@@ -112,7 +124,7 @@ class AgentEngine:
         agent = create_agent(
             model=self.model,
             tools=tools,
-            system_prompt=_EXECUTION_PROMPT,
+            system_prompt=_EXECUTION_PROMPT + "\n内置 skill 目录：\n" + json.dumps(skill_catalog(), ensure_ascii=False),
             response_format=ToolStrategy(CandidateAnswer, handle_errors=False),
             middleware=self._middleware(),
         )
@@ -124,6 +136,12 @@ class AgentEngine:
         })
         try:
             answer = CandidateAnswer.model_validate(candidate)
+            if ledger.semantic_unavailable:
+                note = "语义检索服务不可用，本次未获得语义匹配结果；结论仅依据实际回读资料。"
+                answer = CandidateAnswer.model_validate({
+                    "summary": answer.summary[:4000 - len(note) - 2] + "\n\n" + note,
+                    "references": answer.references,
+                })
             bundle = build_cards(ledger, answer, run_id)
         except (ValidationError, InvalidReferences):
             raise AgentExecutionError("invalid_references") from None
