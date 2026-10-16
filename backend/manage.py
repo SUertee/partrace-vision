@@ -11,6 +11,7 @@ from pydantic import ValidationError
 import psycopg
 
 from backend.core.settings import Settings
+from backend.storage.credentials import connection_class
 
 
 # Stable application-specific signed bigint; transaction locks release on rollback.
@@ -64,7 +65,7 @@ def _schema_body(path: Path) -> str:
 
 def _connect(settings: Settings) -> psycopg.Connection:
     timeout_ms = settings.database_timeout_seconds * 1000
-    return psycopg.connect(
+    return connection_class(settings).connect(
         settings.database_url.get_secret_value(),
         autocommit=True,
         connect_timeout=settings.database_timeout_seconds,

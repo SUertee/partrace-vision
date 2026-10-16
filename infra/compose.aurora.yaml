@@ -1,0 +1,17 @@
+# Aurora overlay: run the API against a managed cluster instead of the bundled
+# PostgreSQL service.
+#
+#   docker compose -f infra/compose.yaml -f infra/compose.aurora.yaml up -d --no-deps api
+#
+# --no-deps keeps the bundled `postgres` service out of the deployment; its
+# variables still have to be present because Compose resolves the whole file.
+#
+# The cluster requires IAM database authentication, so the connection URL carries
+# no password. The API signs a short-lived token for every new physical
+# connection from the EC2 instance role (see backend/storage/credentials.py).
+services:
+  api:
+    environment:
+      PARTRACE_DATABASE_URL: postgresql://${PARTRACE_DATABASE_USER:-postgres}@${PARTRACE_AURORA_HOST:?Set the Aurora cluster endpoint in infra/.env}:5432/${POSTGRES_DB:-partrace}?sslmode=require
+      PARTRACE_DATABASE_IAM_AUTH: "true"
+      PARTRACE_DATABASE_IAM_REGION: ${PARTRACE_AURORA_REGION:?Set the Aurora signing region in infra/.env}

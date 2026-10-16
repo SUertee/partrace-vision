@@ -18,6 +18,7 @@ from backend.core.configuration import ConfigRegistry
 from backend.core.errors import API_VERSION, ApiError, invalid
 from backend.storage.media import MediaStore
 from backend.core.models import Query, UtcQuery
+from backend.storage.credentials import connection_class
 
 
 def utc(value: datetime) -> str:
@@ -91,10 +92,14 @@ class BackendService:
     def pool(self):
         with self._lock:
             if self._pool is None:
+                # The connection class signs a fresh token for every new
+                # physical connection, so an idle pool never replays an
+                # expired one.
                 self._pool = ConnectionPool(
                     self.settings.database_url.get_secret_value(), min_size=0,
                     max_size=self.settings.database_pool_size, open=False,
                     timeout=self.settings.database_timeout_seconds,
+                    connection_class=connection_class(self.settings),
                     kwargs={"row_factory": dict_row, "connect_timeout": self.settings.database_timeout_seconds,
                             "options": f"-c timezone=UTC -c statement_timeout=15000 -c lock_timeout=5000 -c search_path={self.settings.database_schema},public"},
                 )

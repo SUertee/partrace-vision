@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import psycopg
 
 from backend.core.settings import Settings
+from backend.storage.credentials import connection_class
 
 
 @dataclass(frozen=True)
@@ -29,8 +30,10 @@ class DatabaseReadiness:
 async def check_database(settings: Settings) -> DatabaseReadiness:
     """Bound both connection and statement time; don't return DSNs or driver errors."""
     try:
+        # IAM tokens are signed per connection; a missing instance role is an outage.
+        factory = connection_class(settings, asynchronous=True)
         async with asyncio.timeout(settings.database_timeout_seconds):
-            async with await psycopg.AsyncConnection.connect(
+            async with await factory.connect(
                 settings.database_url.get_secret_value(),
                 connect_timeout=settings.database_timeout_seconds,
                 application_name="partrace-health",
