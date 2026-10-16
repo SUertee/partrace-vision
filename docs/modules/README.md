@@ -2,7 +2,7 @@
 
 按业务功能拆分需要开发的模块，关联实现目录、数据库、API 和开发任务。四个代码目录承载以下功能，不因增加业务模块而新增独立服务。
 
-**契约草案为 11 张表、27 个操作，其中首轮 22 个、P1 包裹 5 个。** 本地 development 默认提供 14 个 Backend 操作，显式启用 Agent 后提供 22／27；P1 包裹仍待开发。实际实现与验证不等于外部模型、部署或 D10 业务验收。字段以 [数据库 SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 为准。
+**契约草案为 11 张表、28 个操作，其中首轮 23 个、P1 包裹 5 个。** 本地 development 默认提供 14 个 Backend 操作，显式启用 Agent 后提供 23／28；P1 包裹仍待开发。实际实现与验证不等于外部模型、部署或 D10 业务验收。字段以 [数据库 SQL](../database/schema.sql) 和 [OpenAPI](../api/openapi.json) 为准。
 
 ## 模块总表
 
@@ -121,8 +121,9 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 | `POST /api/v1/agent/runs` | Agent → Android | 写确认计划／状态到 `runs`，完成时原子写答复 `messages` |
 | `GET /api/v1/agent/runs/{run_id}` | Agent → Android | 读 `runs`，校验本次录像与事件／帧引用 |
 | `POST /api/v1/agent/runs/{run_id}/stop` | Agent → Android | 更新非终态 `runs`，仍先验权 |
+| `GET /api/v1/agent/runs/{run_id}/events` | Agent → Android | 读 `runs` 推送 SSE；快照先行，终态提交后推送卡片包（completed 落库、stopped/failed 合成状态卡） |
 
-**依赖与验收：** D07 已有本地独立包和可选八个路由，实际图使用显式 fake 模型、历史／终态使用真实 PG 测试，凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)。完成答复只保存一份；停止或失败不伪造答复，单执行器重启将旧 running 标为 failed／service_restarted，不自动续跑。外部 LLM／Embedding、真实视频业务及 D08／D10 App 联调仍待验收；流式进度与逐工具步骤历史尚无 API 契约。
+**依赖与验收：** D07 已有本地独立包和可选九个路由，实际图使用显式 fake 模型、历史／终态使用真实 PG 测试，凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)。完成答复只保存一份；停止或失败不伪造答复，单执行器重启将旧 running 标为 failed／service_restarted，不自动续跑。外部 LLM／Embedding、真实视频业务及 D08／D10 App 联调仍待验收；流式进度与逐工具步骤历史尚无 API 契约。
 
 <a id="m07"></a>
 ## M07 · 人工核查与记录回读

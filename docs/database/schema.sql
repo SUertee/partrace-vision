@@ -187,6 +187,7 @@ CREATE TABLE runs (
     status TEXT NOT NULL DEFAULT 'running',
     plan_json JSONB NOT NULL,
     references_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    cards_json JSONB,
     model_key TEXT NOT NULL,
     error_json JSONB,
     created_at TIMESTAMPTZ NOT NULL,
@@ -220,11 +221,20 @@ CREATE TABLE runs (
         ELSE FALSE END
     ),
     CONSTRAINT ck_run_references CHECK (jsonb_typeof(references_json) = 'array'),
+    CONSTRAINT ck_run_cards CHECK (
+        cards_json IS NULL OR (
+            jsonb_typeof(cards_json) = 'object'
+            AND cards_json ->> 'version' = '1'
+            AND jsonb_typeof(cards_json -> 'cards') = 'array'
+            AND jsonb_typeof(cards_json -> 'query') = 'object'
+        )
+    ),
     CONSTRAINT ck_run_time CHECK (isfinite(created_at) AND created_at >= TIMESTAMPTZ '1970-01-01 00:00:00+00' AND (finished_at IS NULL OR (isfinite(finished_at) AND finished_at >= created_at))),
     CONSTRAINT ck_run_terminal CHECK (
-        (status = 'running' AND finished_at IS NULL AND error_json IS NULL)
-        OR (status IN ('completed', 'stopped') AND finished_at IS NOT NULL AND error_json IS NULL)
-        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL)
+        (status = 'running' AND finished_at IS NULL AND error_json IS NULL AND cards_json IS NULL)
+        OR (status = 'completed' AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NOT NULL)
+        OR (status = 'stopped' AND finished_at IS NOT NULL AND error_json IS NULL AND cards_json IS NULL)
+        OR (status = 'failed' AND finished_at IS NOT NULL AND error_json IS NOT NULL AND cards_json IS NULL)
     ),
     CONSTRAINT ck_run_error CHECK (error_json IS NULL OR jsonb_typeof(error_json) = 'object')
 );

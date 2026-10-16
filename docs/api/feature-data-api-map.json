@@ -229,6 +229,23 @@
       "note": "active owner+data:read及该run plan.query录像当前授权；终态或同ID重试仍校验该次录像，停止后禁止晚到结果。"
     },
     {
+      "id": "get_agent_runs_run_id_events",
+      "method": "GET",
+      "path": "/api/v1/agent/runs/{run_id}/events",
+      "status": "current_draft",
+      "summary": "active owner按该run Query当前录像授权订阅SSE；快照先行，终态提交后推送completed落库卡片或stopped/failed合成状态卡，重连以Last-Event-ID对齐。",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及该run plan.query录像当前授权；快照先行+Last-Event-ID对齐，终态事务提交后推送一次并结束，推送仅作提交信号，订阅端重新鉴权回读，不落库业务卡片的终态合成run_status卡。"
+    },
+    {
       "id": "post_event_embeddings",
       "method": "POST",
       "path": "/api/v1/event-embeddings",

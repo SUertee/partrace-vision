@@ -13,6 +13,7 @@ from agent.engine import AgentExecutionError
 from agent.models import CandidateAnswer
 from backend.ai.gateway import ScopedToolGateway
 from backend.ai.history import AIHistory
+from backend.ai.push import RunPushBroker
 from backend.core.errors import ApiError
 from backend.core.models import Query
 from backend.storage.credentials import connection_class
@@ -95,6 +96,7 @@ class AgentRuntime:
         self.engine = engine
         self.history = AIHistory(backend, cursor_secret(backend.settings.agent_cursor_secret_file))
         self.lease = ExecutorLease(backend.settings)
+        self.push = RunPushBroker()
         self.model_key = ((backend.settings.agent_model or "unconfigured") + "@" + backend.settings.agent_model_version)
         self.tasks: dict[str, asyncio.Task] = {}
         self._start_lock = asyncio.Lock()
@@ -191,8 +193,11 @@ class AgentRuntime:
     async def stop(self, token, run_id):
         p = await run_in_threadpool(self._principal, token)
         result = await run_in_threadpool(self.history.stop_run, p, run_id)
-        if result["status"] == "stopped" and run_id in self.tasks:
-            self.tasks[run_id].cancel()
+        if result["status"] == "stopped":
+            # stop_run returned after its commit; subscribers re-read the row.
+            self.push.publish(run_id)
+            if run_id in self.tasks:
+                self.tasks[run_id].cancel()
         return result
 
     async def _fail(self, run_id, code, message):
@@ -206,6 +211,7 @@ class AgentRuntime:
             self._wake.set()
         else:
             self._pending_failures.pop(run_id, None)
+            self.push.publish(run_id)
 
     async def flush_failures(self):
         for run_id, (code, message) in list(self._pending_failures.items()):
@@ -215,6 +221,7 @@ class AgentRuntime:
             except ApiError:
                 continue
             self._pending_failures.pop(run_id, None)
+            self.push.publish(run_id)
 
     async def _reconcile_loop(self):
         while not self._closing:
@@ -229,11 +236,14 @@ class AgentRuntime:
         run_id = run["run_id"]
         gateway = ScopedToolGateway(self.backend, self.semantic, token, owner, run["plan"]["query"], run["plan"]["query_text"])
         try:
-            answer = CandidateAnswer.model_validate(await self.engine.execute(question, run["plan"], gateway))
+            result = await self.engine.execute(question, run["plan"], gateway, run_id=run_id)
+            answer = CandidateAnswer.model_validate(result["answer"])
             await run_in_threadpool(self.lease.check)
             p = await run_in_threadpool(gateway.principal)
             await run_in_threadpool(self.history.complete_run, p, run_id, answer.summary,
-                                    [reference.model_dump(mode="json") for reference in answer.references])
+                                    [reference.model_dump(mode="json") for reference in answer.references],
+                                    result["cards"])
+            self.push.publish(run_id)
         except asyncio.CancelledError:
             await self._fail(run_id, "service_stopped", "服务已停止此次分析，不会自动续跑。")
             raise

@@ -1768,6 +1768,109 @@
         ]
       }
     },
+    "/api/v1/agent/runs/{run_id}/events": {
+      "get": {
+        "operationId": "订阅运行事件推送",
+        "summary": "订阅运行事件推送",
+        "description": "已实现的 SSE 流式订阅。仅当前会话 owner 且持 data:read 可订阅，每次推送前以当前凭据重新鉴权并回读，禁用、非 owner 或录像授权失效时静默结束流，客户端改用 GET /runs/{run_id} 获取错误体。连接后先发送当前快照：running 状态 id=1，cards 为 null；运行到达终态并事务提交后推送一次终态事件 id=2 并结束流。completed 事件携带与 GET /runs/{run_id} 一致的已落库卡片包；stopped/failed 不落库业务卡片，推送即时合成的 run_status 状态卡片包，failed 详情取自 error.message。推送仅是提交信号，不携带未提交数据。重连以 Last-Event-ID 对齐：传 2 且运行已终态则不发送事件直接结束；传 1 跳过运行中快照等待终态。事件 id 在同一 run 内稳定，服务重启后语义不变；重启遗留的 running 按 service_restarted 置 failed，同样可订阅到终态事件。",
+        "tags": [
+          "Agent"
+        ],
+        "x-service": "agent",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": ""
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "重连对齐：已收到终态事件传 2，已收到运行中快照传 1。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE 事件流：运行中快照 id=1，终态事件 id=2；data 为 {run_id,status,cards,error,finished_at}，cards 为 AgentCardBundle 或 null。",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "禁用、非owner、data:read不足或本次查询录像未授权",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "会话、消息、运行或录制不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "字段/时间/配置/关联验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "处理失败，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/event-embeddings": {
       "post": {
         "operationId": "写入事件描述文本向量",
@@ -4882,6 +4985,16 @@
               "$ref": "#/components/schemas/AgentReference"
             }
           },
+          "cards": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentCardBundle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "model_key": {
             "type": "string",
             "minLength": 1,
@@ -4920,13 +5033,14 @@
           "plan",
           "summary",
           "references",
+          "cards",
           "model_key",
           "error",
           "created_at",
           "finished_at"
         ],
         "additionalProperties": false,
-        "description": "计划、引用、状态、模型配置标识和时间持久化；summary只从关联completed助手消息正文读取，不重复存到run。references_json是逻辑ID引用，服务端验证同范围Event/Evidence，不是假SQL外键。model_key包含模型与运行配置版本，不含凭据。历史可回读，服务重启将旧running明确置failed/service_restarted，不自动续跑。 SQL created_at/finished_at 存 TIMESTAMPTZ，API 同名字段转为 ISO 8601 UTC 字符串。 SQL plan_json/references_json/error_json 为 JSONB；API仍是JSON对象/数组。 数据库表名为runs，每行对应一次已确认计划的分析执行；同一会话可以有多个运行，不复用终态run。 读取、停止和同ID重试均按本次plan.query录像检查当前data:read与授权，不能用会话或其他轮次的录像替代；权限不足403，不返回计划、状态、摘要或引用。",
+        "description": "计划、引用、状态、模型配置标识和时间持久化；summary只从关联completed助手消息正文读取，不重复存到run。references_json是逻辑ID引用，服务端验证同范围Event/Evidence，不是假SQL外键。model_key包含模型与运行配置版本，不含凭据。历史可回读，服务重启将旧running明确置failed/service_restarted，不自动续跑。 SQL created_at/finished_at 存 TIMESTAMPTZ，API 同名字段转为 ISO 8601 UTC 字符串。 SQL plan_json/references_json/error_json 为 JSONB；API仍是JSON对象/数组。 数据库表名为runs，每行对应一次已确认计划的分析执行；同一会话可以有多个运行，不复用终态run。 读取、停止和同ID重试均按本次plan.query录像检查当前data:read与授权，不能用会话或其他轮次的录像替代；权限不足403，不返回计划、状态、摘要或引用。 cards 为 completed 运行的结构化卡片包（runs.cards_json），其他状态为 null；卡片事实由服务端装配与落库前回查，停止/失败不生成业务卡片。",
         "allOf": [
           {
             "if": {
@@ -4996,6 +5110,29 @@
               "properties": {
                 "finished_at": {
                   "$ref": "#/components/schemas/UtcTime"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "completed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "cards": {
+                  "$ref": "#/components/schemas/AgentCardBundle"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "cards": {
+                  "type": "null"
                 }
               }
             }
@@ -6157,6 +6294,256 @@
         ],
         "additionalProperties": false,
         "description": "按sequence_no ASC读取一个包裹历史；包裹已存在但未登记时records=[]。游标绑定包裹、身份/授权、limit及首请求最大序号快照，追加记录不会移动当前分页；刷新首请求才能看到新记录。末页next_cursor=null，禁用/撤销权限后不返回旧历史。"
+      },
+      "AgentEvidenceItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "evidence_id",
+          "offset_ms",
+          "media_status"
+        ],
+        "properties": {
+          "event_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "evidence_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "offset_ms": {
+            "$ref": "#/components/schemas/OffsetMs"
+          },
+          "media_status": {
+            "$ref": "#/components/schemas/MediaStatus"
+          }
+        },
+        "description": "一张已回读关键帧的展示条目；客户端按 evidence_id 调 GET /api/v1/evidence/{id}/media 取图。"
+      },
+      "AgentCard": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "title",
+              "event_id",
+              "event_type",
+              "observation_status",
+              "detection_source",
+              "start_offset_ms",
+              "end_offset_ms",
+              "evidence"
+            ],
+            "properties": {
+              "kind": {
+                "const": "event_evidence"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "event_id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "event_type": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "observation_status": {
+                "type": "string",
+                "enum": [
+                  "candidate",
+                  "observed"
+                ]
+              },
+              "detection_source": {
+                "type": "string",
+                "enum": [
+                  "mock",
+                  "manual",
+                  "automatic"
+                ]
+              },
+              "start_offset_ms": {
+                "$ref": "#/components/schemas/OffsetMs"
+              },
+              "end_offset_ms": {
+                "$ref": "#/components/schemas/OffsetMs"
+              },
+              "evidence": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "$ref": "#/components/schemas/AgentEvidenceItem"
+                }
+              }
+            },
+            "description": "证据卡：一个已回读事件及其关键帧，observation/detection 来源原样透传，不升级为事实。"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "title",
+              "gap",
+              "detail",
+              "eligible_event_count",
+              "indexed_event_count"
+            ],
+            "properties": {
+              "kind": {
+                "const": "coverage_gap"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "gap": {
+                "type": "string",
+                "enum": [
+                  "unindexed",
+                  "no_matches",
+                  "media_missing"
+                ]
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "pattern": "\\S"
+              },
+              "eligible_event_count": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "indexed_event_count": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "description": "缺口卡：未索引/无匹配/媒体缺失显式展示；媒体缺口不带事件计数。"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "title",
+              "summary",
+              "references"
+            ],
+            "properties": {
+              "kind": {
+                "const": "run_summary"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "pattern": "\\S"
+              },
+              "references": {
+                "type": "array",
+                "maxItems": 50,
+                "items": {
+                  "$ref": "#/components/schemas/AgentEvidenceItem"
+                }
+              }
+            },
+            "description": "答复卡：助手答复正文与已通过校验的引用子集。"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "title",
+              "status",
+              "detail"
+            ],
+            "properties": {
+              "kind": {
+                "const": "run_status"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "stopped",
+                  "failed"
+                ]
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "pattern": "\\S"
+              }
+            },
+            "description": "状态卡：stopped/failed 终态说明，不含任何业务事实。"
+          }
+        ],
+        "description": "结构化卡片，kind 判别类型；卡片事实由服务端从已验证的读取装配，客户端不重算。"
+      },
+      "AgentCardBundle": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "run_id",
+          "query",
+          "cards"
+        ],
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "run_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "cards": {
+            "type": "array",
+            "maxItems": 60,
+            "items": {
+              "$ref": "#/components/schemas/AgentCard"
+            }
+          }
+        },
+        "description": "一次运行的卡片包，落库 runs.cards_json 并在完成后随 GET run 返回；query 回声本次固定范围。"
       }
     }
   },

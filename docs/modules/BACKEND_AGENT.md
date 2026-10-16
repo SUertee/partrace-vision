@@ -4,7 +4,7 @@
 
 关联 [M04 事件证据](README.md#m04)、[M05 语义检索](README.md#m05)、[M06 AI 会话](README.md#m06)，工作包为 [D05](../DEVELOPMENT_PLAN.md#d05--共用事件与证据服务) 和 [D07](../DEVELOPMENT_PLAN.md#d07--agent-计划只读检索与引用)。字段以 [OpenAPI](../api/openapi.json) 和 [SQL](../database/schema.sql) 为准；原内部行为提案见 [OpenSpec](../../openspec/changes/d05-d07-backend-agent-link/proposal.md)，当前实现及验证见 [D07 change](../../openspec/changes/d07-create-agent/verification.md)。安装、私有配置和启动见 [Backend README](../../backend/README.md)，工具与包入口见 [Agent README](../../agent/README.md)。
 
-默认应用挂载 14 个 Backend 数据操作；显式 `PARTRACE_AGENT_ENABLED=true` 后挂载 8 个 Agent 操作，共 22／27。P1 包裹 5 个操作尚未实现。以下是本地实现说明，不表示外部模型、部署或 Android D10 已验收。
+默认应用挂载 14 个 Backend 数据操作；显式 `PARTRACE_AGENT_ENABLED=true` 后挂载 9 个 Agent 操作，共 23／28。P1 包裹 5 个操作尚未实现。以下是本地实现说明，不表示外部模型、部署或 Android D10 已验收。
 
 ## 谁负责什么
 
@@ -92,4 +92,4 @@ draft plan 不落表，App 确认后的计划是执行依据。二次校验检�
 
 统一在 `backend/` 执行 `uv sync --locked` 安装本地 Agent 依赖，`uv run pytest` 覆盖两模块；具体启动见实现 README。当前真实 PostgreSQL + pgvector 与实际 `create_agent` 图均已用于测试，图使用显式 fake 模型；没有据此宣称外部模型、真实视频业务、部署或完整 D10 成功。详细实际命令和结果以 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)为准。
 
-当前仅有按已知 run_id 读取运行的 API，停止／失败不会生成助手消息；App 重启后不能只靠消息列表发现全部运行。运行列表、SSE、工具步骤历史及多实例恢复另行评审，不计入现有 27 个 API。P1 包裹只读工具在 D10 主闭环后补充。
+当前可按已知 run_id 读取运行或经 `GET /runs/{run_id}/events` 订阅 SSE 终态推送（快照先行、提交后推送、completed 落库卡片包、stopped/failed 合成状态卡），停止／失败不会生成助手消息；App 重启后不能只靠消息列表发现全部运行。运行列表、工具步骤历史及多实例恢复另行评审，不计入现有 28 个 API。P1 包裹只读工具在 D10 主闭环后补充。

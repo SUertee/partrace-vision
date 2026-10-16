@@ -64,6 +64,17 @@ def running(h, run="run_1", message="message_1", conversation="conversation_1"):
     return h["store"].start_run(h["p"], run, message, h["plan"], "test-model/config-v1")[0]
 
 
+def cards_for(h, summary, references=(), extra_cards=(), run="run_1", query=None):
+    return {
+        "version": 1, "run_id": run, "query": copy.deepcopy(query or h["plan"]["query"]),
+        "cards": [
+            {"kind": "run_summary", "title": "分析结论", "summary": summary.strip(),
+             "references": list(references)},
+            *extra_cards,
+        ],
+    }
+
+
 def test_owner_metadata_and_user_question_need_no_data_scope(history):
     h, store = history, history["store"]
     no_data = replace(h["p"], scopes=frozenset(), camera_ids=frozenset(), recording_ids=frozenset())
@@ -175,9 +186,10 @@ def test_run_creation_is_concurrently_idempotent(history):
 def test_complete_is_atomic_unique_and_terminal(history):
     h, store = history, history["store"]
     running(h)
-    complete = validates(store.complete_run(h["p"], "run_1", "  暂无可引用画面，仅返回候选。  ", []), "AgentRunResponse")
+    complete = validates(store.complete_run(h["p"], "run_1", "  暂无可引用画面，仅返回候选。  ", [], cards_for(h, "暂无可引用画面，仅返回候选。")), "AgentRunResponse")
     assert complete["status"] == "completed" and complete["summary"] == "暂无可引用画面，仅返回候选。"
-    assert store.complete_run(h["p"], "run_1", "late rewrite", []) == complete
+    assert complete["cards"]["cards"] == cards_for(h, "暂无可引用画面，仅返回候选。")["cards"]
+    assert store.complete_run(h["p"], "run_1", "late rewrite", [], cards_for(h, "late rewrite")) == complete
     assert store.stop_run(h["p"], "run_1") == complete
     store.fail_run("run_1", "late_failure", "late callback")
     assert store.get_run(h["p"], "run_1") == complete
@@ -192,8 +204,8 @@ def test_stop_wins_over_late_completion_without_fabricating_reply(history):
     h, store = history, history["store"]
     running(h)
     stopped = validates(store.stop_run(h["p"], "run_1"), "AgentRunResponse")
-    assert stopped["status"] == "stopped" and stopped["summary"] is None
-    assert store.complete_run(h["p"], "run_1", "late result", []) == stopped
+    assert stopped["status"] == "stopped" and stopped["summary"] is None and stopped["cards"] is None
+    assert store.complete_run(h["p"], "run_1", "late result", [], cards_for(h, "late result")) == stopped
     assert store.stop_run(h["p"], "run_1") == stopped
     assert [message["role"] for message in store.list_messages(h["p"], "conversation_1")["messages"]] == ["user"]
 
@@ -202,7 +214,7 @@ def test_stop_complete_race_publishes_at_most_one_terminal_reply(history):
     h, store = history, history["store"]
     running(h)
     with ThreadPoolExecutor(max_workers=2) as workers:
-        completion = workers.submit(store.complete_run, h["p"], "run_1", "complete answer", [])
+        completion = workers.submit(store.complete_run, h["p"], "run_1", "complete answer", [], cards_for(h, "complete answer"))
         stopping = workers.submit(store.stop_run, h["p"], "run_1")
         results = [completion.result(), stopping.result()]
     assert len({result["status"] for result in results}) == 1
@@ -217,7 +229,7 @@ def test_failed_and_restart_recovered_runs_keep_history_without_assistant(histor
     store.fail_run("run_1", "model_unavailable", "模型暂不可用。")
     failed = validates(store.get_run(h["p"], "run_1"), "AgentRunResponse")
     assert failed["status"] == "failed" and failed["error"]["code"] == "model_unavailable"
-    assert failed["summary"] is None and failed["references"] == []
+    assert failed["summary"] is None and failed["references"] == [] and failed["cards"] is None
     replay, created = store.start_run(h["p"], "run_1", "message_1", h["plan"], "model")
     assert not created and replay == failed
     store.start_run(h["p"], "run_retry", "message_1", h["plan"], "model")
@@ -232,7 +244,7 @@ def test_failed_and_restart_recovered_runs_keep_history_without_assistant(histor
 def test_message_page_is_selected_before_assistant_authorization(history):
     h, store = history, history["store"]
     running(h, message="00_question")
-    store.complete_run(h["p"], "run_1", "No references are available.", [])
+    store.complete_run(h["p"], "run_1", "No references are available.", [], cards_for(h, "No references are available."))
     no_data = replace(h["p"], scopes=frozenset(), recording_ids=frozenset())
     forbidden(lambda: store.list_messages(no_data, "conversation_1"))
     first = store.list_messages(no_data, "conversation_1", limit=1)
@@ -247,7 +259,7 @@ def test_current_database_user_status_is_rechecked_at_completion(history):
     running(h)
     with h["service"].transaction(h["p"]) as (connection, _):
         connection.execute("UPDATE users SET status='disabled' WHERE user_id=%s", (h["p"].user_id,))
-    forbidden(lambda: store.complete_run(h["p"], "run_1", "should not publish", []))
+    forbidden(lambda: store.complete_run(h["p"], "run_1", "should not publish", [], cards_for(h, "should not publish")))
     # Internal recovery remains possible when the owner is disabled.
     store.fail_run("run_1", "forbidden", "授权已变更。")
 
@@ -255,8 +267,8 @@ def test_current_database_user_status_is_rechecked_at_completion(history):
 def test_invalid_reference_prevents_completion_and_reply(history):
     h, store = history, history["store"]
     running(h)
-    forbidden(lambda: store.complete_run(h["p"], "run_1", "invalid citation", [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001"}]), 422)
-    forbidden(lambda: store.complete_run(h["p"], "run_1", "invalid shape", [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001", "extra": "forged"}]), 422)
+    forbidden(lambda: store.complete_run(h["p"], "run_1", "invalid citation", [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001"}], cards_for(h, "invalid citation")), 422)
+    forbidden(lambda: store.complete_run(h["p"], "run_1", "invalid shape", [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001", "extra": "forged"}], cards_for(h, "invalid shape")), 422)
     assert store.get_run(h["p"], "run_1")["status"] == "running"
     assert len(store.list_messages(h["p"], "conversation_1")["messages"]) == 1
 
@@ -269,7 +281,7 @@ def test_assistant_insert_failure_rolls_back_completed_state(history):
             "CREATE TRIGGER reject_test_assistant BEFORE INSERT ON messages FOR EACH ROW "
             "WHEN (NEW.role='assistant') EXECUTE FUNCTION partrace_reject_change('deliberate test failure')",
         )
-    forbidden(lambda: store.complete_run(h["p"], "run_1", "will roll back", []), 422)
+    forbidden(lambda: store.complete_run(h["p"], "run_1", "will roll back", [], cards_for(h, "will roll back")), 422)
     assert store.get_run(h["p"], "run_1")["status"] == "running"
     assert len(store.list_messages(h["p"], "conversation_1")["messages"]) == 1
 
@@ -295,16 +307,29 @@ def test_available_context_frame_can_be_cited_and_missing_history_keeps_referenc
     h["plan"]["query"].update(recording_id="real_test", start_offset_ms=200, end_offset_ms=400)
     running(h)
     references = [{"event_id": "real_event", "evidence_id": "real_frame"}]
+    frame_item = {**references[0], "offset_ms": 800, "media_status": "available"}
     frame_path = next(h["service"].settings.media_root.rglob("*.png"))
     oversized_image = io.BytesIO()
     Image.new("1", (4097, 4096)).save(oversized_image, format="PNG")
     for damaged in (b"", image.getvalue()[:-12], b"not a decodable image", oversized_image.getvalue()):
         frame_path.write_bytes(damaged)
-        forbidden(lambda: store.complete_run(h["p"], "run_1", "不能引用损坏的画面。", references), 422)
+        forbidden(lambda: store.complete_run(h["p"], "run_1", "不能引用损坏的画面。", references, cards_for(h, "不能引用损坏的画面。", [frame_item])), 422)
         assert store.get_run(h["p"], "run_1")["status"] == "running"
     frame_path.write_bytes(image.getvalue())
-    completed = validates(store.complete_run(h["p"], "run_1", "引用事件后的真实上下文帧。", references), "AgentRunResponse")
+    event_card = {
+        "kind": "event_evidence", "title": "事件 real_event 证据", "event_id": "real_event",
+        "event_type": "shelf_interaction", "observation_status": "candidate", "detection_source": "manual",
+        "start_offset_ms": 100, "end_offset_ms": 600, "evidence": [frame_item],
+    }
+    # 媒体可用时，升格 observation_status 的卡片仍被落库前回查拒绝。
+    upgraded = cards_for(h, "升格候选状态。", [frame_item], [{**event_card, "observation_status": "observed"}])
+    forbidden(lambda: store.complete_run(h["p"], "run_1", "升格候选状态。", references, upgraded), 422)
+    assert store.get_run(h["p"], "run_1")["status"] == "running"
+    completed = validates(store.complete_run(h["p"], "run_1", "引用事件后的真实上下文帧。", references, cards_for(h, "引用事件后的真实上下文帧。", [frame_item], [event_card])), "AgentRunResponse")
     assert completed["references"] == references
+    assert [card["kind"] for card in completed["cards"]["cards"]] == ["run_summary", "event_evidence"]
+    assert completed["cards"]["cards"][0]["references"] == [frame_item]
+    assert completed["cards"]["cards"][1]["observation_status"] == "candidate"
     frame_path.write_bytes(b"later corruption must preserve historical references")
     assert store.get_run(h["p"], "run_1")["references"] == references
     assert any(row["role"] == "assistant" for row in store.list_messages(h["p"], "conversation_1")["messages"])
@@ -312,3 +337,50 @@ def test_available_context_frame_can_be_cited_and_missing_history_keeps_referenc
         frame.unlink()
     assert store.get_run(h["p"], "run_1")["references"] == references
     assert any(row["role"] == "assistant" for row in store.list_messages(h["p"], "conversation_1")["messages"])
+
+
+def test_commit_rechecks_card_structure_and_ownership(history):
+    h, store = history, history["store"]
+    running(h)
+    summary = "候选事件检索完成。"
+    event_card = {
+        "kind": "event_evidence", "title": "事件 evt_mock_001 证据", "event_id": "evt_mock_001",
+        "event_type": "shelf_interaction", "observation_status": "candidate", "detection_source": "mock",
+        "start_offset_ms": 32000, "end_offset_ms": 48000,
+        "evidence": [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001",
+                      "offset_ms": 35000, "media_status": "missing"}],
+    }
+    status_card = {"kind": "run_status", "title": "状态", "status": "stopped", "detail": "不允许。"}
+    uncited = [{"event_id": "evt_mock_001", "evidence_id": "evd_mock_001",
+                "offset_ms": 35000, "media_status": "missing"}]
+    tampered = [
+        cards_for(h, summary, run="run_2"),
+        cards_for(h, "与答复不一致的摘要。"),
+        cards_for(h, summary, query=h["plan"]["query"] | {"end_offset_ms": 60000}),
+        {**cards_for(h, summary), "cards": []},
+        cards_for(h, summary, references=uncited),
+        cards_for(h, summary, extra_cards=[status_card]),
+        cards_for(h, summary, extra_cards=[{**event_card, "observation_status": "observed"}]),
+        cards_for(h, summary, extra_cards=[{**event_card, "end_offset_ms": 99999}]),
+        cards_for(h, summary, extra_cards=[{**event_card, "evidence": [
+            {"event_id": "evt_mock_001", "evidence_id": "evd_mock_001",
+             "offset_ms": 35000, "media_status": "available"}]}]),
+        cards_for(h, summary, extra_cards=[{**event_card, "evidence": [
+            {"event_id": "evt_mock_002", "evidence_id": "evd_mock_001",
+             "offset_ms": 35000, "media_status": "missing"}]}]),
+    ]
+    for bad in tampered:
+        forbidden(lambda: store.complete_run(h["p"], "run_1", summary, [], bad), 422)
+        assert store.get_run(h["p"], "run_1")["status"] == "running"
+    # 不存在的卡片事件按资源缺失处理，同样不完成运行。
+    missing_event = cards_for(h, summary, extra_cards=[{**event_card, "event_id": "evt_missing_404"}])
+    forbidden(lambda: store.complete_run(h["p"], "run_1", summary, [], missing_event), 404)
+    assert store.get_run(h["p"], "run_1")["status"] == "running"
+    good = cards_for(h, summary, extra_cards=[event_card])
+    completed = validates(store.complete_run(h["p"], "run_1", summary, [], good), "AgentRunResponse")
+    assert completed["status"] == "completed"
+    assert completed["cards"]["version"] == 1 and completed["cards"]["run_id"] == "run_1"
+    assert [card["kind"] for card in completed["cards"]["cards"]] == ["run_summary", "event_evidence"]
+    # 幂等重放与历史回读返回同一持久化卡片，不重新计算。
+    assert store.complete_run(h["p"], "run_1", summary, [], good) == completed
+    assert store.get_run(h["p"], "run_1")["cards"] == completed["cards"]

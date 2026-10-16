@@ -103,10 +103,15 @@ def test_actual_graph_with_all_five_tools_and_persistent_citations(context, forg
         assert len(messages) == (1 if forged else 2)
         if forged:
             assert result["error"]["code"] == "invalid_references"
-            assert result["summary"] is None and result["references"] == []
+            assert result["summary"] is None and result["references"] == [] and result["cards"] is None
         else:
             assert result["references"] == references
             assert messages[-1]["content"] == result["summary"]
+            assert result["cards"]["run_id"] == "graph_run" and result["cards"]["query"] == query
+            assert [card["kind"] for card in result["cards"]["cards"]] == ["run_summary", "event_evidence"]
+            assert result["cards"]["cards"][0]["references"] == [
+                {**references[0], "offset_ms": 800, "media_status": "available"}]
+            assert result["cards"]["cards"][1]["observation_status"] == "candidate"
             assert client.get("/api/v1/evidence/graph_frame/media").content == image.getvalue()
         assert encoder.texts == [plan["query_text"]]
         names = {message.name for message in model.seen}

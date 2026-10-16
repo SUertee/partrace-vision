@@ -57,7 +57,7 @@ class InjectedEngineStub:
         else:
             self.denied[label] = 200
 
-    async def execute(self, question, plan, gateway):
+    async def execute(self, question, plan, gateway, *, run_id):
         self.execute_calls += 1
         query = plan["query"]
         self.reads["events"] = await gateway.search_events(query)
@@ -86,7 +86,15 @@ class InjectedEngineStub:
                 # Deliberately simulate a provider that returns after cancellation.
                 await self._wait()
         self.returned.set()
-        return {"summary": "测试候选已检索，画面缺失；此测试不作事实判断。", "references": []}
+        summary = "测试候选已检索，画面缺失；此测试不作事实判断。"
+        return {
+            "answer": {"summary": summary, "references": []},
+            "cards": {
+                "version": 1, "run_id": run_id, "query": copy.deepcopy(query),
+                "cards": [{"kind": "run_summary", "title": "分析结论",
+                           "summary": summary, "references": []}],
+            },
+        }
 
 
 def settings(context, **overrides):

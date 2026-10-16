@@ -13,6 +13,7 @@ from langchain_core.language_models import BaseChatModel
 from langsmith import tracing_context
 from pydantic import ValidationError
 
+from agent.cards import build_cards
 from agent.contracts import ToolGateway
 from agent.models import CandidateAnswer, ConfirmedPlan, DraftPlan, QueryScope
 from agent.prompts import EXECUTION_PROMPT as _EXECUTION_PROMPT, PLAN_PROMPT as _PLAN_PROMPT
@@ -99,7 +100,7 @@ class AgentEngine:
         return {"query": fixed.model_dump(mode="json"), **draft.model_dump(mode="json")}
 
     async def execute(
-        self, question: str, plan: dict[str, Any], gateway: ToolGateway
+        self, question: str, plan: dict[str, Any], gateway: ToolGateway, *, run_id: str
     ) -> dict[str, Any]:
         try:
             confirmed = ConfirmedPlan.model_validate(plan)
@@ -123,7 +124,7 @@ class AgentEngine:
         })
         try:
             answer = CandidateAnswer.model_validate(candidate)
-            ledger.validate(answer)
+            bundle = build_cards(ledger, answer, run_id)
         except (ValidationError, InvalidReferences):
             raise AgentExecutionError("invalid_references") from None
-        return answer.model_dump(mode="json")
+        return {"answer": answer.model_dump(mode="json"), "cards": bundle.model_dump(mode="json")}

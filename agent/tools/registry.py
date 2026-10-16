@@ -49,10 +49,9 @@ def build_tools(
     async def semantic_search_events(
         top_k: int = 10, min_score: float | None = None
     ) -> dict[str, Any]:
-        return sourced(
-            "semantic_search_events",
-            await gateway.semantic_search_events(deepcopy(fixed), query_text, top_k, min_score),
-        )
+        result = await gateway.semantic_search_events(deepcopy(fixed), query_text, top_k, min_score)
+        ledger.record_semantic(result)
+        return sourced("semantic_search_events", result)
 
     async def get_event(event_id: str) -> dict[str, Any]:
         result = await gateway.get_event(deepcopy(fixed), event_id)

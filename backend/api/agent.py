@@ -1,14 +1,16 @@
 """Eight authored Agent operations, mounted only after explicit runtime enable."""
 
+import asyncio
 import re
 from typing import Annotated
 
 from fastapi import APIRouter, Request
 from pydantic import StringConstraints
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
 from agent.models import AgentPlan, QueryScope
+from backend.ai import push
 from backend.api.facts import identifier, params, principal, service, strict_json
 from backend.core.errors import ApiError, invalid
 from backend.core.models import Id, StrictModel
@@ -121,3 +123,51 @@ async def stop(run_id: str, request: Request):
     credential = await run_in_threadpool(token, request)
     await body(request, StrictModel)
     return await runtime(request).stop(credential, identifier(run_id))
+
+
+@router.get("/runs/{run_id}/events")
+async def run_events(run_id: str, request: Request):
+    """SSE: snapshot first, then one terminal event; Last-Event-ID aligns replays."""
+    params(request, set())
+    p = await run_in_threadpool(principal, request)
+    agent_runtime = runtime(request)
+    run_id = identifier(run_id)
+    # Subscribe before the snapshot read: a terminal commit can never slip
+    # between the read and the subscription, because publish follows commit.
+    queue = agent_runtime.push.subscribe(run_id)
+    try:
+        snapshot = await run_in_threadpool(agent_runtime.history.get_run, p, run_id)
+    except BaseException:
+        agent_runtime.push.unsubscribe(run_id, queue)
+        raise
+    last_event_id = request.headers.get("last-event-id")
+
+    async def stream():
+        try:
+            if snapshot["status"] == "running":
+                if last_event_id != str(push.SNAPSHOT_EVENT_ID):
+                    yield push.frame(push.SNAPSHOT_EVENT_ID, push.run_event(snapshot))
+                while True:
+                    try:
+                        await asyncio.wait_for(queue.get(), timeout=push.KEEPALIVE_SECONDS)
+                    except TimeoutError:
+                        if await request.is_disconnected():
+                            return
+                        yield ": keep-alive\n\n"
+                        continue
+                    # Re-authenticate and re-read: pushes only signal commits,
+                    # and grants may have changed while the stream was open.
+                    fresh = await run_in_threadpool(principal, request)
+                    run = await run_in_threadpool(agent_runtime.history.get_run, fresh, run_id)
+                    yield push.frame(push.TERMINAL_EVENT_ID, push.run_event(run))
+                    return
+            elif last_event_id != str(push.TERMINAL_EVENT_ID):
+                yield push.frame(push.TERMINAL_EVENT_ID, push.run_event(snapshot))
+        except ApiError:
+            # Authorization or data changed mid-stream; clients re-GET for the error body.
+            return
+        finally:
+            agent_runtime.push.unsubscribe(run_id, queue)
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

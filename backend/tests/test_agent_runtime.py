@@ -88,7 +88,7 @@ class GatewayDouble:
 
 
 class FailingEngine:
-    async def execute(self, *args):
+    async def execute(self, *args, **kwargs):
         raise AgentExecutionError("provider_unavailable")
 
 

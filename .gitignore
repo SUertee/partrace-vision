@@ -41,3 +41,7 @@ captures/
 *.mp4
 *.mov
 *.avi
+
+# Session-local test files; keep local only, do not upload
+agent/tests/test_cards.py
+backend/tests/test_agent_push.py

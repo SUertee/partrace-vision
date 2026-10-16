@@ -20,6 +20,8 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import PoolTimeout
 from pydantic import StringConstraints, TypeAdapter, ValidationError, model_validator
 
+from agent.cards import CardBundle
+
 from backend.core.auth import Principal
 from backend.core.errors import ApiError, invalid
 from backend.core.models import Id, Query, StrictModel, UtcTime
@@ -229,7 +231,7 @@ class AIHistory:
             summary = reply["content"]
         return envelope(run_id=row["run_id"], conversation_id=row["conversation_id"], input_message_id=row["input_message_id"],
                         status=row["status"], plan=row["plan_json"], summary=summary, references=row["references_json"],
-                        model_key=row["model_key"], error=row["error_json"], created_at=utc(row["created_at"]),
+                        cards=row["cards_json"], model_key=row["model_key"], error=row["error_json"], created_at=utc(row["created_at"]),
                         finished_at=utc(row["finished_at"]) if row["finished_at"] is not None else None)
 
     def list_messages(self, p: Principal, conv_id, limit=20, cursor=None):
@@ -310,7 +312,47 @@ class AIHistory:
                 ).fetchone()
             return self._run_response(connection, row)
 
-    def complete_run(self, p: Principal, run_id, summary: str, references: list[dict]):
+    def _cards(self, connection, p: Principal, query: Query, run_id: str, summary: str,
+               cards, references: list[dict]):
+        """Commit-time recheck of a card bundle against current database facts."""
+        try:
+            bundle = CardBundle.model_validate(cards)
+        except ValidationError:
+            raise invalid("分析卡片结构无效。") from None
+        if bundle.run_id != run_id or bundle.query.model_dump(mode="json") != query.model_dump(mode="json"):
+            raise invalid("分析卡片与本次运行不一致。")
+        cited = {(reference["event_id"], reference["evidence_id"]) for reference in references}
+        summaries = [card for card in bundle.cards if card.kind == "run_summary"]
+        if len(summaries) != 1 or summaries[0].summary != summary:
+            raise invalid("答复卡片与助手答复不一致。")
+        if {(item.event_id, item.evidence_id) for item in summaries[0].references} - cited:
+            raise invalid("答复卡片引用未通过验证的证据。")
+        event_bundles = {}
+        for card in bundle.cards:
+            if card.kind == "run_status":
+                raise invalid("已完成运行不能携带状态卡片。")
+            if card.kind != "event_evidence":
+                continue  # 缺口卡只做结构校验；覆盖计数来自语义检索响应，无法在此独立重算。
+            if card.event_id not in event_bundles:
+                event_bundles[card.event_id] = self.service.event_bundle(connection, card.event_id, p)
+            data = event_bundles[card.event_id]
+            event = data["event"]
+            if event["recording_id"] != query.recording_id or event["zone_id"] != query.zone_id or not self.service.hits(event, query):
+                raise invalid("卡片事件不属于本次分析窗口。")
+            if (card.event_type != event["event_type"] or card.observation_status != event["observation_status"]
+                    or card.detection_source != event["detection_source"] or card.start_offset_ms != event["start_offset_ms"]
+                    or card.end_offset_ms != event["end_offset_ms"]):
+                raise invalid("卡片事件与当前事实不一致。")
+            frames = {frame["evidence_id"]: frame for frame in data["evidence"]}
+            for item in card.evidence:
+                frame = frames.get(item.evidence_id)
+                if frame is None or frame["event_id"] != item.event_id:
+                    raise invalid("卡片关键帧不属于引用事件。")
+                if frame["offset_ms"] != item.offset_ms or frame["media_status"] != item.media_status:
+                    raise invalid("卡片关键帧与当前媒体状态不一致。")
+        return bundle.model_dump(mode="json")
+
+    def complete_run(self, p: Principal, run_id, summary: str, references: list[dict], cards: dict):
         with self.service.transaction(p, "data:read") as (connection, _):
             row = one(connection, "SELECT * FROM runs WHERE run_id=%s FOR UPDATE", (_id(run_id),), "run_not_found")
             query = self._authorize_run(connection, p, row)
@@ -319,10 +361,11 @@ class AIHistory:
                 return self._run_response(connection, row)
             summary = _text(summary, 4000)
             references = self._references(connection, p, query, references, require_available=True)
+            cards = self._cards(connection, p, query, row["run_id"], summary, cards, references)
             finished = max(now(), row["created_at"])
             row = connection.execute(
-                "UPDATE runs SET status='completed',references_json=%s,finished_at=%s WHERE run_id=%s AND status='running' RETURNING *",
-                (Jsonb(references), finished, row["run_id"]),
+                "UPDATE runs SET status='completed',references_json=%s,cards_json=%s,finished_at=%s WHERE run_id=%s AND status='running' RETURNING *",
+                (Jsonb(references), Jsonb(cards), finished, row["run_id"]),
             ).fetchone()
             connection.execute(
                 "INSERT INTO messages(message_id,conversation_id,role,content,run_id,created_at) VALUES(%s,%s,'assistant',%s,%s,%s)",

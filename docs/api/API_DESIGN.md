@@ -1,6 +1,6 @@
 # ParTrace Vision 最小 API · 0.3-mvp-draft
 
-**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加八个 Agent 操作，共 22／27。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，27 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
+**接口设计草案，未冻结。** development 默认有原 12 个基础数据操作加两个向量操作，共 14 个；显式 `PARTRACE_AGENT_ENABLED=true` 加九个 Agent 操作，共 23／28。P1 包裹五个尚未实现。安装与范围见 [Backend README](../../backend/README.md)，当前凭据见 [D07 验证](../../openspec/changes/d07-create-agent/verification.md)；本地测试不代表外部模型、部署或 D10 验收。 Android 主端；固定视频的事件查询、关键帧、事件描述文本向量、单事件人工核查、AI聊天/分析回读及二维码包裹入出库。数据库为 [11 表 / 77 字段](../database/README.md)，28 个接口操作与本版 [OpenAPI](openapi.json) 保持一致；包裹的五个接口已合入现有 API 页面。
 
 需要开发的业务模块、主责、表读写与 API 交接见 [模块设计](../modules/README.md)。本页维护字段语义、范围与返回约定。
 
@@ -30,7 +30,7 @@
 
 `v1` 是外部路由主版本；`0.3-mvp-draft` 是未冻结设计资料与示例版本，响应的 `api_version` 保持后者。统一公开地址设计为 `https://api.example.invalid`，Android 只配置一个 API base URL；后端与独立 Agent 包在同一 FastAPI 工厂组合，内部通过受限 Python 接口调用。占位地址不代表已部署服务或网关。
 
-全部外部 API 使用 `/api/v1`；其中后端业务接口共 19 个操作，Agent 8 个，共 27 个当前草案。development 已实现受保护摘要凭据到 Bearer subject 的映射及 active／role／scope／资源检查；staging／production 的正式认证仍待配置，本地凭据在这两种环境拒绝使用。subject 映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
+全部外部 API 使用 `/api/v1`；其中后端业务接口共 19 个操作，Agent 9 个，共 28 个当前草案。development 已实现受保护摘要凭据到 Bearer subject 的映射及 active／role／scope／资源检查；staging／production 的正式认证仍待配置，本地凭据在这两种环境拒绝使用。subject 映射到 `users.user_id`，不接收客户端自报身份。`admin` 可执行已授权操作，`viewer` 只读已授权监控与包裹资源，可在自己的AI会话提交问题；角色不自动扩大镜头、视频、核查或包裹记录的可见范围。首页等 5 个建议接口不计入当前契约。
 
 | 方法 / 路径 | 用途 |
 |---|---|
