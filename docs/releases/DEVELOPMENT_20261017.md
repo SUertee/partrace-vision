@@ -32,7 +32,7 @@ Android 仅在发布副本使用官方 AAR及空凭据模板构建，未复制�
 python -m pytest backend/tests agent/tests -o addopts='' -q --tb=short -rs
 cd vision
 python -m unittest discover -s tests -q
-cd ../android/ESIotKit-DemoApp-Android
+cd ../android
 ./gradlew :app:assembleDebug :app:lintDebug :sample-core:testDebugUnitTest \
   --tests '*TraceAgent*' --tests '*People*' --tests '*SdkDeviceOrder*' --tests '*Cache*' \
   --console=plain --offline

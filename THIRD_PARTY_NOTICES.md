@@ -2,7 +2,7 @@
 
 ## Anker / eufy Security ESIotKit 官方示例
 
-`android/ESIotKit-DemoApp-Android/` 与 `android/ESIotKit-DemoApp-Common/` 来自 2026 Anker 安防赛题随附的 `安防赛题材料/demo工程/AppSDKDemo/`，版本为 ESIotKit 2.2.7。工程中的官方代码、资源和示例业务实现版权归发布方所有。
+当前 `android/app/`、`android/core/` 及根构建配置来源于上游 `ESIotKit-DemoApp-Android` 与 `ESIotKit-DemoApp-Common`，来自 2026 Anker 安防赛题随附的 `安防赛题材料/demo工程/AppSDKDemo/`，版本为 ESIotKit 2.2.7。工程中的官方代码、资源和示例业务实现版权归发布方所有。
 
 原包 `AppSDKDemo/README.md` 的 License 说明为：
 
@@ -29,6 +29,6 @@ SDK 与其内含组件的授权仍以发布方及对应组件的条款为准。
 
 ## 公共构建与运行依赖
 
-Android / Common 工程依赖 Gradle、Kotlin、Android Gradle Plugin、AndroidX、Compose、Ktor、Koin、Coil、SQLDelight、AWS Android SDK、Paho MQTT 等第三方组件。具体依赖和版本见 `android/ESIotKit-DemoApp-Android/gradle/libs.versions.toml` 以及两个模块的 `build.gradle.kts`。
+Android 工程依赖 Gradle、Kotlin、Android Gradle Plugin、AndroidX、Compose、Ktor、Koin、Coil、SQLDelight、AWS Android SDK、Paho MQTT 等第三方组件。具体依赖和版本见 `android/gradle/libs.versions.toml` 以及两个模块的 `build.gradle.kts`。
 
 公共依赖通过官方示例配置的 Maven 仓库解析，本仓库未复制这些依赖的发行包。其版权与许可由各依赖项目及实际分发材料决定；本说明不替代对应的完整许可文件。

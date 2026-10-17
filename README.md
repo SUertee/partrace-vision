@@ -123,7 +123,7 @@ uv run pytest
 
 ## Android 开工
 
-工具链沿用官方工程：**JDK 17、Android SDK 36、minSdk 26**。用 Android Studio 打开 `android/ESIotKit-DemoApp-Android`。
+工具链沿用官方工程：**JDK 17、Android SDK 36、minSdk 26**。用 Android Studio 打开 `android`。
 
 ```sh
 git clone https://github.com/SUertee/partrace-vision.git
@@ -134,11 +134,11 @@ python3 scripts/setup-android.py --sdk /path/to/ESIotKit-2.2.7.aar
 脚本从空值模板生成本地配置文件，再安装赛事发放的 SDK AAR；配置文件和 AAR 均被 Git 忽略。按 [Android 说明](android/README.md) 填写自己获授权的本地参数。
 
 ```sh
-cd android/ESIotKit-DemoApp-Android
+cd android
 ./gradlew :app:assembleDebug
 ```
 
-Android 保留用户设计的首页、AI、我的三入口 Compose 界面、独立消息中心与两个浮层，原官方示例保留在「我的 → SDK 调试」。本轮将当前账号的两个真实 SDK 设备直接接入首页，数量随真实列表变化；卡片显示真实名称、状态和最近缩略图，复用原单路直播／设备设置，多画面入口先展示最近缩略图网格。范围见 [d02-station-sdk-devices](openspec/changes/archive/2026-10-16-d02-station-sdk-devices/proposal.md)，上一轮视觉记录保留在 [Android 设计预览](android/design-previews/README.md)。
+Android 保留用户设计的首页、AI、我的三入口 Compose 界面、独立消息中心与两个浮层，原官方示例保留在「我的 → SDK 调试」。本轮将当前账号的两个真实 SDK 设备直接接入首页，数量随真实列表变化；卡片显示真实名称、状态和最近缩略图，复用原单路直播／设备设置，多画面入口先展示最近缩略图网格。范围见 [d02-station-sdk-devices](openspec/changes/archive/2026-10-16-d02-station-sdk-devices/proposal.md)，上一轮视觉记录保留在 [Android 设计预览](android/design/verification/app/README.md)。
 
 报警尚未接入；AI 追溯已连接现有 Agent API，实现录像／区域、计划确认、运行停止与恢复、结果引用和服务端历史界面，采用轮询，未订阅 SSE。真实模型计划与失败状态已在模拟录像上回读，成功分析与真实事件引用仍待验收，见 [Android Agent 验证](openspec/changes/d07-android-agent/verification.md)及 [Android 说明](android/README.md#agent-api-接入)。本地静音不修改摄像头报警；站点选择仅为界面分组，不对应 SDK 房屋或设备过滤。构建、UI、设备服务与实际摄像头操作分别记录，模拟器连接真实设备不替代 Android 真机检查，也不代表 D06 全部能力或 D10 业务闭环验收。
 
