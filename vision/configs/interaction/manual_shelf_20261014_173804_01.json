@@ -1,0 +1,148 @@
+{
+  "video": "test_video_new/0fc72122c2a6a082e2d4f3fdcdd2a8f1.mp4",
+  "camera_id": "cam01",
+  "shelf_numbering": "bottom_up",
+  "imgsz": 640,
+  "parcel_seeds": [],
+  "region_polygon": [
+    [
+      0,
+      565
+    ],
+    [
+      365,
+      540
+    ],
+    [
+      390,
+      1150
+    ],
+    [
+      90,
+      1280
+    ],
+    [
+      0,
+      1280
+    ]
+  ],
+  "region_note": "首帧货架区域，配准后用于手腕候选和可见外观差异；未标定具体货架层号。",
+  "trigger": {
+    "dwell_ms": 200,
+    "context_ms": 1500,
+    "max_active_ms": 6000
+  },
+  "florence_klt": {
+    "enabled": true,
+    "variant": "base-ft",
+    "device": null,
+    "cpu_threads": 4,
+    "scene_refresh_ms": 3000,
+    "actor_refresh_ms": 1500,
+    "loss_retry_ms": 750,
+    "max_localization_age_ms": 4000,
+    "max_tracks": 8,
+    "max_localization_calls": 80,
+    "max_seconds": 0,
+    "scene_text": "cardboard boxes and parcels",
+    "actor_text": "the box held in the person's hands"
+  },
+  "shelf_zones": [
+    {
+      "id": "manual_01",
+      "level": 1,
+      "polygon": [
+        [
+          129.63,
+          1232.48
+        ],
+        [
+          362.05,
+          872.75
+        ],
+        [
+          374.29,
+          956.55
+        ],
+        [
+          188.75,
+          1279.0
+        ]
+      ]
+    },
+    {
+      "id": "manual_02",
+      "level": 2,
+      "polygon": [
+        [
+          99.04,
+          948.38
+        ],
+        [
+          357.98,
+          727.63
+        ],
+        [
+          374.29,
+          829.83
+        ],
+        [
+          105.16,
+          1201.82
+        ]
+      ]
+    },
+    {
+      "id": "manual_03",
+      "level": 3,
+      "polygon": [
+        [
+          32.78,
+          598.87
+        ],
+        [
+          370.21,
+          590.69
+        ],
+        [
+          368.17,
+          688.8
+        ],
+        [
+          72.54,
+          907.5
+        ]
+      ]
+    },
+    {
+      "id": "manual_04",
+      "level": 4,
+      "polygon": [
+        [
+          17.49,
+          380.17
+        ],
+        [
+          360.02,
+          392.43
+        ],
+        [
+          378.37,
+          555.94
+        ],
+        [
+          25.64,
+          580.47
+        ]
+      ]
+    }
+  ],
+  "shelf_calibration": {
+    "source": "manual",
+    "reference_frame_index": 0,
+    "reference_frame_id": "f000000",
+    "source_sha256": "f91b837a369e7a2184cb12fe9000f54804e21a700ccac114b3a5134df7de936b",
+    "width": 720,
+    "height": 1280
+  }
+}

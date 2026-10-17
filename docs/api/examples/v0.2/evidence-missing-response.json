@@ -1,0 +1,26 @@
+{
+  "api_version": "0.2-draft",
+  "evidence": {
+    "evidence_id": "mock-evidence-01",
+    "recording_id": "mock-recording-01",
+    "import_id": "mock-import-01",
+    "index_version": 1,
+    "camera_id": "mock-camera-indoor-01",
+    "source_mode": "mock",
+    "media_kind": "keyframe",
+    "raw_captured_epoch_ms": 1791439260000,
+    "captured_at": "2026-10-08T06:01:00Z",
+    "alignment_status": "aligned",
+    "offset_ms": 60000,
+    "context_start_offset_ms": null,
+    "context_end_offset_ms": null,
+    "availability": "missing",
+    "availability_reason": "mock_no_media",
+    "media_sha256": null,
+    "media_url": null,
+    "media_url_expires_at": null,
+    "raw_frame_pts": null,
+    "alignment_reason": null,
+    "time_mapping_version": "mock-clock-v1"
+  }
+}

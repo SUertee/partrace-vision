@@ -1,0 +1,16 @@
+*
+!Dockerfile
+!requirements.lock
+!*.py
+!api/
+!api/*.py
+!core/
+!core/*.py
+!services/
+!services/*.py
+!storage/
+!storage/*.py
+!ai/
+!ai/*.py
+**/__pycache__/
+**/*.pyc

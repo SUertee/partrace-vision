@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>多模态货架点选与微调</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f9;color:#182235;font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1300px;margin:auto;padding:24px}h1{font-size:28px;margin:4px 0 12px}h2{font-size:21px}section{background:white;padding:20px;border-radius:12px;margin:18px 0}.notice{background:#fff5db;border-left:4px solid #d89c18;padding:14px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}figcaption{margin-bottom:8px;font-weight:600}img,canvas,video{display:block;width:100%;height:auto}canvas{touch-action:none;cursor:crosshair}button,input,select{font:inherit}button{border:1px solid #c7cfda;border-radius:6px;background:white;padding:7px 12px;cursor:pointer}button.active{background:#e5efff;border-color:#2e69b4}button.primary{background:#245eab;color:white}input[type=number]{width:76px}.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:12px 0}.muted{color:#637084;font-size:14px}.zone{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0;padding:9px;border-bottom:1px solid #e1e6ef}.swatch{width:14px;height:14px;border-radius:4px}a{color:#245eab}.facts{display:flex;flex-wrap:wrap;gap:16px}.fact{background:#f2f6fc;padding:12px 18px;border-radius:8px}.fact b{font-size:23px;display:block}li{margin:6px 0}.snapshot{max-width:100%;margin-bottom:15px}video{max-height:700px;background:#111}@media(max-width:700px){main{padding:12px}.pair{gap:7px}section{padding:12px}h1{font-size:23px}}
+</style><main>
+<h1>多模态货架点选与微调</h1>
+<p>模型先提出区域，叠加检查后可拖动修正。区域编号 S1、S2 等只用于区分建议，不代表货架层号。</p>
+<p class="notice">当前结果尚未人工核对。层号必须从下往上数，地面不计层。看不清最低储物板时保留未知；区域和轨迹不能单独证明拿取。</p>
+<section><h2>本次结果</h2><div class="facts" id="facts"></div><p id="bottom"></p><ul id="inspection"></ul><p class="muted" id="limitations"></p></section>
+<section><h2>原画面与模型点选</h2>
+<div class="controls"><label>区域透明度 <input id="opacity" type="range" min="0" max="0.5" step="0.01" value="0.17"></label><label><input id="points" type="checkbox" checked> 显示顶点</label><label>编辑对象 <select id="editMode"><option value="polygon">区域顶点（圆点）</option><option value="support_line">板前沿端点（方点）</option></select></label><button id="reset">恢复模型建议</button><button id="download" class="primary">下载当前标定草稿</button></div>
+<p class="muted">点击下方区域按钮，再拖动对应顶点或储物板前沿的端点。修改层号不会自动确认真实层序。修改仅保留在当前页面，下载可保存草稿。</p>
+<div class="pair"><figure><figcaption>原始参考帧</figcaption><img id="raw" alt="原始参考帧"></figure><figure><figcaption>点选叠加，可拖动微调</figcaption><canvas id="editor" aria-label="货架区域点选编辑器"></canvas></figure></div>
+<p id="state" class="muted"></p><div id="zones"></div><p id="reason" class="muted"></p>
+</section>
+__VIDEO_SECTION__
+<section id="previousSection" hidden><h2>上一轮模型建议</h2><p>用于比较修正前后的变化；上一轮不是标准答案。</p><img src="previous_overlay.png" alt="上一轮叠加结果" style="max-width:720px;margin:auto"></section>
+<section><h2>记录</h2><p><a href="proposal.json">结构化区域</a> · <a href="response.json">模型原始回答</a> · <a href="draft_calibration.json">初始标定草稿</a> · <a href="summary.json">调用和预览记录</a></p><p class="muted">本试验未改写主流程配置，没有新增已确认的 take、carrying 或来源层。可视化中的人物与包裹框如存在，来自已有观测。</p></section>
+</main><script>
+const DATA=__DATA__;
+const base=DATA.proposal;
+let zones=structuredClone(base.zones),selected=0,drag=null,edited=false;
+const colors=['#f5aa3c','#f564dc','#82d250','#46b4f5','#fa8264','#beaee6'];
+const canvas=document.getElementById('editor'),ctx=canvas.getContext('2d'),image=new Image();
+canvas.width=base.width;canvas.height=base.height;
+document.getElementById('raw').src=DATA.reference;
+image.onload=draw;image.src=DATA.reference;
+document.getElementById('bottom').textContent='底部判断：'+base.bottom_reason;
+document.getElementById('limitations').textContent='模型说明：'+base.limitations.join('；');
+const metrics=[['建议区域',base.zones.length],['可确定层号',base.zones.filter(z=>z.level!==null).length],['本次模型调用',DATA.summary.api_calls],['模型耗时',DATA.summary.elapsed_model_s.toFixed(1)+' 秒']];
+for(const [label,value] of metrics){const box=document.createElement('div');box.className='fact';const name=document.createElement('span');name.textContent=label;const v=document.createElement('b');v.textContent=value;box.append(name,v);document.getElementById('facts').append(box);}
+for(const note of DATA.inspection){const li=document.createElement('li');li.textContent=note;document.getElementById('inspection').append(li);}
+document.getElementById('previousSection').hidden=!DATA.has_previous;
+function renderControls(){
+ const box=document.getElementById('zones');box.replaceChildren();
+ zones.forEach((z,i)=>{const row=document.createElement('div');row.className='zone';const sw=document.createElement('span');sw.className='swatch';sw.style.background=colors[i%colors.length];const btn=document.createElement('button');btn.textContent=z.id;btn.className=i===selected?'active':'';btn.onclick=()=>{selected=i;renderControls();draw();};const label=document.createElement('label');label.append('货架层号 ');const input=document.createElement('input');input.type='number';input.min='1';input.max='20';input.value=z.level===null?'':z.level;input.placeholder='未知';input.oninput=()=>{const v=input.value===''?null:Number(input.value);if(v===null||(Number.isInteger(v)&&v>=1&&v<=20)){z.level=v;edited=true;draw();}};label.append(input);const hint=document.createElement('span');hint.className='muted';hint.textContent='留空表示未知';row.append(sw,btn,label,hint);box.append(row);});
+ document.getElementById('reason').textContent=zones[selected]?'当前区域依据：'+zones[selected].reason:'没有通过结构检查的区域。';
+}
+function draw(){
+ if(!image.complete||!image.naturalWidth)return;
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+ const alpha=Number(document.getElementById('opacity').value),show=document.getElementById('points').checked;
+ zones.forEach((z,i)=>{const col=colors[i%colors.length];ctx.beginPath();z.polygon.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=col;ctx.lineWidth=i===selected?4:2;ctx.stroke();
+ ctx.beginPath();ctx.moveTo(...z.support_line[0]);ctx.lineTo(...z.support_line[1]);ctx.lineWidth=5;ctx.stroke();
+ if(show){for(const p of z.polygon){ctx.beginPath();ctx.arc(...p,i===selected?7:4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();}for(const p of z.support_line){ctx.fillStyle='white';ctx.fillRect(p[0]-6,p[1]-6,12,12);ctx.strokeStyle=col;ctx.strokeRect(p[0]-6,p[1]-6,12,12);}}
+ const x=Math.max(3,Math.min(...z.polygon.map(p=>p[0]))+8),y=Math.min(canvas.height-25,Math.max(...z.polygon.map(p=>p[1]))-20);ctx.font='20px "Microsoft YaHei",sans-serif';ctx.fillStyle='#111827';ctx.fillRect(x-3,y-20,175,29);ctx.fillStyle=col;ctx.fillText(z.id+' '+(z.level===null?'层号未知':'第'+z.level+'层'),x,y);
+ });
+ document.getElementById('state').textContent=edited?'当前草稿已修改，尚未确认；下载后仍需检查几何和层序。':'当前显示模型原始建议，尚未人工确认。';
+}
+function location(e){const rect=canvas.getBoundingClientRect();return [(e.clientX-rect.left)*canvas.width/rect.width,(e.clientY-rect.top)*canvas.height/rect.height];}
+canvas.onpointerdown=e=>{
+ const p=location(e),threshold=20*canvas.width/canvas.getBoundingClientRect().width;
+ const candidates=[];
+ zones.forEach((z,i)=>{for(const field of [document.getElementById('editMode').value])z[field].forEach((q,j)=>{const d=Math.hypot(q[0]-p[0],q[1]-p[1]);if(d<threshold)candidates.push({i,field,j,d,bias:i===selected?0:threshold});});});
+ candidates.sort((a,b)=>(a.d+a.bias)-(b.d+b.bias));
+ if(candidates.length){drag=candidates[0];selected=drag.i;canvas.setPointerCapture(e.pointerId);renderControls();draw();}
+};
+canvas.onpointermove=e=>{if(!drag)return;const p=location(e);zones[drag.i][drag.field][drag.j]=[Math.max(0,Math.min(canvas.width-1,p[0])),Math.max(0,Math.min(canvas.height-1,p[1]))].map(v=>Math.round(v*100)/100);edited=true;draw();};
+canvas.onpointerup=()=>{drag=null;};canvas.onpointercancel=()=>{drag=null;};
+document.getElementById('opacity').oninput=draw;document.getElementById('points').onchange=draw;
+document.getElementById('reset').onclick=()=>{zones=structuredClone(base.zones);selected=0;edited=false;renderControls();draw();};
+document.getElementById('download').onclick=()=>{
+ const result={status:edited?'edited_draft_unverified':'vlm_proposed_unverified',source_sha256:DATA.source_sha256,reference_frame_id:base.reference_frame_id,reference_frame_index:DATA.reference_index,width:base.width,height:base.height,shelf_numbering:'bottom_up',approved_for_action_inference:false,needs_geometry_validation:edited,shelf_zones:zones.map(z=>({id:z.id,level:z.level,polygon:z.polygon,support_line:z.support_line}))};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='shelf_calibration_draft.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+renderControls();
+</script></html>

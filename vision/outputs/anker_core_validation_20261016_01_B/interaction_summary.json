@@ -1,0 +1,118 @@
+{
+  "source_video": "1_package.mp4",
+  "source_sha256": "d0f9d2c3f1dc0da32850332d0f120148726c58822bf6550e0cab12eb063d282f",
+  "score_calibrated": false,
+  "interactions": [
+    {
+      "id": "s0001",
+      "person_id": null,
+      "start_ms": 5800,
+      "end_ms": 8633,
+      "action": "shelf_interaction",
+      "shelf_level": 3,
+      "algorithm_shelf_level": 3,
+      "vlm_shelf_level": null,
+      "shelf_level_status": "candidate_only",
+      "interaction_detected": null,
+      "pickup_detected": null,
+      "pickup_score": null,
+      "review_elapsed_s": null,
+      "keyframes": [
+        {
+          "role": "before",
+          "frame_id": "f000164",
+          "time_ms": 5500.0,
+          "raw_path": "keyframes/s0001/01_before_f000164.png"
+        },
+        {
+          "role": "reach_onset",
+          "frame_id": "f000173",
+          "time_ms": 5800.0,
+          "raw_path": "keyframes/s0001/02_reach_onset_f000173.png"
+        },
+        {
+          "role": "reach_peak",
+          "frame_id": "f000215",
+          "time_ms": 7200.0,
+          "raw_path": "keyframes/s0001/03_reach_peak_f000215.png"
+        },
+        {
+          "role": "withdrawal",
+          "frame_id": "f000221",
+          "time_ms": 7400.0,
+          "raw_path": "keyframes/s0001/04_withdrawal_f000221.png"
+        },
+        {
+          "role": "after",
+          "frame_id": "f000267",
+          "time_ms": 8933.333,
+          "raw_path": "keyframes/s0001/05_after_f000267.png"
+        }
+      ],
+      "local_person_id": "P001",
+      "identity_status": "unmatched"
+    },
+    {
+      "id": "s0002",
+      "person_id": "G0004",
+      "start_ms": 17333,
+      "end_ms": 22833,
+      "action": "shelf_interaction",
+      "shelf_level": 3,
+      "algorithm_shelf_level": 3,
+      "vlm_shelf_level": null,
+      "shelf_level_status": "candidate_only",
+      "interaction_detected": null,
+      "pickup_detected": null,
+      "pickup_score": null,
+      "review_elapsed_s": null,
+      "keyframes": [
+        {
+          "role": "before",
+          "frame_id": "f000510",
+          "time_ms": 17033.333,
+          "raw_path": "keyframes/s0002/01_before_f000510.png"
+        },
+        {
+          "role": "reach_onset",
+          "frame_id": "f000519",
+          "time_ms": 17333.333,
+          "raw_path": "keyframes/s0002/02_reach_onset_f000519.png"
+        },
+        {
+          "role": "reach_peak",
+          "frame_id": "f000533",
+          "time_ms": 17800.0,
+          "raw_path": "keyframes/s0002/03_reach_peak_f000533.png"
+        },
+        {
+          "role": "withdrawal",
+          "frame_id": "f000544",
+          "time_ms": 18166.667,
+          "raw_path": "keyframes/s0002/04_withdrawal_f000544.png"
+        },
+        {
+          "role": "after",
+          "frame_id": "f000693",
+          "time_ms": 23133.333,
+          "raw_path": "keyframes/s0002/05_after_f000693.png"
+        }
+      ],
+      "local_person_id": "P004",
+      "identity_status": "matched"
+    }
+  ],
+  "timing_s": {
+    "visual_without_parcels": 116.155,
+    "primary_pipeline": 177.092,
+    "experiment_including_retests": 177.092,
+    "offline_video_reexport": 0
+  },
+  "evaluation": {
+    "correct_decidable_cases": null,
+    "unknown_cases": null,
+    "case_count": 0,
+    "independent_team_ground_truth": false,
+    "reference_note": null
+  }
+}

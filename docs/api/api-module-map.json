@@ -1,0 +1,990 @@
+{
+  "version": "0.3-module-review",
+  "scope_note": "模块/API分工与当前0.3草案对应；12表104字段、35个current_draft；实现范围见 Backend 与 Agent README，5个proposed不是已存在的接口。提供方指建议代码归属，调用方指初步接入分工。 全部外部路径以/api/v1为前缀，Agent命名空间/api/v1/agent不改变模块提供方；v1为路由版本，0.3为草案资料版本，未部署网关。 统一公开入口占位https://api.example.invalid，Android使用一个base URL；backend/agent模块仍独立归属，内部接入待实现。 AI会话不固定录像，会话及user问题仅active owner；计划/运行每次仍单视频，assistant经关联run验权；消息页任一无权助手答复使整页403，无正文或部分结果。 2026-10-16新增People任务7操作，总35操作；实现和真实验证各见模块README。",
+  "sources": [
+    "docs/api/openapi.json",
+    "docs/api/API_DESIGN.md",
+    "docs/api/FEATURE_DATA_API_MAP.md",
+    "docs/api/feature-data-api-map.json",
+    "android/README.md",
+    "backend/README.md",
+    "vision/README.md",
+    "agent/README.md",
+    "docs/DEVELOPMENT_PLAN.md"
+  ],
+  "modules": [
+    {
+      "module": "android",
+      "owner": "李果钦",
+      "label": "Android 前端",
+      "responsibility": "调用后端与 Agent，展示证据，人工保存、二维码生成/扫码查询及管理员确认包裹入出库与历史回读。",
+      "http_provider": false
+    },
+    {
+      "module": "vision",
+      "owner": "徐泽华",
+      "label": "视觉算法",
+      "responsibility": "产出视频事件包、真实关键帧与描述；按模型约定交接向量。",
+      "http_provider": false,
+      "note": "批处理或导入客户端即可，不要求独立HTTP服务。向量编码可由算法/后端共用作业，归属再确认。"
+    },
+    {
+      "module": "backend",
+      "owner": "Harry Xu",
+      "label": "后端",
+      "responsibility": "提供19个业务接口，权限校验、PostgreSQL/pgvector、媒体与包裹流水持久化；协作AI历史存储。",
+      "http_provider": true
+    },
+    {
+      "module": "agent",
+      "owner": "韩广宁",
+      "label": "AI Agent",
+      "responsibility": "提供8个AI接口；转计划、调用后端只读事件/包裹工具，保存本人会话与运行状态。",
+      "http_provider": true
+    }
+  ],
+  "stages": [
+    {
+      "id": "events_evidence",
+      "order": 1,
+      "label": "事件与证据",
+      "current_operation_count": 9,
+      "owners": [
+        "backend",
+        "vision",
+        "android"
+      ],
+      "depends_on": [],
+      "deliverable": "完整包入库，App能查到同一事件并打开真实关键帧。"
+    },
+    {
+      "id": "human_review",
+      "order": 2,
+      "label": "人工留档",
+      "current_operation_count": 3,
+      "owners": [
+        "backend",
+        "android"
+      ],
+      "depends_on": [
+        "events_evidence"
+      ],
+      "deliverable": "管理员保存单事件核查，重启后可回读。"
+    },
+    {
+      "id": "semantic_search",
+      "order": 3,
+      "label": "语义检索",
+      "current_operation_count": 2,
+      "owners": [
+        "backend",
+        "vision",
+        "agent",
+        "android"
+      ],
+      "depends_on": [
+        "events_evidence"
+      ],
+      "deliverable": "同模型空间检索候选，显示未索引缺口并回看证据。"
+    },
+    {
+      "id": "ai_conversations",
+      "order": 4,
+      "label": "AI 会话与运行",
+      "current_operation_count": 9,
+      "owners": [
+        "agent",
+        "android",
+        "backend"
+      ],
+      "depends_on": [
+        "events_evidence",
+        "semantic_search"
+      ],
+      "deliverable": "保存问题、确认计划、执行/停止、跳转引用、历史回读。"
+    },
+    {
+      "id": "parcel_workflow",
+      "order": 5,
+      "label": "包裹与入出库",
+      "current_operation_count": 5,
+      "owners": [
+        "backend",
+        "android",
+        "agent"
+      ],
+      "depends_on": [],
+      "deliverable": "建档返回单号，Android生成/扫码一致；管理员确认入出库，序号/幂等与重启回读可核对；Agent只读历史。"
+    },
+    {
+      "id": "homepage",
+      "order": 6,
+      "label": "首页补齐",
+      "current_operation_count": 0,
+      "owners": [
+        "backend",
+        "agent",
+        "android"
+      ],
+      "depends_on": [
+        "human_review",
+        "ai_conversations"
+      ],
+      "deliverable": "从现有事实派生概况与简报，/overview需另行确认。"
+    },
+    {
+      "id": "people_pipeline",
+      "order": 7,
+      "label": "People录像与Vision",
+      "current_operation_count": 7,
+      "owners": [
+        "android",
+        "backend",
+        "vision"
+      ],
+      "depends_on": [
+        "events_evidence"
+      ],
+      "deliverable": "真实People连续录像上传、独占解析、完整结果发布及App完成回传。"
+    }
+  ],
+  "operations": [
+    {
+      "id": "get_configs_config_version",
+      "method": "GET",
+      "path": "/api/v1/configs/{config_version}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "vision"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取不可变区域配置",
+      "read_tables": [],
+      "write_tables": [],
+      "config_only": true
+    },
+    {
+      "id": "get_events",
+      "method": "GET",
+      "path": "/api/v1/events",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "events_evidence",
+      "summary": "按单视频区域与时间查事件",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_events_event_id",
+      "method": "GET",
+      "path": "/api/v1/events/{event_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取事件与关键帧",
+      "read_tables": [
+        "events",
+        "evidence",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_evidence_evidence_id",
+      "method": "GET",
+      "path": "/api/v1/evidence/{evidence_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取关键帧元数据",
+      "read_tables": [
+        "evidence",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_evidence_evidence_id_media",
+      "method": "GET",
+      "path": "/api/v1/evidence/{evidence_id}/media",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取真实关键帧字节",
+      "read_tables": [
+        "evidence",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_user",
+      "method": "GET",
+      "path": "/api/v1/user",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取认证主体映射的当前用户；不按客户端user_id读取其他人，不包含SDK凭据。",
+      "read_tables": [
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_recordings",
+      "method": "GET",
+      "path": "/api/v1/recordings",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "events_evidence",
+      "summary": "列出已完整发布录制",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_recordings",
+      "method": "POST",
+      "path": "/api/v1/recordings",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "vision"
+      ],
+      "stage": "events_evidence",
+      "summary": "原片先写 pending 录像并排队；兼容已分析整包原子发布",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence",
+        "recording_jobs"
+      ],
+      "write_tables": [
+        "recordings",
+        "events",
+        "evidence",
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "get_recordings_recording_id",
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "events_evidence",
+      "summary": "读取录制元数据",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "get_review_records",
+      "method": "GET",
+      "path": "/api/v1/review-records",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "human_review",
+      "summary": "列出人工核查记录",
+      "read_tables": [
+        "review_records",
+        "events",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_review_records",
+      "method": "POST",
+      "path": "/api/v1/review-records",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "human_review",
+      "summary": "保存单事件人工核查",
+      "read_tables": [
+        "users",
+        "events",
+        "evidence",
+        "recordings",
+        "review_records"
+      ],
+      "write_tables": [
+        "review_records"
+      ],
+      "note": "仅Android中的已授权管理员显式确认；Agent不自动提交。"
+    },
+    {
+      "id": "get_review_records_review_id",
+      "method": "GET",
+      "path": "/api/v1/review-records/{review_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "human_review",
+      "summary": "回读核查与当前证据状态",
+      "read_tables": [
+        "review_records",
+        "events",
+        "evidence",
+        "recordings"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "post_event_embeddings",
+      "method": "POST",
+      "path": "/api/v1/event-embeddings",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "semantic_search",
+      "summary": "写入事件描述文本向量",
+      "read_tables": [
+        "users",
+        "recordings",
+        "events",
+        "evidence",
+        "event_embeddings"
+      ],
+      "write_tables": [
+        "event_embeddings"
+      ],
+      "note": "vision表示已授权导入作业；Embedding生成由算法/后端共享约定，不要求新增vision HTTP服务。"
+    },
+    {
+      "id": "post_events_semantic_search",
+      "method": "POST",
+      "path": "/api/v1/events/search",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "stage": "semantic_search",
+      "summary": "只读语义检索事件",
+      "read_tables": [
+        "recordings",
+        "events",
+        "event_embeddings",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "只读POST；Agent只读工具调用，不赋予向量或人工核查写权限。"
+    },
+    {
+      "id": "get_agent_conversations",
+      "method": "GET",
+      "path": "/api/v1/agent/conversations",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "列出自己的AI会话",
+      "read_tables": [
+        "conversations"
+      ],
+      "write_tables": [],
+      "note": "仅Bearer+active owner，scope=none；列表不因某次录像撤权而消失，cursor绑定owner/排序/limit。"
+    },
+    {
+      "id": "post_agent_conversations",
+      "method": "POST",
+      "path": "/api/v1/agent/conversations",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "创建自己的AI会话",
+      "read_tables": [
+        "users",
+        "conversations"
+      ],
+      "write_tables": [
+        "conversations"
+      ],
+      "note": "仅Bearer+active owner，scope=none；会话不固定录像，重试比较owner及规范化创建请求。"
+    },
+    {
+      "id": "get_agent_conversation_messages",
+      "method": "GET",
+      "path": "/api/v1/agent/conversations/{conversation_id}/messages",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "回读自己的会话消息",
+      "read_tables": [
+        "conversations",
+        "messages",
+        "runs",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "基础scope=none；先确定页，逐assistant关联run校验data:read、本次Query录像当前授权与引用归属。任一无权则整页403，无正文/部分结果/next_cursor，不静默过滤。"
+    },
+    {
+      "id": "post_agent_conversation_messages",
+      "method": "POST",
+      "path": "/api/v1/agent/conversations/{conversation_id}/messages",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "保存自己的用户问题",
+      "read_tables": [
+        "conversations",
+        "messages"
+      ],
+      "write_tables": [
+        "messages"
+      ],
+      "note": "仅Bearer+active owner，scope=none；保存user问题及同ID重试不校验录像。"
+    },
+    {
+      "id": "post_agent_plans",
+      "method": "POST",
+      "path": "/api/v1/agent/plans",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "问题转为可修改查询",
+      "read_tables": [
+        "messages",
+        "conversations",
+        "recordings"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及本次scope录像当前授权；每次计划仍单视频，可与同会话其他运行不同。"
+    },
+    {
+      "id": "post_agent_runs",
+      "method": "POST",
+      "path": "/api/v1/agent/runs",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "执行已确认只读查询",
+      "read_tables": [
+        "conversations",
+        "messages",
+        "recordings",
+        "runs",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "runs",
+        "messages"
+      ],
+      "note": "active owner+data:read及本次plan.query录像当前授权；同ID重试仍先验权；completed助手答复提交前重验权及引用归属。"
+    },
+    {
+      "id": "get_agent_runs_run_id",
+      "method": "GET",
+      "path": "/api/v1/agent/runs/{run_id}",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "读取运行状态与引用",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及该run plan.query录像当前授权；引用须属于该次范围，撤权不返回状态/计划/摘要/引用。"
+    },
+    {
+      "id": "post_agent_runs_run_id_stop",
+      "method": "POST",
+      "path": "/api/v1/agent/runs/{run_id}/stop",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "停止只读运行",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "runs"
+      ],
+      "note": "active owner+data:read及该run plan.query录像当前授权；终态或同ID重试仍校验该次录像，停止后禁止晚到结果。"
+    },
+    {
+      "id": "get_agent_runs_run_id_events",
+      "method": "GET",
+      "path": "/api/v1/agent/runs/{run_id}/events",
+      "status": "current_draft",
+      "provider": "agent",
+      "callers": [
+        "android"
+      ],
+      "stage": "ai_conversations",
+      "summary": "订阅运行事件推送",
+      "read_tables": [
+        "runs",
+        "conversations",
+        "messages",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "note": "active owner+data:read及该run plan.query录像当前授权；快照先行+Last-Event-ID对齐，终态事务提交后推送一次并结束，推送仅作提交信号，订阅端重新鉴权回读，不落库业务卡片的终态合成run_status卡。"
+    },
+    {
+      "id": "post_parcels",
+      "method": "POST",
+      "path": "/api/v1/parcels",
+      "summary": "创建包裹并返回二维码单号",
+      "callers": [
+        "android"
+      ],
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [
+        "parcels"
+      ],
+      "note": "active管理员+parcels:write；parcel_no可省略由服务器生成，二维码只由Android生成，不写入库流水。",
+      "status": "current_draft",
+      "provider": "backend",
+      "stage": "parcel_workflow"
+    },
+    {
+      "id": "get_parcels",
+      "method": "GET",
+      "path": "/api/v1/parcels",
+      "summary": "按扫码单号精确查询包裹",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "note": "必填parcel_no保持TEXT前导零；matched/not_registered明确区分，重复扫码只读取。",
+      "status": "current_draft",
+      "provider": "backend",
+      "stage": "parcel_workflow"
+    },
+    {
+      "id": "get_parcels_parcel_id",
+      "method": "GET",
+      "path": "/api/v1/parcels/{parcel_id}",
+      "summary": "读取包裹与派生在库状态",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "note": "按最大sequence_no派生pending/in_stock/outbound；出库后当前位置为空，历史货架保留。",
+      "status": "current_draft",
+      "provider": "backend",
+      "stage": "parcel_workflow"
+    },
+    {
+      "id": "get_parcels_parcel_id_records",
+      "method": "GET",
+      "path": "/api/v1/parcels/{parcel_id}/records",
+      "summary": "按序号分页读取入出库历史",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "read_tables": [
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [],
+      "note": "sequence_no升序稳定分页；Agent只读包裹与历史，不能确认入出库。",
+      "status": "current_draft",
+      "provider": "backend",
+      "stage": "parcel_workflow"
+    },
+    {
+      "id": "post_parcels_parcel_id_records",
+      "method": "POST",
+      "path": "/api/v1/parcels/{parcel_id}/records",
+      "summary": "管理员确认并追加入库或出库",
+      "callers": [
+        "android"
+      ],
+      "read_tables": [
+        "users",
+        "parcels",
+        "parcel_records"
+      ],
+      "write_tables": [
+        "parcel_records"
+      ],
+      "note": "管理员显式确认+parcels:write；入库必填zone_id，出库后端保留最近货架；事务递增序号、record_id幂等，操作人/时间由服务器设置。",
+      "status": "current_draft",
+      "provider": "backend",
+      "stage": "parcel_workflow"
+    },
+    {
+      "id": "submit_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "people_pipeline",
+      "summary": "兼容原片入口，同事务保存 pending 录像与任务",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings"
+      ]
+    },
+    {
+      "id": "get_recording_job",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "stage": "people_pipeline",
+      "summary": "读取原片上传与Vision解析状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "claim_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/claim",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "领取独占Vision解析租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "get_recording_job_media",
+      "method": "GET",
+      "path": "/api/v1/recording-jobs/{job_id}/media",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "读取当前租约的真实原片",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": []
+    },
+    {
+      "id": "heartbeat_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/heartbeat",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "续期当前Vision租约",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    },
+    {
+      "id": "complete_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/complete",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "原子发布Vision完整结果并回传完成",
+      "read_tables": [
+        "recording_jobs",
+        "users",
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [
+        "recording_jobs",
+        "recordings",
+        "events",
+        "evidence"
+      ]
+    },
+    {
+      "id": "fail_recording_job",
+      "method": "POST",
+      "path": "/api/v1/recording-jobs/{job_id}/fail",
+      "status": "current_draft",
+      "provider": "backend",
+      "callers": [
+        "vision"
+      ],
+      "stage": "people_pipeline",
+      "summary": "记录解析失败状态",
+      "read_tables": [
+        "recording_jobs",
+        "users"
+      ],
+      "write_tables": [
+        "recording_jobs"
+      ]
+    }
+  ],
+  "proposed": [
+    {
+      "method": "GET",
+      "path": "/api/v1/cameras",
+      "status": "proposed",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "summary": "建议列出固定摄像头配置；仅需要后台管理时再建 cameras 表。",
+      "read_tables": [],
+      "write_tables": [],
+      "stage": "later_review",
+      "note": "未定义请求/返回，不计入35个当前操作。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/zones",
+      "status": "proposed",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "summary": "建议列出固定区域/ROI 配置；仅需要后台管理时再建版本化 zones 表。",
+      "read_tables": [],
+      "write_tables": [],
+      "stage": "later_review",
+      "note": "未定义请求/返回，不计入35个当前操作。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/overview",
+      "status": "proposed",
+      "provider": "backend",
+      "callers": [
+        "android",
+        "agent"
+      ],
+      "summary": "建议派生首页活动、媒体缺口及最新核查状态，供简报引用；无需 summary 表。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence",
+        "review_records"
+      ],
+      "write_tables": [],
+      "stage": "homepage",
+      "note": "未定义请求/返回，不计入35个当前操作。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}/tracks/{track_key}",
+      "status": "proposed",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "summary": "建议聚合同视频、同匿名 track_key 的事件/关键帧；展示实际离散点，不自动连成连续路线或跨镜关联。",
+      "read_tables": [
+        "recordings",
+        "events",
+        "evidence"
+      ],
+      "write_tables": [],
+      "stage": "later_review",
+      "note": "未定义请求/返回，不计入35个当前操作。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recordings/{recording_id}/media",
+      "status": "proposed",
+      "provider": "backend",
+      "callers": [
+        "android"
+      ],
+      "summary": "建议按现有存储键读取真实源视频字节；参数、响应和播放范围尚未定义，不新增媒体表。",
+      "read_tables": [
+        "recordings"
+      ],
+      "write_tables": [],
+      "stage": "later_review",
+      "note": "未定义请求/返回，不计入35个当前操作。"
+    }
+  ],
+  "integration_edges": [
+    {
+      "from": "vision",
+      "to": "backend",
+      "label": "最终事件包+真实媒体 → POST /recordings"
+    },
+    {
+      "from": "vision",
+      "to": "backend",
+      "label": "描述与同空间向量交接 → POST /event-embeddings"
+    },
+    {
+      "from": "android",
+      "to": "backend",
+      "label": "查事件/证据，人工保存；包裹建档/扫码查询与管理员确认入出库"
+    },
+    {
+      "from": "android",
+      "to": "agent",
+      "label": "会话/消息 → 计划 → 运行/停止/历史"
+    },
+    {
+      "from": "agent",
+      "to": "backend",
+      "label": "只读 search_events / semantic_search_events / get_event / get_evidence / get_parcel / get_parcel_records"
+    },
+    {
+      "from": "android",
+      "to": "backend",
+      "label": "People完整原片 → recording-jobs → 上传/解析状态"
+    },
+    {
+      "from": "vision",
+      "to": "backend",
+      "label": "claim/media/heartbeat → complete/fail"
+    }
+  ],
+  "parallel_work": "范围/共享样例确定后，Android骨架、视觉素材、后端接口、Agent服务入口可并行；阶段顺序用于真实闭环验收，不要求四人串行等待。 包裹业务可在共享契约确认后独立准备：建档/查询 → Android二维码生成/扫码 → 管理员确认/流水 → Agent只读历史，不依赖视觉事件自动登记。",
+  "sdk_branch": {
+    "owner": "Harry Xu",
+    "status": "people_pipeline_integration",
+    "note": "真实SDK People录像通过7个任务API进入独立Vision worker，最终结果仍按完整包发布。设备、算法和端到端结果分开验收。"
+  },
+  "implementation_boundaries": [
+    "Android主要调用团队backend/agent API；vision产出数据并导入，不必为每个模块建HTTP服务。",
+    "Agent的8个接口拥有AI资源；事实/向量/核查通过backend只读工具访问，Agent不直连业务与向量库。",
+    "AI历史由Agent提供接口、后端共同实现持久化层；跨进程存储接入尚未确定，不将未设计的内部存储接口冒充已存在API。",
+    "关联表来自业务读写/归属校验映射，不表示Android或vision直连数据库，也不按接口一对一新建表。",
+    "首页/简报从事实与核查派生；GET /overview与源视频读取等仍为建议，不当作当前契约。",
+    "包裹5操作已纳入当前草案；二维码不建表，扫码不写流水，视觉事件不自动关联包裹或改变入出库。zone沿用固定配置，Agent仅GET读取，管理员显式确认才写。",
+    "会话不固定录像；会话元数据与user问题仅active owner。每次分析仍用单视频Query，运行及assistant按本次录像当前授权和引用归属校验；消息页任一无权助手答复则整页403，不静默过滤。"
+  ],
+  "approval": {
+    "status": "reviewed_proposal",
+    "date": "2026-10-13",
+    "note": "本轮已审核的模块归属、联调阶段及包裹5接口纳入现有API页面；HTTP契约以OpenAPI为准，35操作中的本地实现范围见模块 README。"
+  }
+}

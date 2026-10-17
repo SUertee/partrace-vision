@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "duplicate_embedding_source",
+    "message": "此来源描述在同模型版本已有向量，不以新 ID 重复写入。",
+    "request_id": "req_mock_duplicate_source"
+  }
+}

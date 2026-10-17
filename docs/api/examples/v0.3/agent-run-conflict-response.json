@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "此run_id的输入消息或确认计划与已有运行不同。",
+    "request_id": "req_mock_run_conflict"
+  }
+}

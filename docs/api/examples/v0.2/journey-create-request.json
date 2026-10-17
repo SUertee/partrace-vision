@@ -1,0 +1,28 @@
+{
+  "query": {
+    "zone_id": "E3",
+    "camera_id": "mock-camera-indoor-01",
+    "start": "2026-10-08T06:00:00Z",
+    "end": "2026-10-08T08:00:00Z",
+    "event_types": [
+      "shelf_interaction"
+    ],
+    "source_modes": [
+      "mock"
+    ]
+  },
+  "index_import_ids": [
+    "mock-import-01"
+  ],
+  "selected_track_segment_ids": [
+    "mock-segment-01"
+  ],
+  "selected_event_ids": [
+    "mock-event-01"
+  ],
+  "selected_evidence_ids": [
+    "mock-evidence-01"
+  ],
+  "unknown_interval_acknowledgements": [],
+  "note": "Mock saved selection; no image or factual camera evidence exists."
+}

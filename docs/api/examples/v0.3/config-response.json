@@ -1,0 +1,36 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "config": {
+    "config_version": "demo_v1",
+    "cameras": [
+      {
+        "camera_id": "cam_demo_01",
+        "name": "演示镜头（非真实设备）",
+        "zones": [
+          {
+            "zone_id": "E3",
+            "name": "演示货架",
+            "roi": [
+              [
+                0.2,
+                0.2
+              ],
+              [
+                0.8,
+                0.2
+              ],
+              [
+                0.8,
+                0.8
+              ],
+              [
+                0.2,
+                0.8
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

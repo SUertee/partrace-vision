@@ -1,0 +1,11 @@
+[Unit]
+Description=Check ParTrace IP certificate renewal twice daily
+
+[Timer]
+OnCalendar=*-*-* 00,12:10:00
+RandomizedDelaySec=30min
+Persistent=true
+Unit=partrace-public-ip-renew.service
+
+[Install]
+WantedBy=timers.target

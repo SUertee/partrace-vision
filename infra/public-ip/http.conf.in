@@ -1,0 +1,13 @@
+# Managed by ParTrace public-ip HTTPS setup.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name __PUBLIC_IP__;
+    server_tokens off;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/partrace-acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+    location / { return 404; }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Station single-camera interaction event",
+  "description": "One model-opinion event in events.json. Events remain unconfirmed until human review. The source video and run directory provide the event's scope. The application validates source-relative time bounds and start_ms <= end_ms.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "person_id", "start_ms", "end_ms", "action", "shelf_level"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Event ID within this run, for example e0001. It is not globally unique."
+    },
+    "person_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Anonymous track label from this video's allowed person IDs, for example P001. Null means the actor is unknown or attribution conflicts. It is not a person's name or a cross-camera identity."
+    },
+    "start_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Start time relative to the source video in milliseconds, rounded by basic_event. It must not exceed end_ms."
+    },
+    "end_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "End time relative to the source video in milliseconds, rounded by basic_event. The application validates it against the source duration."
+    },
+    "action": {
+      "type": "string",
+      "enum": ["shelf_interaction", "take", "put", "touch", "carrying", "no_interaction", "uncertain"],
+      "description": "shelf_interaction: a continuous person/layer operation session for retrieval; it does not by itself confirm parcel pickup or removal. Other values are retained for the legacy take/put pipeline. Pickup opinions and uncalibrated scores are in session details."
+    },
+    "shelf_level": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Bottom-up storage-board number: the lowest storage board is 1, the top storage board is included, and the floor is excluded. For shelf_interaction use the operation region; algorithm/model disagreement is recorded in details and stays null here. For legacy take use the original support; for put use the destination support. Null means unknown, conflicting or not applicable. This bound is not a claim that the scene contains 20 levels."
+    }
+  }
+}

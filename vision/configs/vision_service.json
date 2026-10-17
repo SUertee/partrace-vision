@@ -1,0 +1,43 @@
+{
+  "host": "127.0.0.1",
+  "port": 8010,
+  "backend": {
+    "auth_mode": "none",
+    "base_url": "http://127.0.0.1:8000",
+    "token_env": "PARTRACE_API_TOKEN",
+    "timeout_s": 15,
+    "source_endpoint": "/api/v1/vision/recordings/{recording_id}/source",
+    "media_root": "/srv/partrace-vision/.local-state/media"
+  },
+  "camera_roles": {"cam_demo_01": "A", "cam_A": "A", "cam_B": "B"},
+  "device": "cpu",
+  "default_zone_id": "E3",
+  "archive_dir": "data/person_enrollment",
+  "state_dir": ".runtime/vision_service",
+  "runtime_config": "configs/vision_runtime.json",
+  "b_calibration": {"path": "", "latest_glob": "configs/interaction/shelf_B_*.json"},
+  "review_with_qwen": true,
+  "poll_interval_s": 0.2,
+  "job_timeout_s": 7200,
+  "_help": {
+    "host": "默认仅本机；接入内网时改监听地址。A/B通知、查询、结果及重试均免认证。",
+    "port": "视觉通知端口1..65535，和业务Backend的8000区分。",
+    "backend.auth_mode": "当前none不发送业务Bearer；任务租约由任务API管理。",
+    "backend.base_url": "只通过此业务API读recordings；不直接访问业务数据库。",
+    "backend.source_endpoint": "按recording_id及camera_id查询Backend私有存储键的内部只读接口；需后端合入docs/backend_read_recording_source.patch后部署，当前生产尚无此路由。未部署时明确报错，不直连业务SQL。",
+    "backend.token_env": "调用业务Backend的凭据环境变量名，和视觉通知令牌不同。",
+    "backend.timeout_s": "1..120秒；增大可容忍慢接口，减少则更快报告连接失败。",
+    "backend.media_root": "Ubuntu媒体根目录或容器共享挂载点。storage_key相对于此目录；必须给视觉用户读权限。Windows测试需指定对应本机测试媒体目录，不能直接使用Linux路径。",
+    "camera_roles": "真实camera_id到A建档/B货架的映射；路由和ID角色不符会拒绝，执行前再核对Backend记录。",
+    "device": "cpu或cuda；Ubuntu没有GPU时用cpu，本机GPU测试可改cuda，不代表CPU实时。",
+    "default_zone_id": "A/B回写默认区域编号E3，按用户约定；不是第3层，shelf_level另行填写。服务端仍进行其配置校验。",
+    "archive_dir": "A/B唯一累计库目录，B开始时读archive.json并冻结本次快照；不得给A/B分别配置不同库。",
+    "state_dir": "本地持久任务队列；跨重启保留去重记录，勿删除。只允许一个服务进程使用。",
+    "runtime_config": "统一视觉算法调参JSON，每个任务开始时保存快照。",
+    "b_calibration.path": "可填固定标定JSON；空字符串时按latest_glob选最后修改文件，并在B开始时冻结。",
+    "b_calibration.latest_glob": "只匹配本场景B标定；换场景建议用固定path，避免选错现场。",
+    "review_with_qwen": "默认true：B人物/货架/五帧复核，使用主办方Qwen3.8-Max，需要STATION_VLM_API_KEY或本机加密凭据；只在明确的离线无API测试中设false。A不调用大模型。",
+    "poll_interval_s": "0.05..10秒；更小领取任务稍快，空闲轮询更多；更大任务启动等待更长。",
+    "job_timeout_s": "10..86400秒；更大允许长录像处理，更小较快中止卡住的任务。失败不会自动重复付费复核，需显式retry。"
+  }
+}

@@ -1,0 +1,3 @@
+-r requirements.txt
+# Direct dependency for one-to-one matching (already present in .venv-track).
+scipy>=1.10,<2

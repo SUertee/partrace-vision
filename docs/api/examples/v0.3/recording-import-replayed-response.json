@@ -1,0 +1,18 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "recording": {
+    "recording_id": "rec_mock_001",
+    "camera_id": "cam_demo_01",
+    "config_version": "demo_v1",
+    "source_mode": "mock",
+    "started_at": null,
+    "duration_ms": 120000,
+    "manifest_sha256": "655ce104a7dab788ffa77365324f54329ce6b4c60d94bb76ff8b7f7bb9d490d7",
+    "media_status": "missing",
+    "created_at": "2026-10-12T02:00:00Z",
+    "publication_status": "published"
+  },
+  "event_count": 1,
+  "evidence_count": 1,
+  "replayed": true
+}

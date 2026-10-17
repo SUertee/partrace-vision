@@ -1,0 +1,11 @@
+{
+  "api_version": "0.2-draft",
+  "error": {
+    "code": "media_expired",
+    "message": "Mock media expiration; metadata remains readable.",
+    "request_id": "mock-request-01",
+    "details": {
+      "resource_id": "mock-evidence-01"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "input_message_id": "msg_mock_question_001",
+  "scope": {
+    "recording_id": "rec_mock_001",
+    "camera_id": "cam_demo_01",
+    "zone_id": "E3",
+    "start_offset_ms": 0,
+    "end_offset_ms": 120000
+  }
+}

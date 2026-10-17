@@ -1,0 +1,26 @@
+{
+  "source_sha256": "f91b837a369e7a2184cb12fe9000f54804e21a700ccac114b3a5134df7de936b",
+  "provenance": "Assistant source inspection; initial layer=2 was corrected to layer=3 after rechecking the user's original coloured calibration overlay and source origin frames. Adjudication was after VLM responses and is not independent team ground truth.",
+  "independently_human_verified": false,
+  "session_definition": "One person's same-layer visit including inspection pauses; not each individual take/put",
+  "boundary_tolerance_ms": 500,
+  "sessions": [
+    {
+      "id": "g0001", "person_id": "P001", "shelf_level": 3,
+      "start_ms": 2200, "end_ms": 14200, "pickup_detected": true,
+      "pickup_times_ms": [2600, 7000, 11000],
+      "reason": "White shirt and backpack operates items resting in manual_03 (green region in the original user calibration). Wrist projections often fall in lower manual_02, explaining the algorithm's incorrect candidate layer. Boundary includes continuous same-visit inspection; exact frames are approximate."
+    }
+  ],
+  "negative_controls": [
+    {"id": "n0001", "person_id": "P001", "region_id": "manual_02", "shelf_level": 2, "start_ms": 0, "end_ms": 1500, "expected_pickup": false, "reason": "Approaches the shelf; no shelf operation yet"},
+    {"id": "n0002", "person_id": "P001", "region_id": "manual_02", "shelf_level": 2, "start_ms": 14500, "end_ms": 16000, "expected_pickup": false, "reason": "Walks away already holding a box; no new shelf retrieval in this interval"}
+  ],
+  "layer_adjudication": {
+    "original_assistant_label": 2,
+    "corrected_assistant_label": 3,
+    "reason": "The original manual_03 calibration covers the storage area containing the manipulated parcels; manual_02 covers the lower black-box shelf. Wrist position is not the original parcel support position.",
+    "evidence": ["outputs/manual_shelf_preview_20261014_180501/reference_overlay.png", "source frames f000066, f000070, f000075, f000310, f000320"],
+    "adjudicated_after_model_outputs": true
+  }
+}

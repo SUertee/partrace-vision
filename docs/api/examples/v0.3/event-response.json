@@ -1,0 +1,36 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "event": {
+    "recording_id": "rec_mock_001",
+    "event_id": "evt_mock_001",
+    "zone_id": "E3",
+    "track_key": "track_01",
+    "event_type": "shelf_interaction",
+    "shelf_level": 3,
+    "observation_status": "candidate",
+    "start_offset_ms": 32000,
+    "end_offset_ms": 48000,
+    "detection_source": "mock",
+    "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。",
+    "evidence_ids": [
+      "evd_mock_001"
+    ],
+    "person_id": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "evd_mock_001",
+      "event_id": "evt_mock_001",
+      "offset_ms": 35000,
+      "bbox_json": [
+        0.4,
+        0.2,
+        0.1,
+        0.4
+      ],
+      "media_status": "missing",
+      "media_url": null
+    }
+  ],
+  "observed_points": []
+}

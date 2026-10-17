@@ -1,0 +1,7 @@
+{
+  "python_executable": "C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\.venv-track\\Scripts\\python.exe",
+  "run_device": "cuda",
+  "torch": "2.6.0+cu118",
+  "opencv": "5.0.0",
+  "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU"
+}

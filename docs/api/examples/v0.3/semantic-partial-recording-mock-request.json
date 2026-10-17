@@ -1,0 +1,54 @@
+{
+  "schema_version": "0.3-mvp-draft",
+  "recording": {
+    "recording_id": "rec_mock_partial",
+    "camera_id": "cam_demo_01",
+    "config_version": "demo_v1",
+    "source_mode": "mock",
+    "started_at": null,
+    "duration_ms": 120000,
+    "file_name": null
+  },
+  "events": [
+    {
+      "event_id": "evt_partial_001",
+      "zone_id": "E3",
+      "track_key": "track_01",
+      "event_type": "shelf_interaction",
+      "shelf_level": 2,
+      "observation_status": "candidate",
+      "start_offset_ms": 32000,
+      "end_offset_ms": 48000,
+      "detection_source": "mock",
+      "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。",
+      "person_id": null
+    },
+    {
+      "event_id": "evt_partial_002",
+      "zone_id": "E3",
+      "track_key": "track_partial_02",
+      "event_type": "leave_zone",
+      "shelf_level": null,
+      "observation_status": "candidate",
+      "start_offset_ms": 70000,
+      "end_offset_ms": 75000,
+      "detection_source": "mock",
+      "summary": "模拟第二个事件尚未创建文本向量。",
+      "person_id": null
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evd_partial_001",
+      "event_id": "evt_partial_001",
+      "offset_ms": 35000,
+      "bbox_json": [
+        0.4,
+        0.2,
+        0.1,
+        0.4
+      ],
+      "file_name": null
+    }
+  ]
+}

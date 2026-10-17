@@ -1,0 +1,38 @@
+{
+  "api_version": "0.2-draft",
+  "items": [
+    {
+      "zone_config_id": "mock-zone-config-E3-v1",
+      "zone_id": "E3",
+      "camera_id": "mock-camera-indoor-01",
+      "config_version": 1,
+      "display_name": "Mock E3 shelf",
+      "roi_polygon": [
+        {
+          "x": 0.2,
+          "y": 0.2
+        },
+        {
+          "x": 0.8,
+          "y": 0.2
+        },
+        {
+          "x": 0.8,
+          "y": 0.8
+        },
+        {
+          "x": 0.2,
+          "y": 0.8
+        }
+      ],
+      "map_position": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "calibration_status": "uncalibrated",
+      "active": true,
+      "calibration_version": null
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,49 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "review": {
+    "review_id": "rev_mock_001",
+    "event_id": "evt_mock_001",
+    "decision": "uncertain",
+    "note": "模拟核查记录，无真实画面；不代表事实已确认。",
+    "query": {
+      "recording_id": "rec_mock_001",
+      "camera_id": "cam_demo_01",
+      "zone_id": "E3",
+      "start_offset_ms": 0,
+      "end_offset_ms": 120000
+    },
+    "reviewer_id": "admin_demo",
+    "created_at": "2026-10-12T02:05:00Z"
+  },
+  "event": {
+    "recording_id": "rec_mock_001",
+    "event_id": "evt_mock_001",
+    "zone_id": "E3",
+    "track_key": "track_01",
+    "event_type": "shelf_interaction",
+    "observation_status": "candidate",
+    "start_offset_ms": 32000,
+    "end_offset_ms": 48000,
+    "detection_source": "mock",
+    "summary": "模拟候选：靠近货架后离开当前区域，需人工核查。",
+    "evidence_ids": [
+      "evd_mock_001"
+    ],
+    "person_id": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "evd_mock_001",
+      "event_id": "evt_mock_001",
+      "offset_ms": 35000,
+      "bbox_json": [
+        0.4,
+        0.2,
+        0.1,
+        0.4
+      ],
+      "media_status": "missing",
+      "media_url": null
+    }
+  ]
+}

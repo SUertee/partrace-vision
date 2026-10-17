@@ -1,0 +1,114 @@
+{
+  "model_session": {
+    "person_id": "P004",
+    "region_id": "manual_03",
+    "shelf_level": 3,
+    "start_ms": 17333.333,
+    "start_frame_id": "f000519",
+    "detected_at_ms": 17633.333,
+    "hands": [
+      "left",
+      "right"
+    ],
+    "supporting_observation_count": 149,
+    "trigger": "sustained_whole_shelf_reach",
+    "trigger_is_physical_contact_proof": false,
+    "end_ms": 22833.333,
+    "end_frame_id": "f000684",
+    "closed_at_ms": 25366.667,
+    "close_reason": "person_observation_lost",
+    "boundary_uncertain": true,
+    "id": "s0002",
+    "shelf_level_basis": "first_reach_hand_region_estimate",
+    "shelf_level_is_physical_contact_proof": false
+  },
+  "frames": [
+    {
+      "role": "before",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 17033.333,
+      "frame_id": "f000510",
+      "source_frame_index": 510,
+      "actual_ms": 17033.333,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0002/01_before_f000510.png",
+      "model_image_path": "keyframes/s0002/01_before_f000510.jpg",
+      "raw_sha256": "12a99abfa3dfc795ba99fb8dec60a7e111834241331f1c7948014f6a39f37cd9",
+      "model_image_sha256": "af58d9bdd4a61a41214af683fb38a9b77a0b9960e8c602190ca05bba65f1eccc"
+    },
+    {
+      "role": "reach_onset",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 17333.333,
+      "frame_id": "f000519",
+      "source_frame_index": 519,
+      "actual_ms": 17333.333,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0002/02_reach_onset_f000519.png",
+      "model_image_path": "keyframes/s0002/02_reach_onset_f000519.jpg",
+      "raw_sha256": "0566105ce531dc31a33b83ae183d5e88f2da16f934fedac8314d1738b8e2b585",
+      "model_image_sha256": "2975de26e8a12875ca3223d561888cb61ec7efa11baacf65ef4d74b23065fa51"
+    },
+    {
+      "role": "reach_peak",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 17800.0,
+      "frame_id": "f000533",
+      "source_frame_index": 533,
+      "actual_ms": 17800.0,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0002/03_reach_peak_f000533.png",
+      "model_image_path": "keyframes/s0002/03_reach_peak_f000533.jpg",
+      "raw_sha256": "9dea39fd1a9441ff3632b71b21f897223015c54e88ce741969f2d0d4bbbdc14b",
+      "model_image_sha256": "92b1f7cbff6d70b92049ebbef8afefc2e7944834875e4a73136b83ebe64d0ba8"
+    },
+    {
+      "role": "withdrawal",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 18166.667,
+      "frame_id": "f000544",
+      "source_frame_index": 544,
+      "actual_ms": 18166.667,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0002/04_withdrawal_f000544.png",
+      "model_image_path": "keyframes/s0002/04_withdrawal_f000544.jpg",
+      "raw_sha256": "821e0a03dc48cc3f8567663dd84ea8e22f0480781999264273a90574499475b6",
+      "model_image_sha256": "fcc3e91f05666247440b1f833d37b99054cb81249114aaf6c8623d73eed7b948"
+    },
+    {
+      "role": "after",
+      "sampling_method": "first_approach_peak_withdrawal",
+      "target_ms": 23133.333,
+      "frame_id": "f000693",
+      "source_frame_index": 693,
+      "actual_ms": 23133.333,
+      "offset_ms": 0.0,
+      "truncated": false,
+      "raw_path": "keyframes/s0002/05_after_f000693.png",
+      "model_image_path": "keyframes/s0002/05_after_f000693.jpg",
+      "raw_sha256": "50dc6269624ebbf8eaba98bf41442d7d5061d5807225eb98e0989f068ea4b6fa",
+      "model_image_sha256": "b7fb881abc1e62e1c2e5b963094b5c356441ed8c7cde1e8572be70e89d3f9fde"
+    }
+  ],
+  "metadata": {
+    "session_id": "s0002",
+    "status": "not_requested",
+    "image_count": 5,
+    "frame_ids": [
+      "f000510",
+      "f000519",
+      "f000533",
+      "f000544",
+      "f000693"
+    ],
+    "model_request_limit": 1,
+    "parcel_evidence": false,
+    "unique_frame_count": 5,
+    "score_calibrated": false
+  },
+  "reference_labels_sent": false
+}

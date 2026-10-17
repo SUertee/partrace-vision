@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B机位货架标定</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f5f9;color:#19283b;font:15px/1.6 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1450px;margin:auto;padding:22px}h1{font-size:26px;margin:0}p{margin:8px 0}.card{background:white;border:1px solid #dde5ef;border-radius:12px;padding:18px;margin-top:16px}.inputs{display:flex;align-items:center;gap:16px;flex-wrap:wrap}button,input,select{font:inherit}button,select{padding:7px 12px;border:1px solid #bdcadb;border-radius:6px;background:white;cursor:pointer}button:disabled{opacity:.4;cursor:default}button.active{background:#eaf2ff;border-color:#2664b6}button.primary{background:#2664b6;color:white;border-color:#2664b6}.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px}canvas{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;margin:auto;touch-action:none;cursor:crosshair;background:#e8edf4}video{max-width:100%;max-height:360px;display:block;margin-top:10px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.zone{display:flex;gap:7px;align-items:center;padding:9px 0;border-bottom:1px solid #e7edf5}.zone input{width:65px;padding:5px}.zone.selected{background:#f1f6fe}.swatch{width:12px;height:12px;border-radius:50%}.muted{color:#63758b;font-size:13px}.note{background:#fff4d9;border-left:3px solid #d6a03d;padding:10px}.status{white-space:pre-wrap;overflow-wrap:anywhere}#zones:empty::after{content:'尚无标定。点击“新增区域”后拖动鼠标框出一层。';color:#63758b}#placeholder{text-align:center;padding:70px 20px;color:#63758b}[hidden]{display:none!important}@media(max-width:850px){main{padding:12px}.layout{grid-template-columns:1fr}}
+</style>
+<main><h1>货架图片标定</h1><p>选择货架图片，或从视频截取一帧。框选每层，保存JSON，再由B检测程序导入。</p>
+<section class="card"><div class="inputs">
+<label>机位 <select id="camera" aria-label="机位"><option value="B">B</option><option value="A">A</option></select></label>
+<label>图片或视频 <input id="media" type="file" accept="image/*,video/*" aria-label="选择图片或视频"></label>
+<label>继续编辑JSON <input id="load" type="file" accept=".json,application/json" aria-label="导入已有标定JSON"></label>
+</div><p class="muted">使用对应摄像头的原始截图。保留完整画面，不裁剪、不拉伸、不包含播放器边框。图片与视频的机位、视角须一致。</p>
+<div id="videoBox" hidden><video id="player" controls playsinline preload="auto"></video><p>拖动视频进度条，停在货架清晰的一帧，再点击下面按钮。</p><button id="capture" disabled>截取当前帧用于标定</button><span id="videoTime" class="muted"></span></div>
+<p id="source" class="muted">尚未载入参考图。</p></section>
+<div class="layout"><section class="card"><div class="toolbar"><button id="new" class="active" disabled>新增区域</button><button id="edit" disabled>调整四角</button><button id="undo" disabled>撤销</button><button id="clear" disabled>清空区域</button><label><input id="show" type="checkbox" checked>显示标注</label></div>
+<div id="placeholder">先选择图片，或从视频截取一帧</div><canvas id="canvas" hidden aria-label="货架标定画布"></canvas><p class="muted" id="hint">框出储物空间，四角可拖动。</p></section>
+<aside class="card"><strong>货架层</strong><p>从下往上编号。最低储物层为1，地面不计；不确定时留空。</p><div id="zones"></div><p><button id="remove" disabled>删除选中区域</button></p>
+<p class="note">框选的是每层放包裹的空间，不只是横梁。JSON含参考图，B程序会核对画面是否匹配；标定本身不证明拿取。</p>
+<p><button class="primary" id="save" disabled>下载标定JSON</button></p><button id="preview" disabled>下载标注预览图</button><p class="status" id="status" role="status" aria-live="polite"></p>
+<p class="muted">全部操作在本机完成，不上传图片或视频，不调用大模型。视频只把选中的一帧用于标定。</p></aside></div></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),canvas=$('canvas'),ctx=canvas.getContext('2d'),reference=document.createElement('canvas'),rctx=reference.getContext('2d');
+const colors=['#f1ad31','#da55c6','#58bc81','#529ce0','#e37563','#9485db'];
+let zones=[],history=[],selected=-1,mode='draw',gesture=null,serial=0,hasImage=false,mediaUrl=null,provenance={};
+function status(text){$('status').textContent=text;}
+function remember(){history.push({zones:structuredClone(zones),selected});if(history.length>100)history.shift();}
+function controls(){
+ $('new').disabled=$('edit').disabled=$('clear').disabled=$('preview').disabled=!hasImage;
+ $('undo').disabled=!history.length;$('remove').disabled=selected<0;$('save').disabled=!hasImage||!zones.length;
+ $('new').classList.toggle('active',mode==='draw');$('edit').classList.toggle('active',mode==='edit');
+ const list=$('zones');list.replaceChildren();
+ zones.forEach((z,i)=>{const row=document.createElement('div');row.className='zone'+(i===selected?' selected':'');const sw=document.createElement('span');sw.className='swatch';sw.style.background=colors[i%colors.length];const b=document.createElement('button');b.textContent='区域'+(i+1);b.onclick=()=>{selected=i;mode='edit';controls();draw();};const label=document.createElement('label');label.textContent='层号 ';const input=document.createElement('input');input.type='number';input.min=1;input.max=20;input.placeholder='未知';input.value=z.level??'';input.setAttribute('aria-label','区域'+(i+1)+'层号');input.onchange=()=>{const v=input.value===''?null:Number(input.value);if(v!==null&&(!Number.isInteger(v)||v<1||v>20)){input.value=z.level??'';return;}remember();z.level=v;controls();draw();};label.append(input);row.append(sw,b,label);list.append(row);});
+}
+function path(points){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();}
+function draw(){if(!hasImage)return;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(reference,0,0);
+ if($('show').checked)zones.forEach((z,i)=>{const col=colors[i%colors.length];path(z.polygon);ctx.globalAlpha=.15;ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=col;ctx.lineWidth=i===selected?4:2;ctx.stroke();z.polygon.forEach(p=>{ctx.beginPath();ctx.arc(...p,i===selected?7:4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();});const x=Math.max(4,Math.min(...z.polygon.map(p=>p[0]))+5),y=Math.min(canvas.height-5,Math.max(25,Math.min(...z.polygon.map(p=>p[1]))+25));ctx.font='20px "Microsoft YaHei",sans-serif';ctx.fillStyle='#172539';ctx.fillRect(x-3,y-23,160,30);ctx.fillStyle=col;ctx.fillText('区域'+(i+1)+' '+(z.level===null?'层号未知':'第'+z.level+'层'),x,y);});
+ if(gesture?.type==='rect'){ctx.setLineDash([8,5]);ctx.strokeStyle='white';ctx.lineWidth=3;ctx.strokeRect(gesture.start[0],gesture.start[1],gesture.end[0]-gesture.start[0],gesture.end[1]-gesture.start[1]);ctx.setLineDash([]);}
+ $('hint').textContent=mode==='draw'?'拖动框出一层储物空间。':'拖动圆点调整四角；新增下一层请点击“新增区域”。';}
+function install(image,width,height,info,initial=[]){
+ reference.width=canvas.width=width;reference.height=canvas.height=height;rctx.fillStyle='white';rctx.fillRect(0,0,width,height);rctx.drawImage(image,0,0,width,height);
+ provenance=info;zones=structuredClone(initial);history=[];serial=Math.max(0,...zones.map(z=>Number(z.id.split('_')[1])||0));selected=zones.length?0:-1;mode=zones.length?'edit':'draw';gesture=null;hasImage=true;
+ canvas.hidden=false;$('placeholder').hidden=true;$('source').textContent=(info.source_kind==='video_frame'?'视频选帧':'图片')+'：'+info.source_filename+' · '+width+'×'+height+(info.source_time_ms!=null?' · '+(info.source_time_ms/1000).toFixed(3)+'秒':'');controls();draw();status('参考图已载入，请框选或调整货架层。');
+}
+function loadImage(url,info,initial=[]){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{install(img,img.naturalWidth,img.naturalHeight,info,initial);resolve();};img.onerror=()=>reject(new Error('无法读取图片，请使用PNG或JPEG。'));img.src=url;});}
+function revokeMedia(){if(mediaUrl)URL.revokeObjectURL(mediaUrl);mediaUrl=null;}
+$('media').onchange=async()=>{const f=$('media').files[0];if(!f)return;revokeMedia();$('player').pause();$('player').removeAttribute('src');$('videoBox').hidden=true;$('capture').disabled=true;mediaUrl=URL.createObjectURL(f);
+ try{if(f.type.startsWith('video/')||/\.(mp4|mov|mkv|avi|webm)$/i.test(f.name)){hasImage=false;zones=[];history=[];selected=-1;canvas.hidden=true;$('placeholder').hidden=false;$('source').textContent='视频已载入，请截取清晰的一帧。';controls();$('videoBox').hidden=false;$('player').src=mediaUrl;$('player').load();status('等待视频解码；可拖动进度条后截取。');}
+ else{await loadImage(mediaUrl,{source_kind:'image',source_filename:f.name,source_time_ms:null});revokeMedia();}}
+ catch(e){status(e.message);}};
+$('player').onloadeddata=$('player').onseeked=()=>{$('capture').disabled=$('player').readyState<2;};
+$('player').onseeking=()=>{$('capture').disabled=true;};
+$('player').ontimeupdate=()=>{$('videoTime').textContent=' 当前 '+$('player').currentTime.toFixed(3)+'秒';};
+$('player').onerror=()=>{status('浏览器无法解码此视频，请改为上传该机位的原始截图。');$('capture').disabled=true;};
+$('capture').onclick=()=>{const v=$('player');if(v.readyState<2||!v.videoWidth)return;v.pause();install(v,v.videoWidth,v.videoHeight,{source_kind:'video_frame',source_filename:$('media').files[0].name,source_time_ms:Math.round(v.currentTime*1000)});};
+function point(e){const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(canvas.width-1,(e.clientX-r.left)*canvas.width/r.width)),Math.max(0,Math.min(canvas.height-1,(e.clientY-r.top)*canvas.height/r.height))].map(v=>Math.round(v*100)/100);}
+canvas.onpointerdown=e=>{if(!hasImage||e.button!==0)return;const p=point(e);if(mode==='draw')gesture={type:'rect',start:p,end:p};else{const limit=15*canvas.width/canvas.getBoundingClientRect().width,opts=[];zones.forEach((z,i)=>z.polygon.forEach((q,j)=>{const d=Math.hypot(q[0]-p[0],q[1]-p[1]);if(d<=limit)opts.push({i,j,d:d+(i===selected?0:limit)});}));opts.sort((a,b)=>a.d-b.d);if(opts.length){remember();selected=opts[0].i;gesture={type:'corner',i:selected,j:opts[0].j};controls();}}if(gesture)canvas.setPointerCapture(e.pointerId);draw();};
+canvas.onpointermove=e=>{if(!gesture)return;const p=point(e);if(gesture.type==='rect')gesture.end=p;else zones[gesture.i].polygon[gesture.j]=p;draw();};
+canvas.onpointerup=e=>{if(!gesture)return;if(gesture.type==='rect'){const a=gesture.start,b=point(e),x1=Math.min(a[0],b[0]),y1=Math.min(a[1],b[1]),x2=Math.max(a[0],b[0]),y2=Math.max(a[1],b[1]);if(x2-x1>=10&&y2-y1>=10&&zones.length<40){remember();serial++;zones.push({id:'manual_'+String(serial).padStart(2,'0'),level:null,polygon:[[x1,y1],[x2,y1],[x2,y2],[x1,y2]]});selected=zones.length-1;mode='edit';}}gesture=null;controls();draw();};
+canvas.onpointercancel=()=>{gesture=null;draw();};
+$('new').onclick=()=>{mode='draw';controls();draw();};$('edit').onclick=()=>{mode='edit';controls();draw();};$('show').onchange=draw;
+$('undo').onclick=()=>{const old=history.pop();if(old){zones=old.zones;selected=old.selected;gesture=null;controls();draw();}};
+$('remove').onclick=()=>{if(selected<0)return;remember();zones.splice(selected,1);selected=zones.length?Math.min(selected,zones.length-1):-1;controls();draw();};
+$('clear').onclick=()=>{remember();zones=[];selected=-1;controls();draw();};
+function simplePolygon(p){const n=p.length;if(new Set(p.map(x=>JSON.stringify(x))).size!==n)return false;const orient=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){if(j===i+1||(i===0&&j===n-1))continue;const a=p[i],b=p[(i+1)%n],c=p[j],d=p[(j+1)%n];if(orient(a,b,c)*orient(a,b,d)<=0&&orient(c,d,a)*orient(c,d,b)<=0)return false;}return true;}
+function validateZones(value,width,height){if(!Array.isArray(value)||!value.length||value.length>40)throw new Error('请标定1～40个区域。');const ids=new Set();for(const z of value){if(!/^manual_\d{2,4}$/.test(z.id)||ids.has(z.id))throw new Error('区域编号无效或重复。');ids.add(z.id);if(z.level!==null&&(!Number.isInteger(z.level)||z.level<1||z.level>20))throw new Error('层号需为1～20整数，或留空。');if(!Array.isArray(z.polygon)||z.polygon.length<4||z.polygon.length>8)throw new Error('区域需有4～8个顶点。');for(const p of z.polygon)if(!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v))||p[0]<0||p[1]<0||p[0]>width-1||p[1]>height-1)throw new Error('区域顶点超出原图。');let area=0;for(let i=0;i<z.polygon.length;i++){const a=z.polygon[i],b=z.polygon[(i+1)%z.polygon.length];area+=a[0]*b[1]-b[0]*a[1];}if(Math.abs(area)<200||!simplePolygon(z.polygon))throw new Error('区域太小或四角交叉，请调整。');}}
+async function sha(bytes){if(!window.crypto?.subtle)return null;const value=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(value)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function pngBytes(encoded){return Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));}
+async function profile(){validateZones(zones,reference.width,reference.height);const encoded=reference.toDataURL('image/png').split(',')[1];return {calibration_format:'station_shelf_image_v1',camera_id:$('camera').value,video:null,shelf_numbering:'bottom_up',imgsz:640,shelf_zones:structuredClone(zones),shelf_calibration:{source:'manual_image',reference_frame_index:null,width:reference.width,height:reference.height,reference_image:{mime_type:'image/png',data_base64:encoded,sha256:await sha(pngBytes(encoded)),...provenance}}};}
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+$('save').onclick=async()=>{try{$('save').disabled=true;const config=await profile();const stamp=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(/[ :]/g,'-');const filename='shelf_'+config.camera_id+'_'+stamp+'.json';download(new Blob([JSON.stringify(config,null,2)],{type:'application/json;charset=utf-8'}),filename);status('已生成 '+filename+'\n将JSON保存到项目 configs/interaction，B程序使用该JSON路径和视频路径。');}catch(e){status(e.message);}finally{controls();}};
+$('preview').onclick=()=>{draw();canvas.toBlob(blob=>{if(blob)download(blob,'shelf_'+$('camera').value+'_preview.png');},'image/png');};
+$('load').onchange=async()=>{try{const f=$('load').files[0];if(!f)return;const config=JSON.parse(await f.text()),c=config.shelf_calibration,r=c?.reference_image;if(c?.source!=='manual_image'||r?.mime_type!=='image/png'||!r.data_base64)throw new Error('请导入本工具生成的图片标定JSON。');validateZones(config.shelf_zones,c.width,c.height);if(r.sha256){const computed=await sha(pngBytes(r.data_base64));if(computed&&computed!==r.sha256)throw new Error('参考图哈希不匹配。');}const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('参考图片无效。'));img.src='data:image/png;base64,'+r.data_base64;});if(img.naturalWidth!==c.width||img.naturalHeight!==c.height)throw new Error('参考图尺寸不匹配。');$('player').pause();$('videoBox').hidden=true;revokeMedia();$('camera').value=config.camera_id==='A'?'A':'B';install(img,c.width,c.height,{source_kind:r.source_kind||'image',source_filename:r.source_filename||f.name,source_time_ms:r.source_time_ms??null},config.shelf_zones);status('已导入，可以调整四角或新增/删除区域，再下载新的JSON。');}catch(e){status(e.message);}};
+controls();
+</script></html>

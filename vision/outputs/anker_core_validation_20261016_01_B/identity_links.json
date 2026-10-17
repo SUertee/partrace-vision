@@ -1,0 +1,77 @@
+[
+  {
+    "time_ms": 7533.333333333334,
+    "track_id": "P001",
+    "previous": {
+      "person_id": "U0001",
+      "status": "unmatched"
+    },
+    "current": {
+      "person_id": "G0005",
+      "status": "matched"
+    }
+  },
+  {
+    "time_ms": 10433.333333333334,
+    "track_id": "P001",
+    "previous": {
+      "person_id": "G0005",
+      "status": "matched"
+    },
+    "current": {
+      "person_id": "U0001",
+      "status": "unmatched"
+    },
+    "reason": "tracking_gap"
+  },
+  {
+    "time_ms": 17900.000000000004,
+    "track_id": "P004",
+    "previous": {
+      "person_id": "U0004",
+      "status": "unmatched"
+    },
+    "current": {
+      "person_id": "G0004",
+      "status": "matched"
+    }
+  },
+  {
+    "time_ms": 22500.0,
+    "track_id": "P008",
+    "previous": {
+      "person_id": "U0008",
+      "status": "unmatched"
+    },
+    "current": {
+      "person_id": "G0006",
+      "status": "matched"
+    }
+  },
+  {
+    "time_ms": 23500.0,
+    "track_id": "P008",
+    "previous": {
+      "person_id": "G0006",
+      "status": "matched"
+    },
+    "current": {
+      "person_id": "U0008",
+      "status": "unmatched"
+    },
+    "reason": "tracking_gap"
+  },
+  {
+    "time_ms": 25400.000000000004,
+    "track_id": "P004",
+    "previous": {
+      "person_id": "G0004",
+      "status": "matched"
+    },
+    "current": {
+      "person_id": "U0004",
+      "status": "unmatched"
+    },
+    "reason": "tracking_gap"
+  }
+]

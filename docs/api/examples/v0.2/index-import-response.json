@@ -1,0 +1,18 @@
+{
+  "api_version": "0.2-draft",
+  "receipt": {
+    "import_id": "mock-import-01",
+    "recording_id": "mock-recording-01",
+    "index_version": 1,
+    "index_status": "complete",
+    "manifest_sha256": "c20418445ed819249dd275b93f0e29d70f3785922dcebb415f4953a22ca32a3c",
+    "received_at": "2026-10-12T07:00:00Z",
+    "counts": {
+      "track_segments": 1,
+      "events": 1,
+      "evidence": 1,
+      "coverage_intervals": 1,
+      "uploaded_files": 0
+    }
+  }
+}

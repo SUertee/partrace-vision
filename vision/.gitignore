@@ -1,0 +1,6 @@
+# Project runtimes and new worker state; preserve existing offline gallery/results.
+/.venv-track/
+/.runtime/
+/outputs/worker_jobs/
+/data/worker_state/
+/worker.local.json

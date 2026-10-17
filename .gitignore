@@ -4,10 +4,15 @@
 !.env.example
 local.properties
 local-secrets.properties
+android/ESIotKit-DemoApp-Common/sample-core/src/androidMain/assets/partrace-agent.json
+android/ESIotKit-DemoApp-Common/sample-core/src/androidDebug/assets/partrace-agent.json
 *.jks
 *.keystore
 google-services.json
 .local-state/
+
+# Personal Claude Code settings; shared OpenSpec entries are committed.
+.claude/settings.local.json
 
 # Generated local Kotlin configuration; commit templates only.
 android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esiotkit/sample/main/mega/login/business/BusinessLoginConfig.kt
@@ -30,10 +35,26 @@ android/ESIotKit-DemoApp-Common/sample-core/src/commonMain/kotlin/com/anker/esio
 *.log
 .DS_Store
 .vercel/
-
+vision/.venv-track/
 # Camera recordings and local experiments
 test_data/
 captures/
 *.mp4
 *.mov
 *.avi
+
+# Session-local test files; keep local only, do not upload
+agent/tests/test_cards.py
+backend/tests/test_agent_push.py
+
+# Local Python virtualenvs, model weights and runtime artifacts (vision)
+.venv-track/
+vision/.runtime/
+vision/models/*.pt
+vision/models/reid/*.pth
+vision/data/
+vision/outputs/
+vision/test_video_new/
+
+# Local backups of the vision module
+.vision.bak-*/

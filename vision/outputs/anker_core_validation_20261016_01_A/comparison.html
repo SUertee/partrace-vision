@@ -1,0 +1,85 @@
+<!doctype html><meta charset="utf-8"><title>A视频自动人物建档</title><style>body{font:16px/1.7 system-ui,"Microsoft YaHei";max-width:1300px;margin:auto;padding:24px;background:#f2f5fa}section{background:white;padding:18px;margin:16px 0}img,video{max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>A视频自动人物建档</h1><p>清晰度、尺寸、遮挡、时间间隔和外观差异联合选帧。编号沿用既有注册表；外观关联不是自然人身份确认。</p><video controls src="A_profiles_review.mp4"></video><p><a href="profiles_result.json">本次档案JSON</a> · <a href="gallery_snapshot.json">供B使用的档案快照</a></p><section><h2>A-t1 → G0004</h2><p>existing_source_track</p><img src="A-t1_keyframes.jpg"><p>关键帧按源时间排列，前/侧/背角度不作未经验证的保证。</p></section><section><h2>A-t3 → G0005</h2><p>existing_source_track</p><img src="A-t3_keyframes.jpg"><p>关键帧按源时间排列，前/侧/背角度不作未经验证的保证。</p></section><section><h2>A-t5 → G0006</h2><p>existing_source_track</p><img src="A-t5_keyframes.jpg"><p>关键帧按源时间排列，前/侧/背角度不作未经验证的保证。</p></section><pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;source&quot;: {
+    &quot;path&quot;: &quot;C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\test_video_new\\site_20261016\\A\\2_input.mp4&quot;,
+    &quot;sha256&quot;: &quot;a5a9379457b98536f217cf64dbbe62ca459ed9f2250667bc3f07121be6761fc8&quot;,
+    &quot;enrollment_recipe_sha256&quot;: &quot;06d62108e4573b97c044023d5cdd8193c9163d10d8f927c7305bf852c79c1a21&quot;
+  },
+  &quot;archive_path&quot;: &quot;C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\data\\person_enrollment\\archive.json&quot;,
+  &quot;weights_sha256&quot;: &quot;e96cbd20ee9cc3c6dcc0e8f4fbba8c8069d47647a5a96a59ce381fb785c54f68&quot;,
+  &quot;source_duration_ms&quot;: 14911.677777777777,
+  &quot;local_tracks&quot;: 4,
+  &quot;actions&quot;: {
+    &quot;insufficient_quality_frames&quot;: 1,
+    &quot;existing_source_track&quot;: 3
+  },
+  &quot;selected_raw_keyframes_checked&quot;: 14,
+  &quot;sampling_fps&quot;: 15,
+  &quot;feature_fps_at_most&quot;: 5,
+  &quot;enrollment_recipe&quot;: {
+    &quot;a_video&quot;: {
+      &quot;sampling_fps&quot;: 15,
+      &quot;feature_fps&quot;: 5,
+      &quot;minimum_track_ms&quot;: 500
+    },
+    &quot;a_tracker&quot;: {
+      &quot;imgsz&quot;: 960,
+      &quot;detection_conf&quot;: 0.1,
+      &quot;track_high_thresh&quot;: 0.25,
+      &quot;track_low_thresh&quot;: 0.1,
+      &quot;new_track_thresh&quot;: 0.25,
+      &quot;match_thresh&quot;: 0.8,
+      &quot;lost_seconds&quot;: 1.2,
+      &quot;cpu_threads&quot;: 4
+    },
+    &quot;a_quality&quot;: {
+      &quot;min_height&quot;: 120,
+      &quot;min_width&quot;: 32,
+      &quot;min_blur&quot;: 18.0,
+      &quot;min_detection_conf&quot;: 0.3,
+      &quot;joint_conf&quot;: 0.35,
+      &quot;minimum_torso_joints&quot;: 2,
+      &quot;max_overlap&quot;: 0.35,
+      &quot;minimum_selection_quality&quot;: 0.4,
+      &quot;blur_saturation&quot;: 150.0,
+      &quot;size_saturation&quot;: 0.6,
+      &quot;edge_penalty&quot;: 0.65
+    },
+    &quot;a_keyframes&quot;: {
+      &quot;minimum&quot;: 3,
+      &quot;maximum&quot;: 5,
+      &quot;min_gap_ms&quot;: 200,
+      &quot;candidate_bin_ms&quot;: 200,
+      &quot;candidate_limit&quot;: 48,
+      &quot;consistency_similarity&quot;: 0.55,
+      &quot;consistency_fraction&quot;: 0.6,
+      &quot;quality_weight&quot;: 0.75,
+      &quot;diversity_weight&quot;: 0.15,
+      &quot;time_weight&quot;: 0.1
+    },
+    &quot;archive_matching&quot;: {
+      &quot;reuse_threshold&quot;: 0.75,
+      &quot;reuse_margin&quot;: 0.1,
+      &quot;frame_threshold&quot;: 0.7,
+      &quot;minimum_support&quot;: 3,
+      &quot;possible_duplicate_threshold&quot;: 0.6,
+      &quot;simultaneous_overlap_ms&quot;: 100,
+      &quot;maximum_templates&quot;: 5,
+      &quot;top_k_templates&quot;: 3
+    },
+    &quot;osnet&quot;: {
+      &quot;weights&quot;: &quot;models/reid/osnet_x0_5_msmt17.pth&quot;
+    },
+    &quot;keyframe_policy&quot;: &quot;clear_representatives_v3&quot;
+  },
+  &quot;quality_counters&quot;: {
+    &quot;rejected_low_confidence_occlusion_or_torso&quot;: 2,
+    &quot;quality_candidates&quot;: 21,
+    &quot;rejected_low_selection_quality&quot;: 2,
+    &quot;rejected_small_or_blurred_crop&quot;: 5
+  },
+  &quot;numbering&quot;: &quot;max existing ID + 1; legacy IDs reserved; existing photos not replaced&quot;,
+  &quot;elapsed_s&quot;: 30.007,
+  &quot;api_calls&quot;: 0,
+  &quot;identity_human_verified&quot;: false
+}</pre>

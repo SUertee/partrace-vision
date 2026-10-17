@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,8 +61,8 @@ fun SampleApp(uiPreview: Boolean = false) {
     UiPreviewApp(onExitPreview = { showPreview = false })
     return
   }
-  SideEffect { init() }
-  val canAutoLogin = remember { tryAutoLogin() }
+  initializeSampleDependencies()
+  val canAutoLogin = remember { restoreSampleBusinessSession() }
   KoinContext(
     esKoin,
     content = {
@@ -102,7 +101,7 @@ fun SampleApp(uiPreview: Boolean = false) {
 
 private var init = false
 private val lock = SynchronizedObject()
-private fun init() {
+internal fun initializeSampleDependencies() {
   if (!init) {
     synchronized(lock) {
       if (!init) {
@@ -147,14 +146,17 @@ object StartScreen : Screen {
 
 }
 
-private fun tryAutoLogin(): Boolean {
-  val hasToken = if (BusinessInfoCache.environment == BusinessLoginConfig.ENV_PR)
-    BusinessInfoCache.prToken.isNotEmpty()
-  else
-    BusinessInfoCache.token.isNotEmpty()
-  if (InfoCache.tokenValid && InfoCache.loginType == LoginType.BUSINESS && hasToken) {
-    BusinessLoginViewModel().login()
-    return true
+internal fun restoreSampleBusinessSession(): Boolean {
+  if (!InfoCache.tokenValid || InfoCache.loginType != LoginType.BUSINESS) return false
+  val environment = BusinessInfoCache.environment
+  val hasSession = when (environment) {
+    BusinessLoginConfig.ENV_PR -> BusinessInfoCache.prToken.isNotBlank() && BusinessInfoCache.prUserId.isNotBlank()
+    BusinessLoginConfig.ENV_QA -> BusinessInfoCache.token.isNotBlank() && BusinessInfoCache.userId.isNotBlank()
+    else -> false
   }
-  return false
+  if (!hasSession) return false
+  BusinessLoginViewModel().apply {
+    if (environment == BusinessLoginConfig.ENV_QA) switchToQA()
+  }.login()
+  return true
 }

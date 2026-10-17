@@ -3,6 +3,8 @@
 工作包：Dxx
 关联 Issue：#
 
+OpenSpec change：填写名称或归档路径；无需 change 时说明原因。
+
 目标分支：日常开发选 `dev`；阶段交付由 `dev` 向 `main` 提交。
 
 ## 改动与交付
@@ -15,6 +17,7 @@
 - 实际执行的命令或操作：
 - 结果与凭据链接：
 - 覆盖的验收条件及相关异常状态：
+- 对应 OpenSpec Requirement / Scenario（适用时）：
 
 ## 数据来源与交接
 

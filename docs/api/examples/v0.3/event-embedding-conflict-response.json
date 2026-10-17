@@ -1,0 +1,8 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "同 embedding_id 的向量或其他规范请求字段已改变。",
+    "request_id": "req_mock_vector_conflict"
+  }
+}

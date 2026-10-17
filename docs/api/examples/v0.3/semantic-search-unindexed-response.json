@@ -1,0 +1,28 @@
+{
+  "api_version": "0.3-mvp-draft",
+  "query_text": "谁靠近过 E3 货架？",
+  "filter": {
+    "recording_id": "rec_mock_001",
+    "camera_id": "cam_demo_01",
+    "zone_id": "E3",
+    "start_offset_ms": 0,
+    "end_offset_ms": 120000
+  },
+  "model": {
+    "model_name": "mock-text-encoder",
+    "model_version": "mock-v1-preprocess-demo",
+    "dimensions": 3
+  },
+  "recording_range": {
+    "relation": "full",
+    "covered_start_offset_ms": 0,
+    "covered_end_offset_ms": 120000
+  },
+  "search_status": "unindexed",
+  "coverage": {
+    "eligible_event_count": 1,
+    "indexed_event_count": 0,
+    "missing_event_count": 1
+  },
+  "candidates": []
+}

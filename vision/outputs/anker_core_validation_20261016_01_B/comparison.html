@@ -1,0 +1,109 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>货架交互五帧测试</title><style>body{font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif;max-width:1250px;margin:auto;padding:24px;background:#f2f5fa;color:#182335}section{background:white;padding:18px;margin:18px 0;border-radius:12px}.frames{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}figure{margin:0}img,video{max-width:100%;height:auto}video{max-height:740px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}a{color:#2458a5}@media(max-width:700px){.frames{grid-template-columns:repeat(2,1fr)}}</style><h1>货架交互 → 五帧 → 一次多模态复核</h1><p>一次交互候选＝同一人对货架的连续操作会话。查看、放回、再操作可合并；仅路过不确认交互。层号由首次操作位置与多帧复核确定，不按腕点高度指定；跨层分段尚未验证。</p><p>本例仅单视频探索测试，评分未经校准。真实参考由助手观察原片制作，尚未经团队独立复核，不能报告跨场景准确率。</p><section><h2>先看本次结论</h2><p>自动会话 2 段；主流程 177.092 秒，含视觉、一次复核、导出和校验；对照与验证累计 177.092 秒。离线再导出另列，不调用API。</p><table><tr><th>输入方案</th><th>取件意见</th><th>模型自评分</th><th>层号来源与冲突</th><th>一次请求</th></tr><tr><td>当前主流程</td><td>无法判断</td><td>None</td><td>算法3；模型None；最终None</td><td>None秒</td></tr><tr><td>当前主流程</td><td>无法判断</td><td>None</td><td>算法3；模型None；最终None</td><td>None秒</td></tr></table><p>None表示未知。取件意见和模型评分不是准确率；原始层号意见与最终冲突结果分别保存。</p></section><section><h2>导入JSON中的货架参考图</h2><img src="shelf_reference.png"><p>每个视频帧通过配准映射货架区域；配准失败时不使用该帧区域。请核查视频中的区域是否贴合真实货架。</p></section><section><h2>直接看视频</h2><video controls src="interaction_review.mp4"></video><p><a href="interaction_summary.json">精简JSON</a> · <a href="result.json">完整结果JSON</a> · <a href="events.json">六字段事件</a> · <a href="summary.json">阶段耗时</a> · <a href="ablation.json">Florence＋KLT对照</a> · <a href="evaluation.json">参考对照</a></p></section><section><h2>s0001 · P001 · 第3层</h2><p>5.800–8.633s。结束依据：person_observation_lost。</p><p>有无取件：None；模型自评分：None；一次请求：None秒。</p><p>未调用模型</p><p>层号依据：待复核</p><p><a href="keyframes/s0001/source_clip.mp4">查看原始内容短片（重新编码）</a> · <a href="keyframes/s0001/five_frames.jpg">五帧合图</a></p><div class="frames"><figure><a href="keyframes/s0001/01_before_f000164.png"><img src="keyframes/s0001/01_before_f000164.png"></a><figcaption>before · 5.500s · f000164</figcaption></figure><figure><a href="keyframes/s0001/02_reach_onset_f000173.png"><img src="keyframes/s0001/02_reach_onset_f000173.png"></a><figcaption>reach_onset · 5.800s · f000173</figcaption></figure><figure><a href="keyframes/s0001/03_reach_peak_f000215.png"><img src="keyframes/s0001/03_reach_peak_f000215.png"></a><figcaption>reach_peak · 7.200s · f000215</figcaption></figure><figure><a href="keyframes/s0001/04_withdrawal_f000221.png"><img src="keyframes/s0001/04_withdrawal_f000221.png"></a><figcaption>withdrawal · 7.400s · f000221</figcaption></figure><figure><a href="keyframes/s0001/05_after_f000267.png"><img src="keyframes/s0001/05_after_f000267.png"></a><figcaption>after · 8.933s · f000267</figcaption></figure></div></section><section><h2>人物档案归属</h2><p>本地轨迹 P001 → 档案 人物未确定；状态 unmatched。独立匹配观测 5 次，匹配覆盖 45.5%。外观相似度不是身份概率。</p></section><section><h2>腕点与估计操作位置</h2><img src="keyframes/s0001/reach_geometry.jpg"><p>中间三帧来自首次伸手的实际轨迹转折；橙色点是几何估计，不是真实手部或包裹检测。</p></section><section><h2>s0002 · P004 · 第3层</h2><p>17.333–22.833s。结束依据：person_observation_lost。</p><p>有无取件：None；模型自评分：None；一次请求：None秒。</p><p>未调用模型</p><p>层号依据：待复核</p><p><a href="keyframes/s0002/source_clip.mp4">查看原始内容短片（重新编码）</a> · <a href="keyframes/s0002/five_frames.jpg">五帧合图</a></p><div class="frames"><figure><a href="keyframes/s0002/01_before_f000510.png"><img src="keyframes/s0002/01_before_f000510.png"></a><figcaption>before · 17.033s · f000510</figcaption></figure><figure><a href="keyframes/s0002/02_reach_onset_f000519.png"><img src="keyframes/s0002/02_reach_onset_f000519.png"></a><figcaption>reach_onset · 17.333s · f000519</figcaption></figure><figure><a href="keyframes/s0002/03_reach_peak_f000533.png"><img src="keyframes/s0002/03_reach_peak_f000533.png"></a><figcaption>reach_peak · 17.800s · f000533</figcaption></figure><figure><a href="keyframes/s0002/04_withdrawal_f000544.png"><img src="keyframes/s0002/04_withdrawal_f000544.png"></a><figcaption>withdrawal · 18.167s · f000544</figcaption></figure><figure><a href="keyframes/s0002/05_after_f000693.png"><img src="keyframes/s0002/05_after_f000693.png"></a><figcaption>after · 23.133s · f000693</figcaption></figure></div></section><section><h2>人物档案归属</h2><p>本地轨迹 P004 → 档案 G0004；状态 matched。独立匹配观测 19 次，匹配覆盖 90.5%。外观相似度不是身份概率。</p></section><section><h2>腕点与估计操作位置</h2><img src="keyframes/s0002/reach_geometry.jpg"><p>中间三帧来自首次伸手的实际轨迹转折；橙色点是几何估计，不是真实手部或包裹检测。</p></section><section><h2>时间与参数</h2><pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;source_path&quot;: &quot;C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\test_video_new\\site_20261016\\B\\1_package.mp4&quot;,
+  &quot;source_sha256&quot;: &quot;d0f9d2c3f1dc0da32850332d0f120148726c58822bf6550e0cab12eb063d282f&quot;,
+  &quot;session_definition&quot;: &quot;same person continuous shelf-operation/inspection visit; origin layer reviewed separately&quot;,
+  &quot;settings&quot;: {
+    &quot;wrist_confidence&quot;: 0.35,
+    &quot;enter_ms&quot;: 300,
+    &quot;switch_ms&quot;: 800,
+    &quot;max_start_gap_ms&quot;: 150,
+    &quot;same_visit_gap_ms&quot;: 5000,
+    &quot;departure_ms&quot;: 1000,
+    &quot;missing_ms&quot;: 750,
+    &quot;margin_px_at_720&quot;: 10,
+    &quot;minimum_reach_motion_px_at_720&quot;: 5,
+    &quot;minimum_observations&quot;: 3,
+    &quot;departure_distance_px_at_720&quot;: 50,
+    &quot;departure_body_width_ratio&quot;: 0.8
+  },
+  &quot;sampling&quot;: [
+    &quot;start-300ms&quot;,
+    &quot;first reach onset&quot;,
+    &quot;first reach peak&quot;,
+    &quot;withdrawal&quot;,
+    &quot;end+300ms&quot;
+  ],
+  &quot;sampling_fallback&quot;: &quot;25%/50%/75% only when no reliable approach-retreat; explicitly labelled&quot;,
+  &quot;layer_assignment&quot;: &quot;first reach estimated hand region vote; wrist trigger never sets layer; VLM verifies visible origin&quot;,
+  &quot;api_calls_primary&quot;: 0,
+  &quot;api_calls_controls&quot;: 0,
+  &quot;api_calls_ablation&quot;: 0,
+  &quot;score_calibrated&quot;: false,
+  &quot;live_stream_implemented&quot;: false,
+  &quot;parcel_model_primary&quot;: false,
+  &quot;width&quot;: 720,
+  &quot;height&quot;: 1280,
+  &quot;fps&quot;: 29.960988296488946,
+  &quot;source_frames&quot;: 768,
+  &quot;duration_ms&quot;: 25633.37673611111,
+  &quot;timestamp_basis_counts&quot;: {
+    &quot;decoder_media_pts&quot;: 768
+  },
+  &quot;observation_wall_s&quot;: 116.155,
+  &quot;model_and_source_setup_s&quot;: 2.625,
+  &quot;parcel_model_enabled&quot;: false,
+  &quot;run_device&quot;: &quot;cuda&quot;,
+  &quot;hardware&quot;: {
+    &quot;python_executable&quot;: &quot;C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\.venv-track\\Scripts\\python.exe&quot;,
+    &quot;run_device&quot;: &quot;cuda&quot;,
+    &quot;torch&quot;: &quot;2.6.0+cu118&quot;,
+    &quot;opencv&quot;: &quot;5.0.0&quot;,
+    &quot;gpu_name&quot;: &quot;NVIDIA GeForce RTX 4060 Laptop GPU&quot;
+  },
+  &quot;timings&quot;: {
+    &quot;pose&quot;: {
+      &quot;mean_ms&quot;: 39.402,
+      &quot;p95_ms&quot;: 61.641,
+      &quot;total_s&quot;: 30.26,
+      &quot;count&quot;: 768
+    },
+    &quot;registration&quot;: {
+      &quot;mean_ms&quot;: 100.115,
+      &quot;p95_ms&quot;: 143.773,
+      &quot;total_s&quot;: 76.889,
+      &quot;count&quot;: 768
+    },
+    &quot;identity&quot;: {
+      &quot;mean_ms&quot;: 5.085,
+      &quot;p95_ms&quot;: 54.39,
+      &quot;total_s&quot;: 3.905,
+      &quot;count&quot;: 768
+    }
+  },
+  &quot;registration_valid_frames&quot;: 768,
+  &quot;calibration_reference&quot;: {
+    &quot;reference_kind&quot;: &quot;external_image&quot;,
+    &quot;reference_image_sha256&quot;: &quot;1631adc80391bd3c60ac46898ee0c020cc195712a60dda248172ed918f37808d&quot;,
+    &quot;reference_width&quot;: 720,
+    &quot;reference_height&quot;: 1280,
+    &quot;reference_scale_xy&quot;: [
+      1.0,
+      1.0
+    ],
+    &quot;source_kind&quot;: &quot;video_frame&quot;,
+    &quot;reference_source_time_ms&quot;: 0,
+    &quot;alignment_checked_per_frame&quot;: true
+  },
+  &quot;person_archive&quot;: {
+    &quot;path&quot;: &quot;C:\\Users\\12908\\Desktop\\黑客松\\安克_26.10.17\\code - anker\\outputs\\anker_core_validation_20261016_01_A\\gallery_snapshot.json&quot;,
+    &quot;sha256&quot;: &quot;8ca3746c4a0ce2a132f5c78aac915e9be7b0000c87de373057c1dd8c60af55f5&quot;,
+    &quot;profiles&quot;: 6,
+    &quot;model&quot;: &quot;osnet_x0_5&quot;,
+    &quot;weights_sha256&quot;: &quot;e96cbd20ee9cc3c6dcc0e8f4fbba8c8069d47647a5a96a59ce381fb785c54f68&quot;,
+    &quot;read_only_in_B&quot;: true
+  },
+  &quot;session_detection_s&quot;: 0.083,
+  &quot;keyframe_extraction_s&quot;: 8.092,
+  &quot;video_export_s&quot;: 46.638,
+  &quot;primary_pipeline_elapsed_s&quot;: 177.092,
+  &quot;session_count&quot;: 2,
+  &quot;event_count&quot;: 2,
+  &quot;reviews_completed&quot;: 0,
+  &quot;reviews_failed&quot;: 0,
+  &quot;primary_review_api_s&quot;: 0,
+  &quot;primary_review_wall_s&quot;: 0,
+  &quot;experiment_elapsed_s&quot;: 177.092,
+  &quot;all_events_human_verified&quot;: false,
+  &quot;api_calls_total&quot;: 0
+}</pre></section><section><h2>有无包裹信息对照</h2><pre>null</pre></section><section><h2>有限样本参考对照</h2><pre>null</pre></section></html>
