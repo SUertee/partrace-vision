@@ -53,7 +53,7 @@ def archive_lock(folder):
 def valid_id(pid):return isinstance(pid,str) and re.fullmatch(r'G[0-9]{4,}',pid) is not None
 
 
-def resolve_crop_path(value):
+def resolve_crop_path(value,archive_dir=None):
     """Historical snapshots stay unchanged; locate moved, hash-checked photos."""
     path=Path(value)
     if path.is_file():return path
@@ -62,7 +62,24 @@ def resolve_crop_path(value):
         index=parts.index('auto_archive');path=Path(*parts[:index],*parts[index+1:])
     if path.is_file():return path
     historical=path.parent/'history'/path.name
-    return historical if historical.is_file() else path
+    if historical.is_file():return historical
+    # An archive copied Windows -> Ubuntu may still contain old absolute paths.
+    # Resolve only G-ID photos under THIS archive, never by arbitrary basename.
+    if archive_dir is not None:
+        folder=Path(archive_dir).resolve()
+        parts=str(value).replace('\\','/').split('/')
+        if not Path(value).is_absolute() and ':' not in str(value) and '..' not in parts:
+            candidate=(folder/Path(*parts)).resolve()
+            if candidate.is_relative_to(folder) and candidate.is_file():return candidate
+        for i,part in enumerate(parts[:-1]):
+            if valid_id(part):
+                tail=parts[i:]
+                if len(tail) not in (2,3) or (len(tail)==3 and tail[1]!='history') or '..' in tail:continue
+                candidate=(folder/Path(*tail)).resolve()
+                if candidate.is_relative_to(folder) and candidate.is_file():return candidate
+                candidate=(folder/part/'history'/tail[-1]).resolve()
+                if candidate.is_relative_to(folder) and candidate.is_file():return candidate
+    return path
 
 
 def read_archive(path,weights_sha256=None):
@@ -77,10 +94,11 @@ def read_archive(path,weights_sha256=None):
             if len(vector)!=512:raise ValueError('Invalid OSNet feature dimension')
     def relocate(value):
         if isinstance(value,dict):
-            if value.get('archive_crop') and not Path(value['archive_crop']).is_file():
-                candidate=resolve_crop_path(value['archive_crop'])
-                if candidate.is_file() and (not value.get('crop_sha256') or digest(candidate)==value['crop_sha256']):
-                    value['archive_crop']=str(candidate)
+            for key in ('archive_crop','legacy_crop'):
+                if value.get(key) and not Path(value[key]).is_file():
+                    candidate=resolve_crop_path(value[key],Path(path).parent)
+                    if candidate.is_file() and (not value.get('crop_sha256') or digest(candidate)==value['crop_sha256']):
+                        value[key]=str(candidate)
             for v in value.values():relocate(v)
         elif isinstance(value,list):
             for v in value:relocate(v)

@@ -1,0 +1,9 @@
+# Florence localization dependencies in .venv-track; preserve the core stack.
+-c requirements-lock.txt
+transformers==4.44.2
+timm==1.0.24
+einops==0.8.1
+huggingface-hub==0.36.2
+hf_xet==1.7.0
+tokenizers==0.19.1
+safetensors==0.8.0

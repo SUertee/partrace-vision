@@ -104,7 +104,7 @@ class LayoutMigrationTests(unittest.TestCase):
             pictures={Path(f['archive_crop']).name:digest(f['archive_crop']) for f in a['keyframes']}
             new=ProfileStore(root,'w');state=read_archive(new.path)
             self.assertEqual(set(state['profiles']),{'G0001'})
-            self.assertEqual(new.folder,(root/'data/person_enrollment').resolve())
+            self.assertEqual(new.folder,root/'data/person_enrollment')
             self.assertFalse((new.folder/'auto_archive').exists())
             for frame in a['keyframes']:
                 moved=resolve_crop_path(frame['archive_crop'])

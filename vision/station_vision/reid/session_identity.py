@@ -1,6 +1,4 @@
 """Read-only B association and conservative local-track -> archive event mapping."""
-import re
-
 import numpy as np
 
 from .encoder import OSNetEncoder,crop_person,crop_quality
@@ -57,9 +55,6 @@ def resolve_session_identities(rows,sessions,settings=None):
 
 
 def event_person_id(session,opinion):
-    # Public identity is an A-gallery G reference; the session retains its local P track.
-    if opinion.get('person_id',session['person_id'])!=session['person_id']:return None
-    identity=session.get('identity') or {}
-    profile=identity.get('profile_id')
-    if identity.get('status')!='matched' or not isinstance(profile,str):return None
-    return profile if re.fullmatch(r'G[0-9]{4,99}',profile) else None
+    local=opinion.get('person_id',session['person_id'])
+    if local!=session['person_id']:return None
+    return session['identity']['profile_id'] if 'identity' in session else local

@@ -10,7 +10,7 @@ import time
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw
+from PIL import Image,ImageDraw,ImageFont
 
 from ..models import PoseTracker
 from ..video import VideoSource
@@ -18,7 +18,10 @@ from .encoder import OSNetEncoder
 from .keyframes import enrollment_candidate,select_keyframes
 from .profile_store import ProfileStore,atomic_json,digest,read_archive
 from ..runtime_parameters import DEFAULT_CONFIG,load_parameters
-from ..fonts import load_font
+from ..fonts import display_font
+
+
+FONT=display_font()
 
 
 def bounded_candidates(items,candidate,maximum=48,bin_ms=200):
@@ -35,7 +38,7 @@ def bounded_candidates(items,candidate,maximum=48,bin_ms=200):
         items.pop(remove)
 
 
-def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_video=True):
+def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_video=True,direction_settings=None,direction_events=None):
     """Second decode preserves selected full frames and verifies original crop pixels."""
     targets={}
     for track,samples in selected.items():
@@ -61,12 +64,23 @@ def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_v
                     s['raw_frame_path']=str(framepath);s['raw_frame_sha256']=digest(framepath);checked+=1
             if not render_video or index not in indexed:continue
             row=indexed[index];scale=min(1.,960/raw.shape[0]);view=cv2.resize(raw,(round(raw.shape[1]*scale),round(raw.shape[0]*scale)))
-            canvas=Image.fromarray(cv2.cvtColor(view,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas);font=load_font(18)
+            canvas=Image.fromarray(cv2.cvtColor(view,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas);font=ImageFont.truetype(FONT,18)
             draw.text((8,8),f'A录像 {row["time_ms"]/1000:.3f}s / f{index:06d}（采样预览）',font=font,fill='white',stroke_width=2,stroke_fill='black')
+            if direction_settings:
+                rule='左→右进门，右→左出门' if direction_settings['left2right_flag'] else '左→右出门，右→左进门'
+                draw.text((8,33),'方向规则：'+rule+'（无需分界线）',font=font,fill='#ffbb45',stroke_width=1,stroke_fill='black')
             for p in row['people']:
                 box=[x*scale for x in p['box']];pid=p.get('profile_id');color='#62da93' if pid else '#f4bb55'
                 draw.rectangle(box,outline=color,width=2)
                 draw.text((box[0],max(35,box[1]-23)),p['track_id']+' '+(pid or p.get('archive_status','质量不足')),font=font,fill=color,stroke_width=1,stroke_fill='black')
+                for event in direction_events or []:
+                    if event['track_key']==p['track_id'] and event['start_ms']<=row['time_ms']<=event['end_ms']+800:
+                        label=('进门' if event['event_type']=='enter_zone' else '出门')+' '+event['direction']
+                        draw.text((box[0],box[1]+5),label,font=font,fill='#ffbb45',stroke_width=2,stroke_fill='black')
+                        y=(box[1]+box[3])/2;xa=event['start_x_ratio']*view.shape[1];xb=event['end_x_ratio']*view.shape[1]
+                        draw.line([(xa,y),(xb,y)],fill='#ffbb45',width=3)
+                        sign=1 if xb>xa else -1
+                        draw.polygon([(xb,y),(xb-sign*12,y-7),(xb-sign*12,y+7)],fill='#ffbb45')
             frame=cv2.cvtColor(np.asarray(canvas),cv2.COLOR_RGB2BGR)
             if writer is None:
                 height,width=frame.shape[:2];writer=cv2.VideoWriter(str(output/'A_profiles_review.mp4'),cv2.VideoWriter_fourcc(*'mp4v'),fps,(width+width%2,height+height%2))
@@ -80,18 +94,13 @@ def export_evidence(source,rows,selected,output,fps,write_evidence=True,render_v
 
 
 def report(output,results,summary):
-    sections=[];font=load_font(16)
-    archive=output.parents[1]/'data'/'person_enrollment'
-    index={p.name:p for p in archive.rglob('*.png')} if archive.is_dir() else {}
-    def resolve_crop(path):
-        p=Path(str(path).replace('\\','/'))
-        return p if p.is_file() else index.get(p.name,p)
+    sections=[];font=ImageFont.truetype(FONT,16)
     for result in results:
         samples=result.get('keyframes',[])
         if not samples:continue
         sheet=Image.new('RGB',(200*len(samples),340),'#142034');draw=ImageDraw.Draw(sheet)
         for i,s in enumerate(samples):
-            pic=Image.open(resolve_crop(s['crop_path'])).convert('RGB');pic.thumbnail((195,280));sheet.paste(pic,(i*200+(200-pic.width)//2,48))
+            pic=Image.open(s['crop_path']).convert('RGB');pic.thumbnail((195,280));sheet.paste(pic,(i*200+(200-pic.width)//2,48))
             draw.text((i*200+4,4),f'{s["time_ms"]/1000:.3f}s\nQ={s["quality"]["selection_quality"]:.2f}',font=font,fill='white')
         name=result['track_id']+'_keyframes.jpg';sheet.save(output/name,quality=94)
         sections.append(f'<section><h2>{html.escape(result["track_id"])} → {html.escape(result.get("person_id") or "待确认")}</h2><p>{html.escape(result["action"])}</p><img src="{name}"><p>关键帧按源时间排列，前/侧/背角度不作未经验证的保证。</p></section>')
@@ -99,7 +108,7 @@ def report(output,results,summary):
     (output/'comparison.html').write_text(page,encoding='utf-8')
 
 
-def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',max_seconds=0,runtime_config=DEFAULT_CONFIG,profile_root=None):
+def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',max_seconds=0,runtime_config=DEFAULT_CONFIG,left2right_flag=None,profile_root=None):
     started=time.perf_counter();source=Path(source).resolve()
     if not source.is_file():raise FileNotFoundError(source)
     if output.exists():raise FileExistsError('Choose a new A RunName')
@@ -159,13 +168,22 @@ def run(root,source,output,device='cuda',archive_dir='data/person_enrollment',ma
     for row in rows:
         for p in row['people']:
             r=mapping[p['track_id']];p.update(profile_id=r['person_id'],archive_status=r['action'])
-    # Re-export only visualization with resolved IDs; no second detection/model call.
-    export_evidence(source,rows,selected,output,a['sampling_fps'],write_evidence=False)
+    direction_events=[]
+    if left2right_flag is not None:
+        from .direction import movement_events
+        direction_events,diagnostics=movement_events(rows,video.width,parameters['a_direction'],left2right_flag)
+        atomic_json(output/'direction_events.json',direction_events)
+        atomic_json(output/'direction_diagnostics.json',diagnostics)
+    # Re-export visualization with resolved IDs and optional direction; no new inference.
+    export_evidence(source,rows,selected,output,a['sampling_fps'],write_evidence=False,
+        direction_settings={'left2right_flag':left2right_flag} if left2right_flag is not None else None,direction_events=direction_events)
     atomic_json(output/'profiles_result.json',results);atomic_json(output/'gallery_snapshot.json',read_archive(store.path,encoder.sha256))
     with (output/'observations.jsonl').open('w',encoding='utf-8') as stream:
         for row in rows:stream.write(json.dumps(row,ensure_ascii=False)+'\n')
     summary={'status':'completed','source':source_info,'archive_path':str(store.path),'weights_sha256':encoder.sha256,
-        'source_duration_ms':video.frame_count/video.fps*1000,'local_tracks':len(tracks),'actions':dict(Counter(r['action'] for r in results)),
+        'source_duration_ms':video.frame_count/video.fps*1000,'source_width':video.width,'source_height':video.height,
+        'left2right_flag':left2right_flag,'direction_event_count':len(direction_events),
+        'local_tracks':len(tracks),'actions':dict(Counter(r['action'] for r in results)),
         'selected_raw_keyframes_checked':checked,'sampling_fps':a['sampling_fps'],'feature_fps_at_most':a['feature_fps'],
         'enrollment_recipe':recipe,'quality_counters':dict(counts),
         'numbering':'max existing ID + 1; legacy IDs reserved; existing photos not replaced',
@@ -179,10 +197,12 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--video',required=True);p.add_argument('--run-name',required=True)
     p.add_argument('--device',choices=['cuda','cpu'],default='cuda');p.add_argument('--archive-dir',default='data/person_enrollment')
     p.add_argument('--runtime-config',default=DEFAULT_CONFIG)
+    p.add_argument('--left2right-flag',choices=['true','false'],default=None)
     p.add_argument('--max-seconds',type=float,default=0);args=p.parse_args()
     if not args.run_name.replace('_','').replace('-','').isalnum():raise ValueError('Unsafe run name')
     root=Path(__file__).resolve().parents[2]
-    run(root,(root/args.video).resolve(),root/'outputs'/args.run_name,args.device,args.archive_dir,args.max_seconds,args.runtime_config)
+    flag=None if args.left2right_flag is None else args.left2right_flag=='true'
+    run(root,(root/args.video).resolve(),root/'outputs'/args.run_name,args.device,args.archive_dir,args.max_seconds,args.runtime_config,flag)
 
 
 if __name__=='__main__':main()

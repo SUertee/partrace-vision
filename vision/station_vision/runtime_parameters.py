@@ -18,6 +18,12 @@ knob('a_video','sampling_fps',15,1,60,'fps','A人物检测/姿态目标采样频
 knob('a_video','feature_fps',5,1,30,'fps/人','A每条轨迹提取OSNet及选帧候选的最高频率。','候选更密，外观特征计算更多。','更省算力，短轨迹可能不足三张有效图。',[3,8])
 knob('a_video','minimum_track_ms',500,0,10000,'ms','轨迹持续时间不足此值时不建档。','拒绝更多短轨迹，但可能漏掉快速经过者。','允许短暂经过者，误检轨迹更容易进入选帧。',[300,1000])
 
+knob('a_direction','smooth_window_ms',200,0,2000,'ms','离线人物中心横坐标的前后中位数平滑半窗口；不需要门口分界线。','更抗检测框抖动，转折时间分辨率降低。','保留快速变化，也更容易受到单帧噪声影响。',[100,300])
+knob('a_direction','minimum_samples',3,2,30,'观测数','确认一段横向移动所需的最少真实观测数量。','更稳，快速通过可能漏掉。','更快，也更容易受跟踪噪声影响。',[3,5])
+knob('a_direction','stable_ms',200,0,3000,'ms','确认横向移动或反向转折所需的最短源时间跨度。','拒绝短促抖动，快速移动可能漏掉。','更快确认，短暂框变化更容易触发。',[150,400])
+knob('a_direction','max_gap_ms',500,50,5000,'ms','同一轨迹方向判断可接受的最大观测间隔，超过即重置，不跨遮挡猜方向。','容忍稀疏观测，但跨缺失判断风险增加。','更保守，低帧率或遮挡下可能无事件。',[200,700])
+knob('a_direction','minimum_displacement_ratio',.08,.01,.8,'画面宽度比例','判定左右移动或转身反向的最小中心横向位移；主要上下走且横向不足时不判断。','需要更明确的横向移动，小范围走动可能漏掉。','更容易触发，也更易受检测框变化影响。',[.06,.15])
+
 for group,size in [('a_tracker',960),('b_tracker',640)]:
     knob(group,'imgsz',size,320,1280,'像素','人物姿态模型输入边长，必须为32的整数倍。','小人物细节更多，推理和显存开销增加；不保证更准确。','速度通常更快，小人物/姿态可能更差。',[640,960])
     knob(group,'detection_conf',0.1,0.01,1,'0～1','人物检测置信度下限。','候选更少，弱检测可能丢失。','保留弱检测，同时增加误检。',[0.1,0.3])
@@ -137,7 +143,7 @@ knob('vlm','max_tokens',2000,256,8000,'token','模型输出长度上限，不是
 def defaults():
     result={g:{k:v['default'] for k,v in specs.items()} for g,specs in SPECS.items()}
     result['osnet']={'weights':'models/reid/osnet_x0_5_msmt17.pth'}
-    result['vlm'].update(model='qwen3.8-max',base_url='https://maas.qianwenaiapi.com/compatible-mode/v1')
+    result['vlm'].update(model='hackathon/v_model/qwen-max',base_url='https://ai-router-cn-pub.anker-in.com')
     return result
 
 

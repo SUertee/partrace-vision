@@ -76,6 +76,9 @@ def observe(root,config,output,device):
         timings['registration'].append((time.perf_counter()-tick)*1000)
         rows.append({'index':index,'frame_id':f'f{index:06d}','time_ms':round(pts,3),'timestamp_basis':basis,
             'width':src.width,'height':src.height,'people':people,'shelf_polygons':polygons,
+            # Retain human annotations for display even when automatic registration
+            # fails. Detectors still consume only the verified shelf_polygons.
+            'reference_shelf_polygons':zones,
             'reference_to_source':matrix.tolist(),'registration_valid':bool(quality['valid']),
             'registration_quality':quality,'parcels':[],'hand_geometry':parameters['hand_geometry']})
         bases[basis]+=1
@@ -97,5 +100,5 @@ def observe(root,config,output,device):
         save_json(output/'identity_links.json',identity.matcher.transitions)
     save_json(output/'observer_metrics.json',info)
     if reference_info['reference_kind']=='external_image' and not valid_registration:
-        raise ValueError('整段视频未能与标定图可靠配准，未生成有效货架区域。请核对B机位截图和视频。')
+        raise ValueError('自动配准检查未通过，交互分析未完成；人工标定区域已保留用于可视化核对。此错误不代表人工标定有误。')
     return source,rows,info

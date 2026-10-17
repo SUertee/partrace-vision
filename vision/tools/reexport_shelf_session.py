@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import time
 
-from station_vision.shelf_session.cache import digest
+from station_vision.interaction.cache import digest
 from station_vision.shelf_session.pipeline import basic_and_details,result_document,compact_document,validate_evidence
 from station_vision.shelf_session.observer import save_json
 from station_vision.shelf_session.visualization import model_sheet,export_video,report
@@ -39,6 +39,22 @@ def main():
         save_json(output/'reference_adjudicated.json',reference)
         evaluation=evaluate(reference,sessions,results,read('controls.json') if (output/'controls.json').exists() else [])
         save_json(output/'evaluation.json',evaluation)
+    if ablation:
+        ab_output=output/'with_parcels'
+        aug_rows=[json.loads(x) for x in (ab_output/'observations_with_parcels.jsonl').read_text(encoding='utf-8').splitlines()]
+        aug_plans={s['id']:json.loads((ab_output/'keyframes'/s['id']/'manifest.json').read_text(encoding='utf-8'))['frames'] for s in sessions}
+        aug_results={s['id']:json.loads((ab_output/'calls'/(s['id']+'.review.json')).read_text(encoding='utf-8')) for s in sessions}
+        for s in sessions:model_sheet(ab_output,s['id'],aug_plans[s['id']])
+        aug_events,aug_details=basic_and_details(sessions,aug_plans,aug_results)
+        save_json(ab_output/'events.json',aug_events);save_json(ab_output/'event_details.json',aug_details)
+        if not args.report_only:
+            export_video(source,aug_rows,sessions,aug_results,ab_output,summary['fps'],True)
+            validate_evidence(source,aug_rows,sessions,aug_plans,ab_output,summary)
+        if args.reference:
+            from station_vision.shelf_session.evaluation import evaluate
+            ablation['augmented_reference_evaluation']=evaluate(reference,sessions,aug_results,[])
+            ablation['reference_layer_adjudicated_after_model']=True
+            save_json(output/'ablation.json',ablation)
     elapsed=round(time.perf_counter()-started,3)
     summary['offline_report_refresh_s' if args.report_only else 'offline_visual_reexport_s']=elapsed
     summary['offline_reexport_api_calls']=0

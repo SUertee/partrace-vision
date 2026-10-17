@@ -136,19 +136,7 @@ class SessionIdentityTests(unittest.TestCase):
         session=self.resolve(['G0001']*3)
         self.assertIsNone(event_person_id(session,{'person_id':'P002'}))
         self.assertEqual(session['person_id'],'P001')
-        self.assertIsNone(event_person_id({'person_id':'P001'},{}))
-    def test_event_identity_requires_matched_valid_gallery_id(self):
-        for status in ('conflict','unmatched',None):
-            with self.subTest(status=status):
-                self.assertIsNone(event_person_id({'person_id':'P001',
-                    'identity':{'status':status,'profile_id':'G0001'}},{}))
-        for profile in ('P001','G123','G0001\n',' G0001',123,True,None):
-            with self.subTest(profile=profile):
-                self.assertIsNone(event_person_id({'person_id':'P001',
-                    'identity':{'status':'matched','profile_id':profile}},{}))
-        self.assertEqual(event_person_id({'person_id':'P001',
-            'identity':{'status':'matched','profile_id':'G0007'}},{}),'G0007')
-
+        self.assertEqual(event_person_id({'person_id':'P001'},{}),'P001')
     def test_six_field_public_event_keeps_local_model_actor(self):
         from station_vision.shelf_session.pipeline import basic_and_details
         from station_vision.shelf_session.review import model_session

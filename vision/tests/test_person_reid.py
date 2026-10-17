@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from station_vision.reid.matching import GalleryMatcher
 from station_vision.reid.encoder import crop_person
+from station_vision.reid.pipeline import enrollment_folders
 
 
 def obs(key, feature=None):
@@ -117,6 +118,22 @@ class MatchingTests(unittest.TestCase):
 
 
 class EnrollmentInputTests(unittest.TestCase):
+    def test_empty_folders_do_not_become_fake_profiles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'person_001').mkdir()
+            (root / 'person_001/README.md').write_text('instructions')
+            with self.assertRaises(ValueError):
+                enrollment_folders(root)
+
+    def test_unicode_image_names_are_discovered(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sub = root / '人物一'
+            sub.mkdir()
+            (sub / '正面.PNG').write_bytes(b'fixture')
+            self.assertEqual(enrollment_folders(root)[0][1][0].name, '正面.PNG')
+
     def test_outside_or_invalid_crop_is_not_replaced_with_whole_image(self):
         image = np.zeros((100, 100, 3), dtype=np.uint8)
         self.assertIsNone(crop_person(image, [150, 0, 160, 50]))

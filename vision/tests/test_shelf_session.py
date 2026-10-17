@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import patch
 import urllib.error
 
-from station_vision.shelf_session.detector import SessionMachine,SessionSettings,five_frames
+from station_vision.shelf_session.detector import SessionMachine,SessionSettings,five_frames,detect_sessions
+from station_vision.shelf_session.visualization import shelf_display_regions
 from station_vision.shelf_session.review import validate,model_session,messages
 from station_vision.shelf_session.evaluation import evaluate
 from station_vision.multiframe_review.client import CompatibleClient
@@ -26,6 +27,17 @@ def observation(t,x=30,y=60,people=('P001',),two_hands=False):
 
 
 class SessionTests(unittest.TestCase):
+    def test_visible_manual_reference_regions_do_not_become_verified_interactions(self):
+        rows=[observation(t,30+t/100) for t in range(0,1500,100)]
+        for row in rows:
+            row['reference_shelf_polygons']=row['shelf_polygons']
+            row['shelf_polygons']=[];row['registration_valid']=False
+        self.assertEqual(len(shelf_display_regions(rows[0],True)),2)
+        self.assertTrue(all(not verified for _,verified in shelf_display_regions(rows[0],True)))
+        self.assertEqual(shelf_display_regions(rows[0],False),[])
+        self.assertEqual(detect_sessions(rows,SessionSettings()),[])
+        self.assertEqual(rows[0]['shelf_polygons'],[])
+
     def machine(self):return SessionMachine(SessionSettings(enter_ms=200))
 
     def test_long_operation_is_one_event_with_two_hands(self):

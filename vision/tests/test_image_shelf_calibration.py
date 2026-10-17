@@ -31,6 +31,21 @@ def reference(seed=42):
 
 
 class ImageShelfTests(unittest.TestCase):
+    def test_failed_registration_still_saves_original_manual_regions_for_display(self):
+        _,cfg=reference();other,_=reference(99);root=Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory(dir=root/'.runtime',prefix='shelf_display_') as folder:
+            work=Path(folder);source=work/'B.avi';out=work/'out';out.mkdir()
+            writer=cv2.VideoWriter(str(source),cv2.VideoWriter_fourcc(*'MJPG'),10,(640,480))
+            for _ in range(3):writer.write(other)
+            writer.release();cfg['video']=str(source)
+            with patch('station_vision.shelf_session.observer.PoseTracker') as tracker:
+                tracker.return_value.process.return_value=[]
+                with self.assertRaisesRegex(ValueError,'不代表人工标定有误'):observe(root,cfg,out,'cpu')
+            rows=[json.loads(x) for x in (out/'observations.jsonl').read_text(encoding='utf-8').splitlines()]
+            self.assertEqual(rows[0]['reference_shelf_polygons'],cfg['shelf_zones'])
+            self.assertEqual(rows[0]['shelf_polygons'],[])
+            self.assertFalse(rows[0]['registration_valid'])
+
     def test_portable_json_roundtrip_and_legacy_route_rejection(self):
         image,cfg=reference();cfg=json.loads(json.dumps(cfg))
         decoded,raw,digest=decode_reference(cfg)
@@ -76,7 +91,6 @@ class ImageShelfTests(unittest.TestCase):
     def test_observer_accepts_image_json_and_preserves_video_frame_coordinates(self):
         image,cfg=reference()
         root=Path(__file__).resolve().parents[1]
-        (root/'.runtime').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=root/'.runtime',prefix='shelf_image_') as folder:
             work=Path(folder);source=work/'B.avi';out=work/'out';out.mkdir()
             writer=cv2.VideoWriter(str(source),cv2.VideoWriter_fourcc(*'MJPG'),10,(640,480))

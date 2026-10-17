@@ -45,7 +45,7 @@ uv venv --python 3.12 vision/.venv-track
 uv pip install --python vision/.venv-track/bin/python -r vision/requirements-macos.txt
 ```
 
-Windows/Linux 沿用 `requirements-cpu.txt` 或已有经验证的 CUDA 环境，再安装 `httpx==0.28.1`；原 PowerShell 离线入口继续保留。跨平台报告字体按系统已安装字体选取，也可用 `STATION_FONT_PATH` 指定本地字体文件，不自动下载字体或模型。
+Windows/Linux 沿用 `requirements-cpu.txt` 或已有经验证的 CUDA 环境，再安装 `httpx==0.28.1`；原 PowerShell 离线入口继续保留。跨平台报告字体按系统已安装字体选取，也可用 `STATION_VISION_FONT` 指定本地字体文件，不自动下载字体或模型。
 
 私有 token 文件只保存 Bearer 原文，设置权限 `0600`；worker 需要 `active admin`、`vision:work`、`data:read`、`data:ingest` 及对应镜头授权。配置通过环境变量或参数传入，不把令牌放在命令行、JSON 配置或日志中：
 
@@ -75,6 +75,10 @@ B 结果仅发布 `candidate shelf_interaction`，summary 保留六字段候选�
 2026-10-17 本机 macOS 的 `.venv-track/bin/python`（Python 3.12.13、CPU PyTorch 2.6.0）执行上述 unittest：101项全部通过，包含29项 worker／图库发布／适配边界测试；根目录 `python -m vision.worker --help` 和 `git diff --check -- vision` 通过。覆盖 staging 失败／失租／撤权不污染、不同 attempt 不推广、终态心跳409、等锁时续租、重复推广不回滚和受权 reconcile。Windows 临时目录与 macOS `/var`／`/private/var` 别名统一按规范路径比较。这些凭据不替代新门铃录像的真实 A 运行或球机现场 B 标定验收。
 
 同日另执行真实权重 CPU A 烟雾：在 `/private/tmp/partrace-SYNTHETIC-cpu-smoke-_jhyfkzi/` 生成标注 SYNTHETIC 的1秒蓝色视频（320×240、12fps、12帧），直接调用现有 `enroll_video.run`，实际加载仓库 YOLO26n-pose 与 OSNet 权重。PyTorch 2.6.0／Ultralytics 8.4.174 下 A 执行3.903秒，输出0条人物轨迹、0个档案，空 `archive.json` 正常生成；仅使用临时目录中明确标注的本地 receipt fixture 验证空库推广成功、重复推广不改变 CURRENT，B 的已提交 archive 路径可读。详细结果保存在该临时目录的 `SMOKE_RESULT.json`，算法原始 summary 在 `artifacts/algorithm/summary.json`。这次真实执行验证了模型加载、A 入口与空库文件边界，没有调用业务 API／数据库，没有上传合成录像；本地 receipt fixture 不是 Backend 完成回执，不计作真实 SDK 摄像头链路或人物识别效果验收。
+
+## 视觉 HTTP 服务（station_vision.service）
+
+A/B 队列服务在独立进程中运行，先安装 `requirements-service.txt`，从 `vision/` 目录执行 `.venv-track/bin/python -m station_vision.service`（Windows 为 `Scripts\python.exe -m station_vision.service`）。服务参数、角色映射和取片回写边界见 [configs/vision_service.json](configs/vision_service.json) 内 `_help`；端口与 Backend 的 8000 区分。开发日志与实测记录见 [README_hua.md](README_hua.md)。
 
 ## Aurora API worker 验证 · 2026-10-17
 

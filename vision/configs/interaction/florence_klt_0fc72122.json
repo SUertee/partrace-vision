@@ -1,0 +1,25 @@
+{
+  "video": "test_video_new/0fc72122c2a6a082e2d4f3fdcdd2a8f1.mp4",
+  "camera_id": "cam01",
+  "shelf_numbering": "bottom_up",
+  "imgsz": 640,
+  "parcel_seeds": [],
+  "region_polygon": [[0,565],[365,540],[390,1150],[90,1280],[0,1280]],
+  "region_note": "首帧货架区域，配准后用于手腕候选和可见外观差异；未标定具体货架层号。",
+  "trigger": {"dwell_ms": 200, "context_ms": 1500, "max_active_ms": 6000},
+  "florence_klt": {
+    "enabled": true,
+    "variant": "base-ft",
+    "device": null,
+    "cpu_threads": 4,
+    "scene_refresh_ms": 3000,
+    "actor_refresh_ms": 1500,
+    "loss_retry_ms": 750,
+    "max_localization_age_ms": 4000,
+    "max_tracks": 8,
+    "max_localization_calls": 80,
+    "max_seconds": 0,
+    "scene_text": "cardboard boxes and parcels",
+    "actor_text": "the box held in the person's hands"
+  }
+}

@@ -8,18 +8,17 @@ import time
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw
+from PIL import Image,ImageDraw,ImageFont
 
-from .cache import digest
+from ..interaction.cache import digest
 from ..multiframe_review.client import CompatibleClient,parse_response
 from .detector import SessionSettings,detect_sessions,five_frames
 from .observer import observe,save_json
 from .review import PROMPT,messages,validate,model_session
-from .visualization import draw_frame,save_image,export_video,report,model_sheet,reach_diagnostic
+from .visualization import draw_frame,save_image,export_video,export_registration_debug,report,model_sheet,reach_diagnostic,FONT,export_reviewed_keyframes
 from .evaluation import evaluate
 from ..reid.session_identity import resolve_session_identities,event_person_id
 from ..runtime_parameters import DEFAULT_CONFIG,defaults,load_parameters,validate_parameters
-from ..fonts import load_font
 
 
 def extract(source,rows,sessions,output,parcel_evidence=False):
@@ -54,7 +53,7 @@ def extract(source,rows,sessions,output,parcel_evidence=False):
                  'context_truncated':any(f['truncated'] for f in frames)}
         folder=output/'keyframes'/s['id']
         save_json(folder/'manifest.json',{'session':s,'sampling_quality':quality,'frames':frames})
-        sheet=Image.new('RGB',(5*240,460),'#151c28');draw=ImageDraw.Draw(sheet);font=load_font(17)
+        sheet=Image.new('RGB',(5*240,460),'#151c28');draw=ImageDraw.Draw(sheet);font=ImageFont.truetype(FONT,17)
         for i,f in enumerate(frames):
             img=Image.open(output/f['raw_path']).convert('RGB');img.thumbnail((240,420))
             sheet.paste(img,(i*240+(240-img.width)//2,40))
@@ -198,13 +197,14 @@ def validate_evidence(source,rows,sessions,plans,output,info,video=True):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--config',default='')
+    parser.add_argument('--config',default='configs/interaction/manual_shelf_20261014_173804_01.json')
     parser.add_argument('--video',default='',help='Video path; required for portable image-only calibration JSON')
     parser.add_argument('--gallery',default='',help='Read-only A person archive.json for B identity association')
     parser.add_argument('--runtime-config',default='',help='Unified JSON tuning; omitted reuse preserves saved parameters')
     parser.add_argument('--device',choices=['cpu','cuda'],default='cuda')
     parser.add_argument('--run-name',default='shelf_session_'+datetime.now().strftime('%Y%m%d_%H%M%S'))
     parser.add_argument('--review',action='store_true')
+    parser.add_argument('--parcel-ablation',action='store_true')
     parser.add_argument('--reference',default='')
     parser.add_argument('--observations-run',default='',help='Reuse exact-config/source checked completed pose observations')
     parser.add_argument('--model',default=None)
@@ -213,15 +213,7 @@ def main():
     if not args.run_name.replace('_','').replace('-','').isalnum():raise ValueError('Unsafe run name')
     root=Path(__file__).resolve().parents[2];output=root/'outputs'/args.run_name
     if output.exists():raise FileExistsError('Choose a new RunName; existing results are preserved')
-    if not args.config:
-        files=sorted((root/'configs/interaction').glob('shelf_B_*.json'),key=lambda p:p.stat().st_mtime,reverse=True)
-        if not files:raise FileNotFoundError('Save B shelf calibration JSON first')
-        args.config=str(files[0])
     config=json.loads((root/args.config).read_text(encoding='utf-8-sig'))
-    if not args.video and not config.get('video'):
-        files=[p for p in (root/'test_video_new/site_20261016/B').iterdir() if p.is_file() and p.suffix.lower() in ('.mp4','.mov','.mkv','.avi')]
-        if len(files)!=1:raise ValueError('B directory must contain one video, or specify --video')
-        args.video=str(files[0])
     if args.runtime_config:
         config['runtime_parameters']=load_parameters(root,args.runtime_config)
     elif config.get('runtime_parameters'):
@@ -258,7 +250,7 @@ def main():
     try:
         if args.observations_run:
             import shutil
-            from .cache import validate_rows
+            from ..interaction.cache import validate_rows
             if not args.observations_run.replace('_','').replace('-','').isalnum():raise ValueError('Unsafe observation run')
             prior=root/'outputs'/args.observations_run
             old=json.loads((prior/'summary.json').read_text(encoding='utf-8'))
@@ -284,6 +276,7 @@ def main():
         summary['keyframe_extraction_s']=round(time.perf_counter()-tick,3)
         results={s['id']:review_once(client,s,plans[s['id']],rows,output,settings=parameters['vlm']) for s in sessions}
         events,details=basic_and_details(sessions,plans,results)
+        export_reviewed_keyframes(rows,details,output)
         save_json(output/'events.json',events);save_json(output/'event_details.json',details)
         tick=time.perf_counter();export_video(source,rows,sessions,results,output,info['fps'])
         summary['video_export_s']=round(time.perf_counter()-tick,3)
@@ -309,6 +302,39 @@ def main():
             evaluation=evaluate(reference,sessions,results,controls)
             save_json(output/'reference_snapshot.json',reference);save_json(output/'controls.json',controls)
             save_json(output/'evaluation.json',evaluation)
+        if args.parcel_ablation:
+            from .parcel_evidence import enrich
+            ab_output=output/'with_parcels';ab_output.mkdir()
+            aug_rows,parcel_metrics=enrich(root,config,source,rows,ab_output,args.device)
+            tick=time.perf_counter();aug_plans=extract(source,aug_rows,sessions,ab_output,parcel_evidence=True)
+            aug_extract_s=time.perf_counter()-tick
+            aug_results={s['id']:review_once(client,s,aug_plans[s['id']],aug_rows,ab_output,True,parameters['vlm']) for s in sessions}
+            aug_events,aug_details=basic_and_details(sessions,aug_plans,aug_results)
+            save_json(ab_output/'events.json',aug_events);save_json(ab_output/'event_details.json',aug_details)
+            tick=time.perf_counter();export_video(source,aug_rows,sessions,aug_results,ab_output,info['fps'],True)
+            aug_export_s=time.perf_counter()-tick
+            validate_evidence(source,aug_rows,sessions,aug_plans,ab_output,info,video=True)
+            pairs=[]
+            for s in sessions:
+                sid=s['id'];a=results[sid].get('opinion') or {};b=aug_results[sid].get('opinion') or {}
+                pairs.append({'session_id':sid,'same_frame_ids':
+                    [f['frame_id'] for f in plans[sid]]==[f['frame_id'] for f in aug_plans[sid]],
+                    'raw_pixels_same':all(f['raw_sha256']==g['raw_sha256'] for f,g in zip(plans[sid],aug_plans[sid])),
+                    'without_parcels':results[sid],'with_parcels':aug_results[sid],
+                    'pickup_decision_changed':a.get('pickup_detected')!=b.get('pickup_detected'),
+                    'layer_decision_changed':a.get('shelf_level')!=b.get('shelf_level')})
+            ablation={'controlled_input':'identical sessions, source frames, actors, layer polygons, model and prompt; only parcel evidence differs',
+                'parcel_metrics':parcel_metrics,'pairs':pairs,
+                'base_visual_wall_s':info['observation_wall_s'],'additional_parcel_visual_wall_s':parcel_metrics['added_visual_wall_s'],
+                'with_parcel_visual_component_sum_s':info['observation_wall_s']+parcel_metrics['added_visual_wall_s'],
+                'ablation_keyframe_extraction_s':round(aug_extract_s,3),
+                'ablation_video_export_s':round(aug_export_s,3),
+                'base_primary_review_api_s':summary['primary_review_api_s'],
+                'augmented_review_api_s':sum(r.get('elapsed_s',0) for r in aug_results.values()),
+                'not_a_second_fresh_pose_run':True,'test_video_count':1,'generalization_established':False}
+            if reference:ablation['augmented_reference_evaluation']=evaluate(reference,sessions,aug_results,[])
+            save_json(output/'ablation.json',ablation)
+            summary['api_calls_ablation']=len(sessions) if client else 0
         summary.update(status='completed' if all(r['status']!='failed' for r in results.values()) else 'partial',
             experiment_elapsed_s=round(time.perf_counter()-started,3),all_events_human_verified=False,
             api_calls_total=sum(summary[k] for k in ('api_calls_primary','api_calls_controls','api_calls_ablation')))
@@ -319,6 +345,16 @@ def main():
         print(json.dumps(summary,ensure_ascii=False),flush=True);print('OUTPUT '+str(output),flush=True)
     except BaseException as exc:
         summary.update(status='failed',error=str(exc),experiment_elapsed_s=round(time.perf_counter()-started,3))
+        # Failed automatic registration must not silently erase human annotations.
+        # Reuse already computed pose; no new inference or model requests here.
+        if isinstance(exc,Exception) and (output/'observations.jsonl').exists() and (output/'observer_metrics.json').exists():
+            try:
+                metrics=json.loads((output/'observer_metrics.json').read_text(encoding='utf-8'))
+                if not metrics.get('registration_valid_frames'):
+                    debug_rows=[json.loads(x) for x in (output/'observations.jsonl').read_text(encoding='utf-8').splitlines()]
+                    summary['calibration_debug']=export_registration_debug(source,debug_rows,output,metrics['fps'])
+            except Exception as debug_error:
+                summary['calibration_debug_error']=type(debug_error).__name__
         save_json(output/'summary.json',summary);raise
 
 

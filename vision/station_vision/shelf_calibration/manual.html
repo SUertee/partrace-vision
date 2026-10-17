@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>人工框选货架层</title><style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.6 system-ui,"Microsoft YaHei",sans-serif;background:#f2f5f9;color:#182335}main{max-width:1380px;margin:auto;padding:18px}h1{font-size:25px;margin:0}p{margin:8px 0}.muted{font-size:13px;color:#68768a}.layout{display:grid;grid-template-columns:minmax(350px,1fr) 360px;gap:18px;margin-top:15px}.stage,.sidebar{background:white;border-radius:10px;padding:15px}.stage{display:flex;flex-direction:column;align-items:center}.toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}button,input{font:inherit}button{padding:7px 12px;border:1px solid #c4cfdf;border-radius:6px;background:white;cursor:pointer}button:disabled{opacity:.45;cursor:default}button.active{background:#eaf2ff;border-color:#2864b6;color:#164a93}button.primary{background:#2864b6;color:white;border-color:#2864b6}canvas{display:block;max-width:100%;max-height:calc(100vh - 225px);width:auto;height:auto;touch-action:none;cursor:crosshair;border:1px solid #e5e9ef}.zone{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #e3e8ef}.zone button{min-width:85px}.zone input{width:75px;padding:5px}.swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}.note{background:#fff5db;border-left:3px solid #d5a137;padding:10px;margin:12px 0}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}.status{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:14px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6fb;padding:10px;font-size:12px}#zones:empty::after{content:'尚未框选区域。点击“新增区域”，在图中拖动鼠标。';color:#68768a;font-size:14px}#state{min-height:22px}label{user-select:none}a{color:#245eab}@media(max-width:850px){.layout{grid-template-columns:1fr}.sidebar{order:-1}canvas{max-height:75vh}main{padding:10px}}
+</style><main>
+<h1>人工框选每层货架</h1><p>框出每层放包裹的空间，再微调四角。层号从下往上填写，地面不计层；不确定时留空。</p>
+<p class="muted" id="source"></p>
+<div class="layout"><section class="stage">
+<div class="toolbar"><button id="new" class="active">新增区域</button><button id="edit">调整四角</button><button id="undo" disabled>撤销上一步</button><button id="zoom">放大画面</button><label><input type="checkbox" id="show" checked> 显示标注</label></div>
+<canvas id="canvas" aria-label="人工框选货架区域画布"></canvas><p id="state" class="muted">按住鼠标拖动，框出一层储物区域。</p>
+</section><aside class="sidebar">
+<strong>货架层区域</strong><p class="muted">“区域1”等是标注编号。层号单独填写；圆点可拖动，适应倾斜的货架边界。</p>
+<div id="zones"></div>
+<div class="actions"><button id="remove" disabled>移除选中区域</button></div>
+<div class="note">框选提供位置和层号参照。它不代表包裹确实在此层拿起；还需要原位置、轨迹与多帧复核。</div>
+<div class="actions"><button id="save" class="primary" disabled>保存到项目</button><button id="download" disabled>下载配置</button><button id="image">下载标注图</button></div>
+<p class="muted" id="saveHelp">保存会生成新的配置文件。</p>
+<div class="status" id="status" role="status" aria-live="polite"></div><pre id="command" hidden></pre>
+</aside></div></main><script>
+const DATA=__DATA__,meta=DATA.metadata;
+let zones=structuredClone(DATA.initial_zones),history=[],selected=zones.length?0:-1,mode='draw',gesture=null,dirty=false;
+let serial=Math.max(0,...zones.map(z=>Number(z.id.split('_')[1])||0));
+const colors=['#f1ad31','#da55c6','#63ca84','#52a3e5','#f0806d','#9c8be2'];
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),image=new Image();
+canvas.width=meta.width;canvas.height=meta.height;
+document.getElementById('source').textContent='视频：'+meta.source_path.split(/[\\/]/).pop()+' · 参考画面：首帧 · '+meta.width+'×'+meta.height;
+if(location.protocol==='file:'){document.getElementById('saveHelp').textContent='当前为离线页面，请使用“下载配置”。运行标定脚本后可直接保存到项目。';}
+image.onload=draw;image.src='reference.png';
+function remember(){history.push({zones:structuredClone(zones),selected});if(history.length>100)history.shift();}
+function setMode(value){mode=value;gesture=null;document.getElementById('new').classList.toggle('active',value==='draw');document.getElementById('edit').classList.toggle('active',value==='edit');draw();}
+function controls(){
+ const box=document.getElementById('zones');box.replaceChildren();
+ zones.forEach((z,i)=>{const row=document.createElement('div');row.className='zone';const sw=document.createElement('span');sw.className='swatch';sw.style.background=colors[i%colors.length];const btn=document.createElement('button');btn.textContent='区域'+(i+1);btn.className=i===selected?'active':'';btn.onclick=()=>{selected=i;setMode('edit');controls();};const label=document.createElement('label');label.append('层号 ');const input=document.createElement('input');input.type='number';input.min='1';input.max='20';input.placeholder='未知';input.value=z.level===null?'':z.level;input.setAttribute('aria-label','区域'+(i+1)+'的货架层号');input.onchange=()=>{const v=input.value===''?null:Number(input.value);if(v!==null&&(!Number.isInteger(v)||v<1||v>20)){input.value=z.level===null?'':z.level;return;}remember();z.level=v;dirty=true;controls();draw();};label.append(input);row.append(sw,btn,label);box.append(row);});
+ document.getElementById('undo').disabled=!history.length;document.getElementById('remove').disabled=selected<0;document.getElementById('save').disabled=!zones.length||location.protocol==='file:';document.getElementById('download').disabled=!zones.length;
+}
+function path(polygon){ctx.beginPath();polygon.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();}
+function draw(){
+ if(!image.complete||!image.naturalWidth)return;
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+ if(document.getElementById('show').checked){zones.forEach((z,i)=>{const col=colors[i%colors.length];path(z.polygon);ctx.globalAlpha=.17;ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=col;ctx.lineWidth=i===selected?4:2;ctx.stroke();z.polygon.forEach(p=>{ctx.beginPath();ctx.arc(...p,i===selected?7:4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();});const x=Math.max(3,Math.min(...z.polygon.map(p=>p[0]))+5),y=Math.min(canvas.height-5,Math.max(23,Math.min(...z.polygon.map(p=>p[1]))+25));ctx.font='20px "Microsoft YaHei",sans-serif';ctx.fillStyle='#142033';ctx.fillRect(x-3,y-22,160,29);ctx.fillStyle=col;ctx.fillText('区域'+(i+1)+' '+(z.level===null?'层号未知':'第'+z.level+'层'),x,y);});}
+ if(gesture?.type==='rect'){const a=gesture.start,b=gesture.end;ctx.setLineDash([8,6]);ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.strokeRect(a[0],a[1],b[0]-a[0],b[1]-a[1]);ctx.setLineDash([]);}
+ document.getElementById('state').textContent=(mode==='draw'?'按住鼠标拖动，框出一层储物区域。':'拖动圆点调整边界。新增下一层时点击“新增区域”。')+(dirty?' 当前有未保存修改。':'');
+}
+function point(e){const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(canvas.width-1,(e.clientX-r.left)*canvas.width/r.width)),Math.max(0,Math.min(canvas.height-1,(e.clientY-r.top)*canvas.height/r.height))].map(v=>Math.round(v*100)/100);}
+canvas.onpointerdown=e=>{
+ if(e.button!==0)return;const p=point(e);
+ if(mode==='draw'){gesture={type:'rect',start:p,end:p};}
+ else{const threshold=15*canvas.width/canvas.getBoundingClientRect().width,options=[];zones.forEach((z,i)=>z.polygon.forEach((q,j)=>{const distance=Math.hypot(q[0]-p[0],q[1]-p[1]);if(distance<=threshold)options.push({i,j,distance:distance+(i===selected?0:threshold)});}));options.sort((a,b)=>a.distance-b.distance);if(options.length){remember();selected=options[0].i;gesture={type:'corner',i:selected,j:options[0].j};controls();}}
+ if(gesture)canvas.setPointerCapture(e.pointerId);draw();
+};
+canvas.onpointermove=e=>{if(!gesture)return;const p=point(e);if(gesture.type==='rect')gesture.end=p;else{zones[gesture.i].polygon[gesture.j]=p;dirty=true;}draw();};
+canvas.onpointerup=e=>{if(!gesture)return;if(gesture.type==='rect'){const a=gesture.start,b=point(e),x1=Math.min(a[0],b[0]),y1=Math.min(a[1],b[1]),x2=Math.max(a[0],b[0]),y2=Math.max(a[1],b[1]);if(x2-x1>=10&&y2-y1>=10){remember();serial++;zones.push({id:'manual_'+String(serial).padStart(2,'0'),level:null,polygon:[[x1,y1],[x2,y1],[x2,y2],[x1,y2]]});selected=zones.length-1;dirty=true;setMode('edit');}}gesture=null;controls();draw();};
+canvas.onpointercancel=()=>{gesture=null;draw();};
+document.getElementById('new').onclick=()=>setMode('draw');document.getElementById('edit').onclick=()=>setMode('edit');
+document.getElementById('show').onchange=draw;
+document.getElementById('zoom').onclick=()=>{const enlarged=canvas.style.maxHeight==='none';canvas.style.maxHeight=enlarged?'calc(100vh - 225px)':'none';canvas.style.width=enlarged?'auto':'720px';document.getElementById('zoom').textContent=enlarged?'放大画面':'适应窗口';};
+document.getElementById('undo').onclick=()=>{const prior=history.pop();if(prior){zones=prior.zones;selected=prior.selected;dirty=JSON.stringify(zones)!==JSON.stringify(DATA.initial_zones);gesture=null;if(!zones.length)setMode('draw');controls();draw();}};
+document.getElementById('remove').onclick=()=>{if(selected<0)return;remember();zones.splice(selected,1);selected=zones.length?Math.min(selected,zones.length-1):-1;dirty=true;controls();draw();};
+function config(){const result=structuredClone(DATA.base_config);result.shelf_numbering='bottom_up';result.shelf_zones=structuredClone(zones);result.shelf_calibration={source:'manual',reference_frame_index:0,reference_frame_id:'f000000',source_sha256:meta.source_sha256,width:meta.width,height:meta.height};return result;}
+document.getElementById('download').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(config(),null,2)],{type:'application/json;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='manual_shelf_config.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+document.getElementById('image').onclick=()=>{draw();canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='manual_shelf_preview.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');};
+document.getElementById('save').onclick=async()=>{
+ const status=document.getElementById('status'),button=document.getElementById('save');button.disabled=true;status.textContent='正在保存……';
+ try{const response=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({zones})});const result=await response.json();if(!response.ok)throw new Error(result.error||'保存失败');status.textContent='已保存 '+result.region_count+' 个区域：\n'+result.config_path;const command=document.getElementById('command');command.hidden=false;command.textContent=result.command;dirty=false;draw();}
+ catch(error){status.textContent=error.message;}finally{button.disabled=!zones.length;}
+};
+controls();
+</script></html>

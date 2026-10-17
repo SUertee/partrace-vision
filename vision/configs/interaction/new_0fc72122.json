@@ -1,0 +1,14 @@
+{
+  "video": "test_video_new/0fc72122c2a6a082e2d4f3fdcdd2a8f1.mp4",
+  "camera_id": "cam01",
+  "shelf_numbering": "bottom_up",
+  "imgsz": 960,
+  "seed_frame_index": 0,
+  "parcel_seeds": [
+    {"id": "front_brown", "bbox_xyxy_source": [150,735,220,806], "initial_support_observed": true},
+    {"id": "static_top", "bbox_xyxy_source": [158,455,276,552], "initial_support_observed": true}
+  ],
+  "region_polygon": [[0,565],[365,540],[390,1150],[90,1280],[0,1280]],
+  "trigger": {"dwell_ms": 200, "context_ms": 1500, "max_active_ms": 6000},
+  "region_note": "人工定义首帧货架区域，后续经ORB配准后才参与触发；不包含层号标定。"
+}

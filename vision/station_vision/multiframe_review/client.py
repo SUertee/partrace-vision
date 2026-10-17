@@ -9,11 +9,21 @@ import urllib.parse
 import urllib.request
 
 
-def load_key():
+ANKER_BASE='https://ai-router-cn-pub.anker-in.com'
+ANKER_MODEL='hackathon/v_model/qwen-max'
+
+
+def credential_path(base_url=None):
+    host=urllib.parse.urlparse(base_url or ANKER_BASE).hostname
+    name='anker-key.dpapi' if host=='ai-router-cn-pub.anker-in.com' else 'qwen-key.dpapi'
+    return Path(os.environ.get('LOCALAPPDATA',''))/'StationVision'/name
+
+
+def load_key(base_url=None):
     value=os.environ.get('STATION_VLM_API_KEY')
     if value: return value
     if os.name!='nt': raise RuntimeError('Set STATION_VLM_API_KEY')
-    path=Path(os.environ['LOCALAPPDATA'])/'StationVision/qwen-key.dpapi'
+    path=credential_path(base_url)
     if not path.exists():
         raise RuntimeError('No private API credential configured. Run .\\setup_qwen_key.ps1 '
                            'in the same terminal, then retry with a new RunName.')
@@ -40,7 +50,7 @@ class CompatibleClient:
             raise ValueError('An HTTPS API base without embedded credentials is required')
         self.base=base_url.rstrip('/')
         self.model=model
-        self.key=load_key()
+        self.key=load_key(base_url)
         self.timeout=timeout
         if max_attempts<1: raise ValueError('max_attempts must be positive')
         self.max_attempts=max_attempts
@@ -49,6 +59,8 @@ class CompatibleClient:
     def complete(self,messages,max_tokens=3500,structured=True):
         body={'model':self.model,'messages':messages,'temperature':0,'max_tokens':max_tokens,
               'stream':False,'enable_thinking':False}
+        if urllib.parse.urlparse(self.base).hostname=='ai-router-cn-pub.anker-in.com':
+            body['reasoning_effort']='none'
         if structured:body['response_format']={'type':'json_object'}
         started=time.perf_counter()
         for attempt in range(self.max_attempts):

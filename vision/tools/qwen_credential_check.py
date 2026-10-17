@@ -1,21 +1,21 @@
 """Local credential availability only; no API calls and no key output."""
 import os
+import argparse
 from pathlib import Path
 
-from station_vision.multiframe_review.client import load_key
+from station_vision.multiframe_review.client import load_key,credential_path,ANKER_BASE
 
 
 def main():
-    source=('STATION_VLM_API_KEY' if os.environ.get('STATION_VLM_API_KEY')
-          else str(Path(os.environ.get('LOCALAPPDATA',''))/'StationVision/qwen-key.dpapi'))
-    print('Credential source: '+source)
+    parser=argparse.ArgumentParser();parser.add_argument('--provider',choices=['anker','qianwen'],default='anker');args=parser.parse_args()
+    base=ANKER_BASE if args.provider=='anker' else 'https://maas.qianwenaiapi.com/compatible-mode/v1'
+    print('Credential source: '+('STATION_VLM_API_KEY' if os.environ.get('STATION_VLM_API_KEY')
+          else str(credential_path(base))))
     try:
-        if not load_key().strip():
+        if not load_key(base).strip():
             raise RuntimeError('Empty credential')
     except Exception:
-        hint=('Set the STATION_VLM_API_KEY environment variable.'
-              if os.name!='nt' else 'Run .\\setup_qwen_key.ps1 in the same terminal.')
-        print('Credential load FAILED. '+hint)
+        print('Credential load FAILED. Run .\\setup_qwen_key.ps1 in the same terminal.')
         return 1
     print('Credential load OK. No API request sent; server acceptance has not been tested.')
     return 0

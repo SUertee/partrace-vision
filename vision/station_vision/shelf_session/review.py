@@ -2,11 +2,7 @@
 import json
 import math
 
-import base64
-from pathlib import Path
-
-def image_part(path):
-    return {"type":"image_url","image_url":{"url":"data:image/jpeg;base64,"+base64.b64encode(Path(path).read_bytes()).decode("ascii")}}
+from ..interaction.review import image_part
 
 
 PROMPT='''你复核快递站内一个指定人物的一段货架交互，输入恰好5个源时间点。

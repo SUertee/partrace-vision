@@ -32,7 +32,7 @@
     "joint_conf": 0.35,
     "minimum_torso_joints": 2,
     "max_overlap": 0.35,
-    "minimum_selection_quality": 0.4,
+    "minimum_selection_quality": 0.65,
     "blur_saturation": 150.0,
     "size_saturation": 0.6,
     "edge_penalty": 0.65
@@ -140,8 +140,8 @@
   "vlm": {
     "timeout_s": 180,
     "max_tokens": 2000,
-    "model": "qwen3.8-max",
-    "base_url": "https://maas.qianwenaiapi.com/compatible-mode/v1"
+    "model": "hackathon/v_model/qwen-max",
+    "base_url": "https://ai-router-cn-pub.anker-in.com"
   },
   "osnet": {
     "weights": "models/reid/osnet_x0_5_msmt17.pth"
@@ -1961,7 +1961,96 @@
         "decrease": "不适用，路径不是数值。",
         "warning": "换权重必须重新提取人物档案特征，旧权重哈希不一致时程序拒绝混用。"
       }
+    },
+    "a_direction": {
+      "smooth_window_ms": {
+        "default": 200,
+        "type": "integer",
+        "range": [
+          0,
+          2000
+        ],
+        "unit": "ms",
+        "meaning": "离线人物中心横坐标的前后中位数平滑半窗口；不需要门口分界线。",
+        "increase": "更抗检测框抖动，转折时间分辨率降低。",
+        "decrease": "保留快速变化，也更容易受到单帧噪声影响。",
+        "recommended": [
+          100,
+          300
+        ]
+      },
+      "minimum_samples": {
+        "default": 3,
+        "type": "integer",
+        "range": [
+          2,
+          30
+        ],
+        "unit": "观测数",
+        "meaning": "确认一段横向移动所需的最少真实观测数量。",
+        "increase": "更稳，快速通过可能漏掉。",
+        "decrease": "更快，也更容易受跟踪噪声影响。",
+        "recommended": [
+          3,
+          5
+        ]
+      },
+      "stable_ms": {
+        "default": 200,
+        "type": "integer",
+        "range": [
+          0,
+          3000
+        ],
+        "unit": "ms",
+        "meaning": "确认横向移动或反向转折所需的最短源时间跨度。",
+        "increase": "拒绝短促抖动，快速移动可能漏掉。",
+        "decrease": "更快确认，短暂框变化更容易触发。",
+        "recommended": [
+          150,
+          400
+        ]
+      },
+      "max_gap_ms": {
+        "default": 500,
+        "type": "integer",
+        "range": [
+          50,
+          5000
+        ],
+        "unit": "ms",
+        "meaning": "同一轨迹方向判断可接受的最大观测间隔，超过即重置，不跨遮挡猜方向。",
+        "increase": "容忍稀疏观测，但跨缺失判断风险增加。",
+        "decrease": "更保守，低帧率或遮挡下可能无事件。",
+        "recommended": [
+          200,
+          700
+        ]
+      },
+      "minimum_displacement_ratio": {
+        "default": 0.08,
+        "type": "number",
+        "range": [
+          0.01,
+          0.8
+        ],
+        "unit": "画面宽度比例",
+        "meaning": "判定左右移动或转身反向的最小中心横向位移；主要上下走且横向不足时不判断。",
+        "increase": "需要更明确的横向移动，小范围走动可能漏掉。",
+        "decrease": "更容易触发，也更易受检测框变化影响。",
+        "recommended": [
+          0.06,
+          0.15
+        ]
+      }
     }
   },
-  "_note": "只编辑各节数值；_help为说明。余弦相似度不是身份概率；范围是程序接受范围，recommended是初始调参建议。3～5张是有效档案代表图上限，历史旧图不删除。 主入口A/B和货架交互读取本文件；货架多边形仍在单独标定JSON。五帧数量、每交互最多一次POST、未知保留null和六字段契约不是调参开关。"
+  "_note": "只编辑各节数值；_help为说明。余弦相似度不是身份概率；范围是程序接受范围，recommended是初始调参建议。3～5张是有效档案代表图上限，历史旧图不删除。 主入口A/B和货架交互读取本文件；货架多边形仍在单独标定JSON。五帧数量、每交互最多一次POST、未知保留null和六字段契约不是调参开关。",
+  "a_direction": {
+    "smooth_window_ms": 200,
+    "minimum_samples": 3,
+    "stable_ms": 800,
+    "max_gap_ms": 500,
+    "minimum_displacement_ratio": 0.08
+  }
 }

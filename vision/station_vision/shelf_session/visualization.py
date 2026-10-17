@@ -4,23 +4,79 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image,ImageDraw
+from PIL import Image,ImageDraw,ImageFont
 from .reach import palm_cues,reference_points
-from ..fonts import load_font
+from ..fonts import display_font
 
 
-def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_identity=False):
+FONT=display_font()
+
+
+def shelf_display_regions(row,show_reference_regions=False):
+    if row.get('registration_valid',True) and row.get('shelf_polygons'):
+        return [(zone,True) for zone in row['shelf_polygons']]
+    if show_reference_regions:
+        return [(zone,False) for zone in row.get('reference_shelf_polygons',[])]
+    return []
+
+
+def dashed_polygon(draw,points,color,width=4):
+    for a,b in zip(points,points[1:]+points[:1]):
+        a,b=np.asarray(a,float),np.asarray(b,float)
+        length=float(np.linalg.norm(b-a))
+        if not length:continue
+        for distance in np.arange(0,length,24):
+            start=a+(b-a)*distance/length
+            end=a+(b-a)*min(distance+15,length)/length
+            draw.line([tuple(start),tuple(end)],fill=color,width=width)
+
+
+def export_reviewed_keyframes(rows,details,output):
+    """Display G ID/review result AFTER review. Never feed these labels to VLM."""
+    import json
+    from ..reid.profile_store import atomic_json,digest
+    from ..reid.session_identity import event_person_id
+    for detail in details:
+        session=detail['session'];review=detail['review'];op=review.get('opinion') or {}
+        for f in detail['keyframes']:
+            raw_path=output/f['raw_path']
+            if digest(raw_path)!=f['raw_sha256']:raise ValueError('Raw evidence changed before display export')
+            raw=cv2.imdecode(np.frombuffer(raw_path.read_bytes(),np.uint8),cv2.IMREAD_COLOR)
+            view=draw_frame(raw,rows[f['source_frame_index']],session['person_id'],session.get('region_id'),show_reference_regions=True)
+            canvas=Image.fromarray(cv2.cvtColor(view,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas)
+            font=ImageFont.truetype(FONT,18)
+            identity=event_person_id(session,op) or '人物未确定'
+            level=op.get('shelf_level') if op else session.get('shelf_level')
+            pickup=op.get('pickup_detected');decision='疑似取件' if pickup is True else ('未见取件' if pickup is False else '取件未知')
+            label=f'{identity} | {"模型层" if op else "候选层"} {level if level is not None else "未知"} | {decision}'
+            draw.rectangle((0,0,canvas.width,65),fill='#102030')
+            draw.text((8,4),label,font=font,fill='white')
+            draw.text((8,32),f'复核 {review["status"]} | 模型评分 {op.get("pickup_score")}（未校准）',font=font,fill='#ffbd60')
+            name=raw_path.with_name(raw_path.stem+'_display.jpg')
+            save_image(name,cv2.cvtColor(np.asarray(canvas),cv2.COLOR_RGB2BGR))
+            f['display_image_path']=name.relative_to(output).as_posix();f['display_image_sha256']=digest(name)
+        manifest=output/'keyframes'/session['id']/'manifest.json'
+        value=json.loads(manifest.read_text(encoding='utf-8'));value['frames']=detail['keyframes'];atomic_json(manifest,value)
+
+
+def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_identity=False,show_reference_regions=False):
     canvas=Image.fromarray(cv2.cvtColor(raw,cv2.COLOR_BGR2RGB));draw=ImageDraw.Draw(canvas)
-    font=load_font(20)
+    font=ImageFont.truetype(FONT,20)
     person_ids={person_id} if isinstance(person_id,str) else set(person_id)
     region_ids={region_id} if isinstance(region_id,str) or region_id is None else set(region_id)
-    for z in row['shelf_polygons']:
+    for z,verified in shelf_display_regions(row,show_reference_regions):
         points=[tuple(p) for p in z['polygon']]
-        col='#ffb94f' if z['id'] in region_ids else '#a2a9b5'
-        draw.line(points+[points[0]],fill=col,width=4 if z['id'] in region_ids else 1)
+        if verified:
+            col='#ffb94f' if z['id'] in region_ids else '#a2a9b5'
+            draw.line(points+[points[0]],fill=col,width=4 if z['id'] in region_ids else 3)
+        else:
+            col=('#ffb94f','#51d99c','#8fa4ff')[(max(1,z.get('level') or 1)-1)%3]
+            dashed_polygon(draw,points,col,5)
         x,y=np.asarray(points).mean(axis=0)
+        label=f'第{z["level"]}层' if z['level'] is not None else '层号未知'
+        if not verified:label='人工'+label+' | 配准未通过'
         draw.text((max(0,min(raw.shape[1]-100,x)),max(0,min(raw.shape[0]-25,y))),
-                  f'第{z["level"]}层' if z['level'] is not None else '层号未知',font=font,fill=col)
+                  label,font=font,fill=col,stroke_width=1,stroke_fill='black')
     for p in row['people']:
         if p['id'] not in person_ids:continue
         draw.rectangle(p['box'],outline='#51baf7',width=3)
@@ -45,7 +101,7 @@ def draw_frame(raw,row,person_id,region_id=None,parcel_evidence=False,show_ident
             draw.rectangle(p['box'],outline='#73db9f',width=2)
             draw.text((p['box'][0],max(0,p['box'][1]-22)),p['id']+' '+p['source'],font=font,fill='#73db9f')
     draw.text((10,10),f'{row["time_ms"]/1000:.3f}s / {row["frame_id"]}',font=font,fill='white',stroke_width=2,stroke_fill='black')
-    draw.text((10,40),'蓝：姿态腕点｜橙色虚线：估计手区，非接触证明',font=load_font(16),fill='white',stroke_width=2,stroke_fill='black')
+    draw.text((10,40),'蓝：姿态腕点｜橙色虚线：估计手区，非接触证明',font=ImageFont.truetype(FONT,16),fill='white',stroke_width=2,stroke_fill='black')
     return cv2.cvtColor(np.asarray(canvas),cv2.COLOR_RGB2BGR)
 
 
@@ -56,9 +112,46 @@ def save_image(path,img):
     path.write_bytes(data.tobytes())
 
 
+def export_registration_debug(source,rows,output,fps):
+    """Show saved manual regions/pose on every frame, without asserting interactions."""
+    import time
+    started=time.perf_counter();cap=cv2.VideoCapture(str(source));writer=None;count=0
+    valid=sum(bool(r.get('registration_valid')) for r in rows)
+    font=ImageFont.truetype(FONT,23);small=ImageFont.truetype(FONT,20)
+    destination=output/'calibration_debug.mp4'
+    try:
+        for row in rows:
+            ok,raw=cap.read()
+            if not ok:raise ValueError('Source ended before saved observations')
+            marked=draw_frame(raw,row,{p['id'] for p in row['people']},show_identity=True,show_reference_regions=True)
+            marked=cv2.resize(marked,(1280,720))
+            board=Image.new('RGB',(1600,720),'#171e2b');board.paste(Image.fromarray(cv2.cvtColor(marked,cv2.COLOR_BGR2RGB)),(0,0))
+            draw=ImageDraw.Draw(board)
+            draw.rectangle((0,0,1280,76),fill='#78353a')
+            draw.text((15,7),'人工货架标定已加载；虚线显示原坐标，自动配准未通过',font=font,fill='white')
+            draw.text((15,42),f'源时间 {row["time_ms"]/1000:.3f}s | 仅显示标定和姿态，不输出交互结论',font=small,fill='white')
+            lines=['货架标定显示核对',f'自动配准 {valid}/{len(rows)} 帧','人工框不再被隐藏',
+                   '橙色虚线：人工第1层','绿色虚线：人工第2层','紫色虚线：人工第3层','蓝色：人物/手臂',
+                   '虚线：JSON参考图坐标','未宣称已经配准成功','',
+                   '交互/取件：尚未判断','Qwen：此调试不调用','人工标定不因ORB失败','就被认定为错误']
+            for i,text in enumerate(lines):draw.text((1295,15+i*40),text,font=small,fill='#dfe8f4')
+            array=cv2.cvtColor(np.asarray(board),cv2.COLOR_RGB2BGR)
+            if writer is None:
+                writer=cv2.VideoWriter(str(destination),cv2.VideoWriter_fourcc(*'mp4v'),fps,(1600,720))
+                if not writer.isOpened():raise RuntimeError('Cannot create calibration debug video')
+            writer.write(array)
+            if count in (0,len(rows)//2):save_image(output/('calibration_frame_'+str(count)+'.jpg'),array)
+            count+=1
+    finally:
+        cap.release()
+        if writer:writer.release()
+    return {'file':destination.name,'frames':count,'elapsed_s':round(time.perf_counter()-started,3),
+            'registration_valid_frames':valid,'manual_regions_shown':True,'interactions_evaluated':False}
+
+
 def export_video(source,rows,sessions,results,output,fps,parcel_evidence=False):
     cap=cv2.VideoCapture(str(source));writer=None;clips={};count=0
-    font=load_font(20);small=load_font(17)
+    font=ImageFont.truetype(FONT,20);small=ImageFont.truetype(FONT,17)
     try:
         for row in rows:
             ok,raw=cap.read()
@@ -66,13 +159,15 @@ def export_video(source,rows,sessions,results,output,fps,parcel_evidence=False):
             active=[s for s in sessions if s['start_ms']<=row['time_ms']<=s['end_ms']]
             target=active[0] if active else None
             ids={p['id'] for p in row['people']} if any('identity_status' in p for p in row['people']) else {s['person_id'] for s in active}
-            image=draw_frame(raw,row,ids,{s['region_id'] for s in active},parcel_evidence,show_identity=True)
+            image=draw_frame(raw,row,ids,{s['region_id'] for s in active},parcel_evidence,show_identity=True,show_reference_regions=True)
             scale=min(1,960/raw.shape[0]);image=cv2.resize(image,(round(raw.shape[1]*scale),round(raw.shape[0]*scale)))
             h,w=image.shape[:2];board=Image.new('RGB',(w+540,h),'#141c29')
             board.paste(Image.fromarray(cv2.cvtColor(image,cv2.COLOR_BGR2RGB)),(0,0));draw=ImageDraw.Draw(board)
             lines=['货架交互会话｜五帧单次复核',f'源时间 {row["time_ms"]/1000:.2f}s',
                    '同一人连续操作合并；层号另行复核。', '模型评分未经校准，不代表真实概率。',
                    '三帧优先：首次伸手、最深处、收手。','当前会话：'+(target['id'] if target else '无活动会话')]
+            if not row.get('registration_valid',True):
+                lines.insert(2,'配准未通过：虚线仅示人工原坐标')
             y=15
             for text in lines:draw.text((w+15,y),text,font=small,fill='#dce7f4');y+=34
             for s in sessions:
@@ -114,7 +209,7 @@ def export_video(source,rows,sessions,results,output,fps,parcel_evidence=False):
 
 def model_sheet(output,session_id,frames):
     sheet=Image.new('RGB',(1200,460),'#151c28');draw=ImageDraw.Draw(sheet)
-    font=load_font(17)
+    font=ImageFont.truetype(FONT,17)
     for i,f in enumerate(frames):
         img=Image.open(output/f['model_image_path']).convert('RGB');img.thumbnail((240,420))
         sheet.paste(img,(i*240+(240-img.width)//2,40))
@@ -146,7 +241,7 @@ def reach_diagnostic(rows,session,frames,output):
     for path,col in ((wrist_path,'#51baf7'),(palm_path,'#ffb94f')):
         if len(path)>1:draw.line(path,fill=col,width=3)
     board=Image.new('RGB',(raw.width+500,raw.height),'#141c29');board.paste(canvas,(0,0));draw=ImageDraw.Draw(board)
-    font=load_font(21)
+    font=ImageFont.truetype(FONT,21)
     lines=['首次伸手轨迹核查（非原始证据）',
         '蓝色：检测到的腕点轨迹', '橙色：肘腕方向延长的估计手区',
         '估计手区不是接触证明，也不是包裹。',
@@ -167,7 +262,11 @@ def report(output,summary,sessions,details,ablation=None,evaluation=None):
     sections=[]
     for d in details:
         s=d['session'];r=d['review'];op=r.get('opinion') or {}
-        cards=''.join(f'<figure><a href="{esc(f["raw_path"])}"><img src="{esc(f["raw_path"])}"></a><figcaption>{esc(f["role"])} · {f["actual_ms"]/1000:.3f}s · {esc(f["frame_id"])}</figcaption></figure>' for f in d['keyframes'])
+        cards=[]
+        for f in d['keyframes']:
+            display=f.get('display_image_path',f['raw_path'])
+            cards.append(f'<figure><a href="{esc(display)}"><img src="{esc(display)}"></a><figcaption>{esc(f["role"])} · {f["actual_ms"]/1000:.3f}s · {esc(f["frame_id"])} · <a href="{esc(f["raw_path"])}">未标注原图</a></figcaption></figure>')
+        cards=''.join(cards)
         sections.append(f'<section><h2>{esc(s["id"])} · {esc(s["person_id"])} · 第{esc(s["shelf_level"])}层</h2>'
             f'<p>{s["start_ms"]/1000:.3f}–{s["end_ms"]/1000:.3f}s。结束依据：{esc(s["close_reason"])}。</p>'
             f'<p>有无取件：{esc(op.get("pickup_detected"))}；模型自评分：{esc(op.get("pickup_score"))}；一次请求：{esc(r.get("elapsed_s"))}秒。</p>'
@@ -188,7 +287,7 @@ def report(output,summary,sessions,details,ablation=None,evaluation=None):
     for d in details:
         r=d['review'];op=r.get('opinion') or {}
         decision={True:'有取件',False:'未见该时段取件',None:'无法判断'}[op.get('pickup_detected')]
-        table_rows+=f'<tr><td>当前主流程</td><td>{decision}</td><td>{esc(op.get("pickup_score"))}</td><td>算法{d["session"]["shelf_level"]}；模型{esc(op.get("model_shelf_level",op.get("shelf_level")))}；最终{esc(op.get("shelf_level"))}</td><td>{esc(r.get("elapsed_s"))}秒</td></tr>'
+        table_rows+=f'<tr><td>无Florence/KLT</td><td>{decision}</td><td>{esc(op.get("pickup_score"))}</td><td>算法{d["session"]["shelf_level"]}；模型{esc(op.get("model_shelf_level",op.get("shelf_level")))}；最终{esc(op.get("shelf_level"))}</td><td>{esc(r.get("elapsed_s"))}秒</td></tr>'
         if ablation:
             p=next((p for p in ablation['pairs'] if p['session_id']==d['session']['id']),None)
             if p:
