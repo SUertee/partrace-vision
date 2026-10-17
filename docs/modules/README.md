@@ -8,7 +8,7 @@
 
 | 模块 | 需要交付什么 | 实现与主责 | 主要表 | 当前 API 数／任务 |
 | --- | --- | --- | --- | --- |
-| [M01 · App 骨架](#m01) | 首页／AI／我的三入口、导航与页面状态 | Android · 李果钦 | 经 API 使用数据，不直连 DB | 0／D02、D08 |
+| [M01 · App 骨架](#m01) | 首页／事件／AI 追溯／我的四入口、导航与页面状态 | Android · 李果钦 | 经 API 使用数据，不直连 DB | 0／D02、D08 |
 | [M02 · 账号与配置](#m02) | 当前用户、固定镜头与区域配置 | Backend · Harry Xu；Android／Vision 调用 | `users`；配置文件 | 2／D01、D05 |
 | [M03 · 视觉产物与视频入库](#m03) | 原片先入库、异步解析、真实事件包与录像元数据 | Vision · 徐泽华；Backend · Harry Xu | `recordings`、`recording_jobs`、`events`、`evidence` | 10（录像 3＋原片任务 7）／D03–D06 |
 | [M04 · 事件与证据](#m04) | 条件查询、候选、事件详情与关键帧回看 | Backend · Harry Xu；Android · 李果钦 | `recordings`、`events`、`evidence` | 4／D05、D08 |
@@ -40,8 +40,9 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 <a id="m01"></a>
 ## M01 · Android App 骨架与导航
 
-- **开发内容：** 首页、AI、我的三入口骨架（覆盖原四 Tab 视觉草案）；候选、事件、帧和 AI 引用的选中状态；加载、空结果、无覆盖、失败与返回恢复。业务页面按 M04、M06、M07 接口实现，不为每个页面新增表。
-- **本轮视觉实现：** Android 入口由 `StationSdkApp` 连接设计壳与 SDK，按用户最新六张设计图调整首页、AI、我的三入口，补齐独立消息中心的通知提示／空态／月份列表及审核记录；通知静音与站点选择浮层保留；我的保留进入官方 `SampleApp` 的 SDK 调试入口。本轮三入口覆盖此前四 Tab 的视觉草案，原有事件、证据、核查与记录业务范围及验收目标保留。最新视觉与验证见 [ui-design](../../android/ui-design/README.md)；前一轮范围与预览见 [d02-station-design](../../openspec/changes/archive/2026-10-16-d02-station-design/proposal.md)、[设计预览说明](../../android/design-previews/README.md)。
+- **开发内容：** 首页、事件、AI 追溯、我的四入口骨架（事件页为用户追加需求）；候选、事件、帧和 AI 引用的选中状态；加载、空结果、无覆盖、失败与返回恢复。业务页面按 M04、M06、M07 接口实现，不为每个页面新增表。
+- **本轮视觉实现：** Android 入口由 `StationSdkApp` 连接设计壳与 SDK，按用户六张设计图及追加事件需求调整为首页、事件、AI 追溯、我的四入口，补齐独立消息中心的通知提示／空态／月份列表及审核记录；通知静音与站点选择浮层保留；我的保留进入官方 `SampleApp` 的 SDK 调试入口。独立事件页使用 SDK 摄像头检测记录，原有团队算法事件、证据、核查与记录业务范围及验收目标保留。最新视觉与验证见 [设计与验证](../../android/design/README.md)；前一轮范围与预览见 [d02-station-design](../../openspec/changes/archive/2026-10-16-d02-station-design/proposal.md)、[设计预览说明](../../android/design/verification/app/README.md)。
+- **源码组织：** Android 以 `android/` 为单一 Gradle 根，`app` 为宿主、`core` 为业务／UI。`station` 保留应用入口、首页与 SDK 桥接，`station/ui` 统一收纳聊天、事件、消息／我的／审核页及共享组件；服务状态与数据访问按来源归入 `agent`、`events`、`records`、`pipeline`。设计资料统一在 `android/design`，具体文件和验证见 [Android 源码索引](../../android/README.md#页面源码索引)。
 - **本轮设备接入：** 按 [d02-station-sdk-devices](../../openspec/changes/archive/2026-10-16-d02-station-sdk-devices/proposal.md) 直接在设计首页读取当前账号的真实 SDK 设备，当前两个设备的数量随列表变化；名称、在线状态和最近缩略图替换原卡片样例及“68”。共用原 SDK 初始化与有效缓存业务会话；摄像头复用原单路直播，基站及更多／状态入口进入对应原设置，多画面先展示真实最近缩略图网格。加载、空、错误、未登录／401 与重试各自反馈，不用模拟设备兜底。
 - **实现边界：** 报警尚未连接；AI 追溯已消费 M06 现有 API，支持授权的已发布录像／区域、问题与计划确认、运行轮询／停止／恢复、结果卡片、当前证据与分页历史，见 [接入记录](../../openspec/changes/d07-android-agent/proposal.md)。通知静音偏好按站点持久化，有限时长到期恢复；消息中心打开真实系统通知设置，本地静音不代表修改系统或摄像头报警配置。站点选择仅为本地界面分组，不映射 SDK 房屋或过滤设备；不新增 DB／API，不代表 D02 真机、D06 全部能力或 D08／D10 业务验收完成。
 - **数据／API：** 本模块不提供 API，不直连数据库；使用后端与 Agent 接口。工程准备见 [Android README](../../android/README.md)。
@@ -116,6 +117,12 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 
 执行阶段另有 `load_skill` 加载三个固定内置核查流程，指引不产生事实或授权。语义编码不可用经重新验权后可继续普通事件查询，最终摘要保留不可用说明；权限与存储错误仍失败。边界与本次离线验证见 [Skill 调用补充](BACKEND_AGENT.md#内置-skill-调用补充2026-10-17)。
 
+Android 展示继续在现有 `core` 模块的 `station/ui/assistant` 中维护，页面／布局与 `station/agent` 数据访问分开，不新增 frontend 模块。AI 欢迎示例与输入提示只引导现有录像核查；按用户最新要求移除顶部查询范围卡片，录像／时段／区域由底部既有入口选择，计划确认及运行卡片保留实际范围。正式选择器仅展示已发布 SDK／真实预录，mock 不再参与选择或默认范围；没有真实来源时显示空态。旧模拟执行的本地恢复状态退出当前对话，服务端历史保留只读、来源继续明示；计划／运行及重试门禁防止重新发起模拟分析，不改表或 API。错误码可展开、关键帧仍按真实 ID 读取，来源与候选状态以可读中文展示，不改变上述接口、表、模型或证据权限。源码位置见 [Android 页面说明](../../android/README.md#正式页面直接在现有工程改造)。
+
+**AI 入口与历史：** 在首页、事件页或我的页明确点击 AI 追溯 Tab，默认进入空白新对话，清除当前对话及未发送草稿，保留服务配置和录像／区域选择；旧会话由历史入口分页读取并手动打开。欢迎空态不创建服务端空会话，不删除旧历史。未结束的真实运行或启动响应不明时保留稳定 run_id 和原确认载荷，先恢复该运行，继续提供停止及幂等恢复依据。从证据详情返回、前后台切换、SDK 会话重建和服务设置入口保留当前会话。仅调整 Android 导航与本地恢复策略，不改 API、DB 或服务端行为；见 [D07 新对话入口变更](../../openspec/changes/d07-fresh-assistant-entry/proposal.md)。
+
+已返回结果中的相关片段独立于聊天请求的忙碌状态，以有效录像／事件 ID 打开 M04 详情，并重新验证后端访问权限；不因允许导航而放宽事件或媒体读取范围。
+
 | 当前 API 草案 | 提供方 → 调用方 | 数据关联 |
 | --- | --- | --- |
 | `GET /api/v1/agent/conversations` | Agent → Android | 读本人 `conversations` |
@@ -142,7 +149,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 | `GET /api/v1/review-records` | Backend → Android | 读核查记录及关联事件／录像 |
 | `GET /api/v1/review-records/{review_id}` | Backend → Android | 联读核查、事件、录像与当前关键帧状态 |
 
-**Android 记录入口：** 首页菜单与我的可进入只读审核列表，使用当前 Backend 配置调用既有列表／详情接口，可本地搜索事件编号、备注和时间；网络／鉴权失败与空列表分别展示。设计稿记录只在 Compose 预览出现。本轮不增加保存表单或改变表／接口。见 [UI 验证](../../android/ui-design/README.md)。
+**Android 记录入口：** 首页菜单与我的可进入只读审核列表，使用当前 Backend 配置调用既有列表／详情接口，可本地搜索事件编号、备注和时间；网络／鉴权失败与空列表分别展示。设计稿记录只在 Compose 预览出现。本轮不增加保存表单或改变表／接口。见 [UI 验证](../../android/design/README.md)。
 
 **依赖与验收：** D09，服务依 M04，App 表单可先接样例；D10 验证真实事件保存、重试和 App／服务重启回读。当前只保存单事件，不把它当作整段多事件留档。
 
@@ -162,7 +169,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 - **数据／API：** 官方 SDK／API 与团队 35 个接口分开计数；People 原生事件通过 recording_jobs 保存来源，真实连续原片解析后才发布团队视觉动作事实，未校准时间不冒充录像 UTC。
 - **依赖与验收：** D06 需要设备、账号与 SDK 环境；独立推进，不阻塞预录素材的 D10。SDK 具备接口不等于真机已接通，缩略图不证明连续轨迹。
 
-本轮设备详情新增视觉布局：首页摄像头复用原直播播放器与全部设备能力，更多控制保留原动作，事件／回放／全部录像进入当前设备的 SDK 事件列表，下载及设置复用原页面。无 DB／API 变更，SDK 功能成功与否仍按设备实测记录。见 [设备详情提案](../../openspec/changes/d02-sdk-device-detail/proposal.md) 和 [UI 验证](../../android/ui-design/README.md#sdk-设备详情追加还原)。
+本轮设备详情新增视觉布局：首页摄像头复用原直播播放器与全部设备能力，更多控制保留原动作，事件／回放／全部录像进入当前设备的 SDK 事件列表，下载及设置复用原页面。无 DB／API 变更，SDK 功能成功与否仍按设备实测记录。见 [设备详情提案](../../openspec/changes/d02-sdk-device-detail/proposal.md) 和 [UI 验证](../../android/design/README.md#sdk-设备详情追加还原)。
 
 <a id="m10"></a>
 ## M10 · P1 包裹二维码、扫码与入出库

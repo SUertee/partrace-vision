@@ -58,3 +58,10 @@ vision/test_video_new/
 
 # Local backups of the vision module
 .vision.bak-*/
+
+# Private configuration after Android module migration
+android/core/src/androidMain/assets/partrace-agent.json
+android/core/src/androidDebug/assets/partrace-agent.json
+android/core/src/commonMain/kotlin/com/anker/esiotkit/sample/main/mega/login/business/BusinessLoginConfig.kt
+android/core/src/commonMain/kotlin/com/anker/esiotkit/sample/demo/RouterConfig.kt
+android/core/src/commonMain/kotlin/com/anker/esiotkit/sample/demo/AwsConfig.kt

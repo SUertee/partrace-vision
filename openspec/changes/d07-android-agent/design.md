@@ -5,6 +5,7 @@ Android 使用现有 Kotlin/Compose Common 壳和 Android 平台实现。后端 
 ## Decisions
 
 - 平台控制器以 StateFlow 提供无凭据的视图状态；网络使用现有 OkHttp 和 IO dispatcher，禁用重定向。活动页使用至少两秒间隔读取运行，不将 SSE 快照误当完整运行。
+- 正式对话仅选择 published 的 sdk／prerecorded，mock 从选择和自动默认中移除。仅在本地恢复指针明确属于 mock 时退出当前对话，不删服务端历史；preparePlan／startRun 底层核验真实录像、摄像头、偏移及其配置区域，阻止旧计划、重试与 404 回退重新创建模拟分析。历史可只读，running 历史仍允许离开或新建会话。
 - 录像与区域来自授权 API；完整视频窗口使用真实 duration_ms，保留数据来源。计划 query/query_text/steps 展示后显式确认，按既有合同启动。
 - 确认前可编辑 query_text 和 steps；首次分配 run_id 后固定实际请求载荷，网络重试不能使用修改后的计划覆盖同一 ID。
 - 创建会话、消息、运行前持久保存稳定 ID 和相应载荷；请求结果不明时重放同一载荷，运行 ID 跨进程回读。停止以服务端终态为准。

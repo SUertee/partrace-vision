@@ -52,7 +52,7 @@ Android 三入口、Backend／Agent 数据服务与独立 Vision worker 已有�
 - **当前状态：** 首页、AI、我的三入口已实现，已有构建、lint 与模拟器界面验证；真实设备与 Agent 接口已有接入，完整业务与 Android 真机验收未完成。
 - **前置：** D01 范围确认。
 - **交付：** 基于官方 KMP/Compose 示例的可安装 App、运行步骤与三入口导航，承接原四 Tab 规划中的查询、证据、AI 与记录能力。
-- **本轮视觉方案：** 用户提供的设计以首页、AI、我的三入口覆盖原四 Tab 视觉草案，另有独立消息中心、通知静音弹层与站点选择浮层；当前 Android 入口使用 `StationSdkApp` 连接设计壳与 SDK，我的保留进入官方 `SampleApp` 的 SDK 调试入口。上一轮设计范围与记录见 [d02-station-design](../openspec/changes/archive/2026-10-16-d02-station-design/proposal.md)、[设计预览说明](../android/design-previews/README.md)。原四 Tab 规划中的事件、证据、核查和记录范围及下述验收目标保留，当前视觉壳不计为业务验收完成。
+- **本轮视觉方案：** 用户提供的设计以首页、AI、我的三入口覆盖原四 Tab 视觉草案，另有独立消息中心、通知静音弹层与站点选择浮层；当前 Android 入口使用 `StationSdkApp` 连接设计壳与 SDK，我的保留进入官方 `SampleApp` 的 SDK 调试入口。上一轮设计范围与记录见 [d02-station-design](../openspec/changes/archive/2026-10-16-d02-station-design/proposal.md)、[设计预览说明](../android/design/verification/app/README.md)。原四 Tab 规划中的事件、证据、核查和记录范围及下述验收目标保留，当前视觉壳不计为业务验收完成。
 - **本轮真实设备接入：** 按 [d02-station-sdk-devices](../openspec/changes/archive/2026-10-16-d02-station-sdk-devices/verification.md) 共用原 SDK 初始化与有效缓存业务会话，将当前账号两个真实设备接入首页，数量随列表变化；真实名称、在线状态和最近缩略图替换原“深圳”“安克黑客松”“68”样例。摄像头复用原单路直播，基站及更多／状态入口进入对应设置，多画面先展示最近缩略图网格；加载、空、错误、未登录／401 与重试明确区分。站点标题仍是本地分组，不映射 SDK 房屋或过滤设备；报警尚未接入，AI 已接现有 Agent API，实际成功与失败见 D07／D08。按站点持久化的静音仍是本地功能，不修改摄像头报警。
 - **验收：** Android 真机可进入三入口及对应查询、证据与记录流程，往返保留选中状态；记录实际运行环境。SDK 能力交由 D06 单独验收。
 

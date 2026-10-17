@@ -18,8 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ANDROID_ROOT = REPO_ROOT / "android"
 SAMPLE_ROOT = (
     ANDROID_ROOT
-    / "ESIotKit-DemoApp-Common"
-    / "sample-core"
+    / "core"
     / "src"
     / "commonMain"
     / "kotlin"
@@ -122,7 +121,7 @@ def main() -> int:
         "--sdk", type=Path, metavar="PATH.aar", help="local official ESIotKit 2.2.7 AAR"
     )
     args = parser.parse_args()
-    sdk = ANDROID_ROOT / "ESIotKit-DemoApp-Android" / "libs" / SDK_NAME
+    sdk = ANDROID_ROOT / "libs" / SDK_NAME
     try:
         templates = read_templates()
         # Validate the optional SDK before creating any local configuration files.

@@ -9,14 +9,14 @@ from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = ROOT / "android/ESIotKit-DemoApp-Common/sample-core/src/androidDebug/assets/partrace-agent.json"
+TARGET = ROOT / "android/core/src/androidDebug/assets/partrace-agent.json"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://10.0.2.2:8000",
                         help="Backend origin, without /api/v1; defaults to the emulator host")
-    parser.add_argument("--credentials", type=Path, default=ROOT / ".local-state/bootstrap-credentials.json")
+    parser.add_argument("--credentials", type=Path, default=ROOT / ".local-state/local/secrets/bootstrap-credentials.json")
     parser.add_argument("--role", choices=("viewer", "admin"), default="viewer")
     parser.add_argument("--force", action="store_true", help="Replace an existing local Android API configuration")
     args = parser.parse_args()

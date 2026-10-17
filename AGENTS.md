@@ -33,8 +33,8 @@
 - 服务端统一 Python：`backend/` 使用 FastAPI，`agent/` 首版作为独立模块接入同一 API 应用；`vision/` 在独立工作进程执行推理，按共享结果包交接后端。视觉重计算不阻塞 API 请求，模型与媒体存储方案另行确认。
 - Python 源码在 `backend/`、`agent/` 包内按职责组织，不使用 `src/` 或重复的内层包目录。Backend 分为 `api / core / services / storage / ai`，Agent 保留引擎、协议与结构文件，将提示词独立到 `prompts.py`，工具放在 `tools/` 子包；目录说明见各模块 README。启动与公共导入使用 `backend.app`、`backend.manage`、`agent.engine`；发行包名保持 `partrace-backend`、`partrace-agent`。setuptools 显式包含业务子包，新增子包同步打包清单和 Docker 白名单。统一从 `backend/` 执行 `uv sync --locked` 安装两个本地可编辑包；启动使用 `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1`，管理使用 `uv run python -m backend.manage`，无需 `PYTHONPATH` 或 `--app-dir`。
 - 存储使用 PostgreSQL + pgvector，业务与向量同库分表；模型空间与维度仍待确认。数据库查询由后端提供，Agent 不直接连接数据库。
-- Android 使用 Kotlin + Compose。类和 Compose 组件采用 PascalCase，函数及属性采用 camelCase；跨端公共逻辑放 Common，Android 专有实现放对应 Android 源集。
-- 保持官方 Android/Common 两个工程同级及现有引用关系。工具链以 [Android 说明](android/README.md) 为准；升级依赖、迁移工程或改包名须单独说明并验证。
+- Android 使用 Kotlin + Compose。类和 Compose 组件采用 PascalCase，函数及属性采用 camelCase；共享业务与 Compose UI 放在 `android/core`，Android 专有实现放对应 Android 源集。
+- Android 使用单一 `android/` Gradle 工程，包含 `:app` 应用宿主和 `:core` 业务／UI 模块；这是用户 2026-10-17 最新确认，替代原官方 Android/Common 同级目录约定。工具链以 [Android 说明](android/README.md) 为准；升级依赖、调整模块或改应用包名须单独说明并验证，官方 SDK 来源与授权继续保留。
 - 网络和耗时操作不阻塞 UI 线程；取消运行后停止追加结果，正确释放订阅、播放器和采集资源。配置通过明确入口传入，失败返回可诊断错误。
 - 明示模拟、人工标注、真实预录或 SDK 来源。真实调用失败不得用模拟结果冒充成功；官方 SDK 事件和团队自定义动作事件分开记录。
 - Agent 只读检索，并引用有效 Event/Evidence ID。管理员显式确认后才保存核查决定，人工决定与原始事件分开持久化。

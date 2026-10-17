@@ -1,5 +1,5 @@
 ## Context
-参考为用户设备详情图，见 android/ui-design/references/device-detail.jpg。复用 MegaLiveVideoScreen 和 MegaLiveStreamViewModel，避免创建第二套播放器或模拟 SDK 成功。
+参考为用户设备详情图，见 android/design/references/device-detail.jpg。复用 MegaLiveVideoScreen 和 MegaLiveStreamViewModel，避免创建第二套播放器或模拟 SDK 成功。
 
 ## Decisions
 - 保持播放器在同一组合位置，横竖屏只隐藏详情控件，不因布局切换新增播放器。
@@ -9,4 +9,4 @@
 - 保留播放器退出释放、权限请求及真实错误，预览样例不进入生产状态。
 
 ## Verification
-Debug 构建、lint，已有直播相关回归；模拟器核对详情布局、事件导航、更多面板、设置及返回，并保存无真实画面的独立预览。实际变更与未测项写入 android/ui-design/README.md。
+Debug 构建、lint，已有直播相关回归；模拟器核对详情布局、事件导航、更多面板、设置及返回，并保存无真实画面的独立预览。实际变更与未测项写入 android/design/README.md。
