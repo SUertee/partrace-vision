@@ -90,6 +90,7 @@ flowchart LR
 
 ```text
 android/                 Android 前端
+web/                     Mobile Web 用户端（React）
 backend/                 后端
 agent/                   AI Agent
 vision/                  视觉算法

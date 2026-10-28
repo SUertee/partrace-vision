@@ -46,6 +46,7 @@ Backend 使用 Python + FastAPI，独立 Agent 包通过 `create_agent` 接入�
 - **本轮设备接入：** 按 [d02-station-sdk-devices](../../openspec/changes/archive/2026-10-16-d02-station-sdk-devices/proposal.md) 直接在设计首页读取当前账号的真实 SDK 设备，当前两个设备的数量随列表变化；名称、在线状态和最近缩略图替换原卡片样例及“68”。共用原 SDK 初始化与有效缓存业务会话；摄像头复用原单路直播，基站及更多／状态入口进入对应原设置，多画面先展示真实最近缩略图网格。加载、空、错误、未登录／401 与重试各自反馈，不用模拟设备兜底。
 - **实现边界：** 报警尚未连接；AI 追溯已消费 M06 现有 API，支持授权的已发布录像／区域、问题与计划确认、运行轮询／停止／恢复、结果卡片、当前证据与分页历史，见 [接入记录](../../openspec/changes/d07-android-agent/proposal.md)。通知静音偏好按站点持久化，有限时长到期恢复；消息中心打开真实系统通知设置，本地静音不代表修改系统或摄像头报警配置。站点选择仅为本地界面分组，不映射 SDK 房屋或过滤设备；不新增 DB／API，不代表 D02 真机、D06 全部能力或 D08／D10 业务验收完成。
 - **数据／API：** 本模块不提供 API，不直连数据库；使用后端与 Agent 接口。工程准备见 [Android README](../../android/README.md)。
+- **Mobile Web 入口：** `web/` 用 React 把不依赖官方 SDK 的页面迁移到手机浏览器，复用同一组 `/api/v1` 接口，不新增 DB／API；SDK 设备、直播与回放仍仅 App 可用。见 [web-mobile-client](../../openspec/changes/web-mobile-client/proposal.md) 与 [Web README](../../web/README.md)。
 - **依赖与验收：** D01 范围确认后做 D02；协议冻结后按共享样例推进 D08。真机可往返导航，引用跳到同一事件；样例可用不等于真实闭环完成。
 
 <a id="m02"></a>
